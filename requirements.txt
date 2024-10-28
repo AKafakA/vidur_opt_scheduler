@@ -7,4 +7,4 @@ ddsketch
 plotly_express
 matplotlib
 seaborn
-fasteners
+fasteners==0.18
