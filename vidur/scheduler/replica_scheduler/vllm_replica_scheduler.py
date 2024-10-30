@@ -10,8 +10,6 @@ from vidur.scheduler.replica_scheduler.base_replica_scheduler import (
 class VLLMReplicaScheduler(BaseReplicaScheduler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
-        self._preempted_requests: List[Request] = []
         self._num_running_batches = 0
         # For vLLM and its derivatives, we only need to set a loose max batch size
         # Memory requirements are handled explicitly by the scheduler
@@ -53,7 +51,6 @@ class VLLMReplicaScheduler(BaseReplicaScheduler):
             )
             self.allocate(request.id, num_required_blocks)
             return
-
         num_tokens_reserved = self._allocation_map[request.id] * self._config.block_size
         num_tokens_required = max(0, request.num_processed_tokens - num_tokens_reserved)
         assert (

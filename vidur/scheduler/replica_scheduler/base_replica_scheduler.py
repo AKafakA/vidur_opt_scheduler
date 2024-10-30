@@ -35,6 +35,8 @@ class BaseReplicaScheduler(ABC):
             self._request_generator_config.max_tokens // self._config.block_size
         )
 
+        self._preempted_requests: List[Request] = []
+
         memory_planner = MemoryPlanner(self._replica_config, replica)
 
         if not self._config.num_blocks:
@@ -69,12 +71,23 @@ class BaseReplicaScheduler(ABC):
         return len(self._request_queue)
 
     @property
-    def replica_id(self) -> int:
-        return self._replica_id
+    def num_tokens_to_prefill(self) -> int:
+        return sum(request.num_prefill_tokens for request in self._request_queue)
+
+    @property
+    def num_tokens_to_decode(self) -> int:
+        return sum(request.num_decode_tokens - request.num_processed_tokens
+                   for request in self._preempted_requests + self._request_queue)
 
     @property
     def num_allocated_blocks(self) -> int:
         return self._num_allocated_blocks
+
+
+    @property
+    def replica_id(self) -> int:
+        return self._replica_id
+
 
     @property
     def memory_usage_percent(self) -> int:

@@ -7,8 +7,6 @@ from vidur.scheduler.replica_scheduler.base_replica_scheduler import (
 class OrcaReplicaScheduler(BaseReplicaScheduler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
-        self._preempted_requests = []
         self._num_running_batches = 0
 
     def on_batch_end(self, batch: Batch) -> None:

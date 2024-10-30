@@ -607,6 +607,11 @@ class RandomForrestExecutionTimePredictorConfig(BaseExecutionTimePredictorConfig
 
 
 @dataclass
+class BaseRequestTimelinePredictorConfig(BasePolyConfig):
+    pass
+
+
+@dataclass
 class ClusterConfig:
     num_replicas: int = field(
         default=1,
@@ -652,6 +657,10 @@ class SimulationConfig(ABC):
     metrics_config: MetricsConfig = field(
         default_factory=MetricsConfig,
         metadata={"help": "Metrics config."},
+    )
+    request_timeline_predictor_config: BaseRequestTimelinePredictorConfig = field(
+        default_factory=BaseRequestTimelinePredictorConfig,
+        metadata={"help": "Request timeline predictor config."},
     )
 
     def __post_init__(self):

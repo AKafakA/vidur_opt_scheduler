@@ -9,10 +9,8 @@ from vidur.scheduler.replica_scheduler.base_replica_scheduler import (
 class SarathiReplicaScheduler(BaseReplicaScheduler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
         # sarathi config
         self._num_running_batches = 0
-        self._preempted_requests = []
         # For vLLM and its derivatives, we only need to set a loose max batch size
         # Memory requirements are handled explicitly by the scheduler
         self._max_micro_batch_size = self._config.batch_size_cap // self._num_stages
