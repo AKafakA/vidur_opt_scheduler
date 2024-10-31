@@ -71,6 +71,10 @@ class BaseReplicaScheduler(ABC):
         return len(self._request_queue)
 
     @property
+    def replica_stage_schedulers(self):
+        return self._replica_stage_schedulers
+
+    @property
     def num_tokens_to_prefill(self) -> int:
         return sum(request.num_prefill_tokens for request in self._request_queue)
 

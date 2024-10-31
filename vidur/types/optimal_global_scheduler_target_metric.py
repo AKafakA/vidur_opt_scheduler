@@ -5,7 +5,8 @@ class TargetMetric(Enum):
     """
     Target metrics for the scheduler
     """
-    LATENCY = 1
-    THROUGHPUT = 2
-    SCHEDULING_DELAY = 3
-    DECODING_DELAY = 4
+    MIN_LATENCY = 1
+    MAX_AVG_BATCH_SIZE = 2
+    MAX_MIN_BATCH_SIZE = 3
+    MIN_SCHEDULING_DELAY = 4
+    MIN_DECODING_DELAY = 5

@@ -23,6 +23,7 @@ class BaseGlobalScheduler(ABC):
             replica_scheduler_config=config.cluster_config.replica_scheduler_config,
             metrics_config=config.metrics_config,
         )
+        self._execution_time_predictor = execution_time_predictor
         self._replica_schedulers = {
             replica_id: ReplicaSchedulerRegistry.get(
                 config.cluster_config.replica_scheduler_config.get_type(),

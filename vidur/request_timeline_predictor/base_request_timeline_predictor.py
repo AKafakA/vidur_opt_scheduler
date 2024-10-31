@@ -6,14 +6,16 @@ from vidur.scheduler.replica_scheduler.base_replica_scheduler import BaseReplica
 
 class BaseRequestTimelinePredictor:
     def __init__(self,
-                 scheduling_delay_predictor_config: BaseRequestTimelinePredictorConfig,
+                 scheduling_timeline_predictor_config: BaseRequestTimelinePredictorConfig,
                  replica_config: ReplicaConfig,
                  replica_scheduler_config: BaseReplicaSchedulerConfig,
-                 execution_time_predictor: BaseExecutionTimePredictor
                  ):
-        self._config = scheduling_delay_predictor_config
+        self._config = scheduling_timeline_predictor_config
         self._replica_config = replica_config
         self._replica_scheduler_config = replica_scheduler_config
+        self._execution_time_predictor = None
+
+    def attach_execution_time_predictor(self, execution_time_predictor: BaseExecutionTimePredictor):
         self._execution_time_predictor = execution_time_predictor
 
     def predict_scheduling_delay(self, replica_scheduler: BaseReplicaScheduler, request: Request):
@@ -26,4 +28,7 @@ class BaseRequestTimelinePredictor:
         raise NotImplementedError("predict method is not implemented")
 
     def predict_average_batch_size(self, replica_scheduler, request):
+        raise NotImplementedError("predict method is not implemented")
+
+    def predict_min_batch_size(self, replica_scheduler, request):
         raise NotImplementedError("predict method is not implemented")

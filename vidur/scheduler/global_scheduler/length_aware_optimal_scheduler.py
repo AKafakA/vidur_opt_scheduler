@@ -1,7 +1,7 @@
 from typing import List, Tuple
 
 from vidur.entities import Request
-from vidur.request_latency_predictor.base_request_timeline_predictor import BaseRequestTimelinePredictor
+from vidur.request_timeline_predictor.base_request_timeline_predictor import BaseRequestTimelinePredictor
 from vidur.scheduler.global_scheduler.base_global_scheduler import BaseGlobalScheduler
 
 from vidur.scheduler.replica_scheduler.base_replica_scheduler import BaseReplicaScheduler
@@ -12,14 +12,17 @@ def get_target_metric_value(target_metric: TargetMetric,
                             replica_scheduler: BaseReplicaScheduler,
                             request: Request,
                             request_timeline_predictor: BaseRequestTimelinePredictor):
-    if target_metric == TargetMetric.LATENCY:
+
+    if target_metric == TargetMetric.MIN_LATENCY:
         return request_timeline_predictor.predict_request_makespan(replica_scheduler, request)
-    elif target_metric == TargetMetric.SCHEDULING_DELAY:
+    elif target_metric == TargetMetric.MIN_SCHEDULING_DELAY:
         return request_timeline_predictor.predict_scheduling_delay(replica_scheduler, request)
-    elif target_metric == TargetMetric.DECODING_DELAY:
+    elif target_metric == TargetMetric.MIN_DECODING_DELAY:
         return request_timeline_predictor.predict_average_decoding_latency(replica_scheduler, request)
-    elif target_metric == TargetMetric.THROUGHPUT:
+    elif target_metric == TargetMetric.MAX_AVG_BATCH_SIZE:
         return request_timeline_predictor.predict_average_batch_size(replica_scheduler, request)
+    elif target_metric == TargetMetric.MAX_MIN_BATCH_SIZE:
+        return -request_timeline_predictor.predict_average_batch_size(replica_scheduler, request)
     else:
         raise ValueError("Invalid target metric")
 
@@ -34,6 +37,7 @@ class LengthAwareOptimalScheduler(BaseGlobalScheduler):
         super().__init__(*args, **kwargs)
         self._target_metric = target_metric
         self._request_timeline_predictor = request_timeline_predictor
+        self._request_timeline_predictor.attach_execution_time_predictor(self._execution_time_predictor)
 
     def schedule(self) -> List[Tuple[int, Request]]:
         self.sort_requests()
@@ -49,6 +53,9 @@ class LengthAwareOptimalScheduler(BaseGlobalScheduler):
                                                                       self._request_timeline_predictor)
                 for replica_scheduler in self._replica_schedulers.values()
             }
-            replica_id = min(latency_map.items(), key=lambda x: x[1])[0]
+            if self._target_metric.name.startswith("MAX"):
+                replica_id = max(latency_map.items(), key=lambda x: x[1])[0]
+            else:
+                replica_id = min(latency_map.items(), key=lambda x: x[1])[0]
             request_mapping.append((replica_id, request))
         return request_mapping
