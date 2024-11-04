@@ -25,6 +25,8 @@ class BaseReplicaScheduler(ABC):
         num_stages: int,
         execution_time_predictor: BaseExecutionTimePredictor,
     ) -> None:
+        self.running_batches = []
+        self._num_running_batches = 0
         self._config = replica_scheduler_config
         self._replica_config = replica_config
         self._request_generator_config = request_generator_config
@@ -159,4 +161,5 @@ class BaseReplicaScheduler(ABC):
                 break
             scheduled_batches.append(batch)
             self._num_running_batches += 1
+            self.running_batches.append(batch)
         return scheduled_batches

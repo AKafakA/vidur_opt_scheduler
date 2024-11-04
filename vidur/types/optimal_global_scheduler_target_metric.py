@@ -1,7 +1,7 @@
-from enum import Enum
+from vidur.types.base_int_enum import BaseIntEnum
 
 
-class TargetMetric(Enum):
+class TargetMetric(BaseIntEnum):
     """
     Target metrics for the scheduler
     """

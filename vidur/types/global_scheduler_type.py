@@ -7,8 +7,4 @@ class GlobalSchedulerType(BaseIntEnum):
     LOR = 3
     LODT = 4
     # opt global scheduler name
-    OPT_LATENCY = 5
-    OPT_SCHEDULING_DELAY = 6
-    OPT_DECODING_DELAY = 7
-    OPT_MAX_AVG_BATCH_SIZE = 8
-    OPT_MAX_MIN_BATCH_SIZE = 9
+    OPT = 5

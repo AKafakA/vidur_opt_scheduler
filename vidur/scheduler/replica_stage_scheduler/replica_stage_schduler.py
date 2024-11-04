@@ -12,6 +12,7 @@ class ReplicaStageScheduler:
         is_last_stage: bool,
         execution_time_predictor: BaseExecutionTimePredictor,
     ) -> None:
+        self.current_execution_time = None
         self._replica_id = replica_id
         self._stage_id = stage_id
         self._is_last_stage = is_last_stage
@@ -23,6 +24,10 @@ class ReplicaStageScheduler:
     @property
     def is_last_stage(self) -> bool:
         return self._is_last_stage
+
+    @property
+    def is_busy(self) -> bool:
+        return self._is_busy
 
     def is_empty(self) -> bool:
         return len(self._batch_queue) == 0
@@ -43,6 +48,7 @@ class ReplicaStageScheduler:
             batch,
             self._stage_id,
         )
+        self.current_execution_time = execution_time.total_time
         total_execution_time = execution_time.total_time
         model_execution_time = execution_time.model_time
         batch_stage = BatchStage(

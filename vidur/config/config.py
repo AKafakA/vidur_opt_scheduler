@@ -20,6 +20,8 @@ from vidur.types import (
     RequestIntervalGeneratorType,
     RequestLengthGeneratorType,
 )
+from vidur.types.optimal_global_scheduler_target_metric import TargetMetric
+from vidur.types.request_timeline_predictor_type import RequestTimelinePredictorType
 
 logger = init_logger(__name__)
 
@@ -463,6 +465,16 @@ class ReplicaConfig:
             self.network_device
         )
 
+@dataclass
+class BaseRequestTimelinePredictorConfig(BasePolyConfig):
+    pass
+
+
+@dataclass
+class SimulationRequestTimelinePredictorConfig(BaseRequestTimelinePredictorConfig):
+    @staticmethod
+    def get_type():
+        return RequestTimelinePredictorType.SIMULATE
 
 @dataclass
 class BaseGlobalSchedulerConfig(BasePolyConfig):
@@ -488,6 +500,23 @@ class LORGlobalSchedulerConfig(BaseGlobalSchedulerConfig):
     @staticmethod
     def get_type():
         return GlobalSchedulerType.LOR
+
+
+@dataclass
+class LengthAwareOptimalSchedulerConfig(BaseGlobalSchedulerConfig):
+    target_metric: TargetMetric = field(
+        default=TargetMetric.MIN_LATENCY,
+        metadata={"help": "Target metric for Length Aware Optimal Scheduler."},
+    )
+
+    request_timeline_predictor_config: BaseRequestTimelinePredictorConfig = field(
+        default_factory=SimulationRequestTimelinePredictorConfig,
+        metadata={"help": "Request timeline predictor config."},
+    )
+
+    @staticmethod
+    def get_type():
+        return GlobalSchedulerType.OPT
 
 
 @dataclass
@@ -607,11 +636,6 @@ class RandomForrestExecutionTimePredictorConfig(BaseExecutionTimePredictorConfig
 
 
 @dataclass
-class BaseRequestTimelinePredictorConfig(BasePolyConfig):
-    pass
-
-
-@dataclass
 class ClusterConfig:
     num_replicas: int = field(
         default=1,
@@ -657,10 +681,6 @@ class SimulationConfig(ABC):
     metrics_config: MetricsConfig = field(
         default_factory=MetricsConfig,
         metadata={"help": "Metrics config."},
-    )
-    request_timeline_predictor_config: BaseRequestTimelinePredictorConfig = field(
-        default_factory=BaseRequestTimelinePredictorConfig,
-        metadata={"help": "Request timeline predictor config."},
     )
 
     def __post_init__(self):

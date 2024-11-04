@@ -5,14 +5,7 @@ from vidur.scheduler.replica_scheduler.base_replica_scheduler import BaseReplica
 
 
 class BaseRequestTimelinePredictor:
-    def __init__(self,
-                 scheduling_timeline_predictor_config: BaseRequestTimelinePredictorConfig,
-                 replica_config: ReplicaConfig,
-                 replica_scheduler_config: BaseReplicaSchedulerConfig,
-                 ):
-        self._config = scheduling_timeline_predictor_config
-        self._replica_config = replica_config
-        self._replica_scheduler_config = replica_scheduler_config
+    def __init__(self):
         self._execution_time_predictor = None
 
     def attach_execution_time_predictor(self, execution_time_predictor: BaseExecutionTimePredictor):

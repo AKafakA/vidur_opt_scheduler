@@ -1,7 +1,9 @@
 from typing import List, Tuple
 
+from vidur.config import LengthAwareOptimalSchedulerConfig
 from vidur.entities import Request
 from vidur.request_timeline_predictor.base_request_timeline_predictor import BaseRequestTimelinePredictor
+from vidur.request_timeline_predictor.request_timeline_predictor_registry import RequestTimelinePredictorRegistry
 from vidur.scheduler.global_scheduler.base_global_scheduler import BaseGlobalScheduler
 
 from vidur.scheduler.replica_scheduler.base_replica_scheduler import BaseReplicaScheduler
@@ -32,11 +34,14 @@ class LengthAwareOptimalScheduler(BaseGlobalScheduler):
     Length-aware optimal scheduler to schedule requests based on the number of unprocessed tokens
     """
 
-    def __init__(self, request_timeline_predictor: BaseRequestTimelinePredictor, target_metric: TargetMetric,
-                 *args, **kwargs):
+    def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._target_metric = target_metric
-        self._request_timeline_predictor = request_timeline_predictor
+        if not isinstance(self._config.cluster_config.global_scheduler_config, LengthAwareOptimalSchedulerConfig):
+            raise ValueError("Invalid global scheduler config type")
+        self._target_metric = self._config.cluster_config.global_scheduler_config.target_metric
+        self._request_timeline_predictor = RequestTimelinePredictorRegistry.get(
+            self._config.cluster_config.global_scheduler_config.request_timeline_predictor_config.get_type()
+        )
         self._request_timeline_predictor.attach_execution_time_predictor(self._execution_time_predictor)
 
     def schedule(self) -> List[Tuple[int, Request]]:

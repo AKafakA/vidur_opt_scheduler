@@ -16,15 +16,20 @@ class SimulatePredictReplicaScheduler:
     def __init__(self, replica_scheduler: BaseReplicaScheduler, request: Request,
                  execution_time_predictor: BaseExecutionTimePredictor) -> None:
         self._replica_id = replica_scheduler.replica_id
+        self._raw_replica_scheduler = replica_scheduler
         self._replica_scheduler = copy.deepcopy(replica_scheduler)
         self._target_request = copy.deepcopy(request)
-        self._replica_scheduler.add_request(self._target_request)
         self._execution_time_predictor = execution_time_predictor
         self._target_request_batch_info = []
         self._scheduled_batch_heap = []
         self._scheduled_batch_id = 0
 
     def simulate(self):
+        self._replica_scheduler.add_request(self._target_request)
+        existing_batches = self._replica_scheduler.running_batches
+        self._replica_scheduler.running_batches = []
+        for batch in existing_batches:
+            self.push_batch(copy.deepcopy(batch), 0)
         new_batches = self._replica_scheduler.on_schedule()
         for new_batch in new_batches:
             self.push_batch(new_batch, 0)
@@ -40,10 +45,14 @@ class SimulatePredictReplicaScheduler:
 
     def push_batch(self, batch: Batch, schedule_time: int):
         batch_execution_time = []
-        for replica_stage_scheduler in self._replica_scheduler.replica_stage_schedulers.keys():
+        for stage_id in self._replica_scheduler.replica_stage_schedulers.keys():
+            replica_stage_scheduler = self._replica_scheduler.get_replica_stage_scheduler(stage_id)
             execution_time = (
-                self._execution_time_predictor.get_execution_time(batch, replica_stage_scheduler.stage_id))
-            batch_execution_time.append(execution_time.total_time)
+                self._execution_time_predictor.get_execution_time(batch, stage_id)).total_time
+            # if the stage is busy, wait for the current batch to complete
+            if replica_stage_scheduler.is_busy:
+                execution_time += replica_stage_scheduler.current_execution_time
+            batch_execution_time.append(execution_time)
         batch_id = self._scheduled_batch_id
         self._scheduled_batch_id += 1
         completed_at = sum(batch_execution_time) + schedule_time

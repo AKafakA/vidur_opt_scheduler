@@ -1,5 +1,4 @@
 from math import ceil
-from typing import List
 
 from vidur.entities.batch import Batch, Request
 from vidur.scheduler.replica_scheduler.base_replica_scheduler import (
@@ -10,7 +9,6 @@ from vidur.scheduler.replica_scheduler.base_replica_scheduler import (
 class VLLMReplicaScheduler(BaseReplicaScheduler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._num_running_batches = 0
         # For vLLM and its derivatives, we only need to set a loose max batch size
         # Memory requirements are handled explicitly by the scheduler
         self._max_micro_batch_size = self._config.batch_size_cap // self._num_stages
@@ -20,6 +18,8 @@ class VLLMReplicaScheduler(BaseReplicaScheduler):
 
     def on_batch_end(self, batch: Batch) -> None:
         self._num_running_batches -= 1
+        if batch in self.running_batches:
+            self.running_batches.remove(batch)
 
         for request in batch.requests:
             if request.completed:
