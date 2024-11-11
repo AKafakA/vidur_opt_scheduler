@@ -14,22 +14,25 @@ class SimulatePredictReplicaScheduler:
     and use the execution time predictor to predict the execution time of each batch
     """
     def __init__(self, replica_scheduler: BaseReplicaScheduler, request: Request,
-                 execution_time_predictor: BaseExecutionTimePredictor) -> None:
+                 execution_time_predictor: BaseExecutionTimePredictor,
+                 use_estimated_execution_time=False) -> None:
         self._replica_id = replica_scheduler.replica_id
         self._raw_replica_scheduler = replica_scheduler
-        self._replica_scheduler = copy.deepcopy(replica_scheduler)
         self._target_request = copy.deepcopy(request)
+        self._replica_scheduler = copy.deepcopy(replica_scheduler)
         self._execution_time_predictor = execution_time_predictor
         self._target_request_batch_info = []
         self._scheduled_batch_heap = []
         self._scheduled_batch_id = 0
+        self._estimate_execution_time = use_estimated_execution_time
+        self._default_execution_time = 0.05
 
     def simulate(self):
         self._replica_scheduler.add_request(self._target_request)
         existing_batches = self._replica_scheduler.running_batches
         self._replica_scheduler.running_batches = []
         for batch in existing_batches:
-            self.push_batch(copy.deepcopy(batch), 0)
+            self.push_batch(copy.copy(batch), 0)
         new_batches = self._replica_scheduler.on_schedule()
         for new_batch in new_batches:
             self.push_batch(new_batch, 0)
@@ -47,8 +50,7 @@ class SimulatePredictReplicaScheduler:
         batch_execution_time = []
         for stage_id in self._replica_scheduler.replica_stage_schedulers.keys():
             replica_stage_scheduler = self._replica_scheduler.get_replica_stage_scheduler(stage_id)
-            execution_time = (
-                self._execution_time_predictor.get_execution_time(batch, stage_id)).total_time
+            execution_time = self.get_execution_time(batch, stage_id)
             # if the stage is busy, wait for the current batch to complete
             if replica_stage_scheduler.is_busy:
                 execution_time += replica_stage_scheduler.current_execution_time
@@ -101,3 +103,9 @@ class SimulatePredictReplicaScheduler:
     @property
     def max_batch_size(self):
         return max([info["batch_size"] for info in self._target_request_batch_info])
+
+    def get_execution_time(self, batch: Batch, stage_id: int):
+        if self._estimate_execution_time:
+            return self._execution_time_predictor.get_execution_time(batch, stage_id).total_time
+        else:
+            return self._default_execution_time

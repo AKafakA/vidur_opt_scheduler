@@ -80,21 +80,27 @@ def extract_utilization_stats(run_dir: str, stat_name: str):
 
 
 def process_run(run_dir: str):
-    config_file = f"{run_dir}/config.yml"
-    request_metrics_file = f"{run_dir}/request_metrics.csv"
-    tbt_file = f"{run_dir}/plots/batch_execution_time.csv"
-    ttft_file = f"{run_dir}/plots/prefill_e2e_time.csv"
-    batch_size_file = f"{run_dir}/plots/batch_size.csv"
-    batch_num_tokens_file = f"{run_dir}/plots/batch_num_tokens.csv"
+    config_file = f"{run_dir}config.json"
+    request_metrics_file = f"{run_dir}request_metrics.csv"
+    tbt_file = f"{run_dir}plots/batch_execution_time.csv"
+    ttft_file = f"{run_dir}plots/prefill_e2e_time.csv"
+    batch_size_file = f"{run_dir}plots/batch_size.csv"
+    batch_num_tokens_file = f"{run_dir}plots/batch_num_tokens.csv"
     request_completion_time_series_file = (
-        f"{run_dir}/plots/request_completion_time_series.csv"
+        f"{run_dir}plots/request_completion_time_series.csv"
     )
+    request_e2e_time_file = (
+        f"{run_dir}plots/request_e2e_time.csv"
+    )
+    request_scheduling_delay_file = f"{run_dir}plots/request_scheduling_delay.csv"
 
     try:
         with open(config_file, "r") as f:
             config = yaml.safe_load(f)
 
         request_metrics_df = pd.read_csv(request_metrics_file)
+        request_e2e_time_df = pd.read_csv(request_e2e_time_file)
+        request_scheduling_delay_df = pd.read_csv(request_scheduling_delay_file)
         tbt_df = pd.read_csv(tbt_file)
         ttft_df = pd.read_csv(ttft_file)
         batch_size_df = pd.read_csv(batch_size_file)
@@ -107,6 +113,7 @@ def process_run(run_dir: str):
         # we can run into this issue if the run was not successful
         # either due to actual failure or due to model OOMing in simulation
         # later is okay, while the former is not
+        print(f"Error processing {run_dir}: {e}")
         return None
 
     request_scheduling_delay_stats = extract_stat_from_request_metrics(
@@ -114,6 +121,12 @@ def process_run(run_dir: str):
     )
     request_e2e_time_normalized_stats = extract_stat_from_request_metrics(
         request_metrics_df, "request_e2e_time_normalized"
+    )
+    request_e2e_time_cdf = extract_stats_from_cdf_df(
+        request_e2e_time_df, "request_e2e_time", "e2e_time", extract_all=True)
+    request_scheduling_delay_cdf = extract_stats_from_cdf_df(
+        request_scheduling_delay_df, "request_scheduling_delay", "scheduling_delay",
+        extract_all=True
     )
     ttft_stats = extract_stat_from_request_metrics(
         request_metrics_df, "prefill_e2e_time", "ttft"
@@ -137,16 +150,22 @@ def process_run(run_dir: str):
     busy_time_percent_stats = extract_utilization_stats(run_dir, "busy_time_percent")
     runtime = request_completion_time_series_df["Time (sec)"].max()
 
-    if (
-        config["replica_scheduler_provider"] == "sarathi"
-        and config["sarathi_scheduler_chunk_size"] == 4096
-    ):
-        config["replica_scheduler_provider"] = "orca+"
+    cluster_config = config["cluster_config"]
+    num_replicas = cluster_config["num_replicas"]
+    replica_config = cluster_config["replica_config"]
+    replica_device = replica_config["device"]
+    replica_num_tensor_parallel_workers = replica_config["tensor_parallel_size"]
+    replica_num_pipeline_stages = replica_config["num_pipeline_stages"]
+    request_generator_config = config["request_generator_config"]
+    interval_generator_config = request_generator_config["interval_generator_config"]
+    poisson_request_interval_generator_qps = interval_generator_config["qps"]
 
     config.update(
         {
             **request_scheduling_delay_stats,
             **request_e2e_time_normalized_stats,
+            **request_scheduling_delay_cdf,
+            **request_e2e_time_cdf,
             **tbt_stats,
             **ttft_stats,
             **memory_usage_stats,
@@ -158,6 +177,11 @@ def process_run(run_dir: str):
             **batch_size_cdf,
             **batch_num_tokens_cdf,
             "runtime": runtime,
+            "cluster_num_replicas": num_replicas,
+            "replica_device": replica_device,
+            "replica_num_tensor_parallel_workers": replica_num_tensor_parallel_workers,
+            "replica_num_pipeline_stages": replica_num_pipeline_stages,
+            "poisson_request_interval_generator_qps": poisson_request_interval_generator_qps,
         }
     )
 
@@ -172,8 +196,8 @@ def get_sim_time(sim_results_dir: str):
 
     # search for Simulation took time: xxx
     for line in lines:
-        if "Simulation took time" in line:
-            return float(line.split(":")[-1].strip())
+        if "Simulation ended at:" in line:
+            return float(line.split(":")[-1].replace("s", "").strip())
 
 
 def process_trace(sim_results_dir: str):

@@ -1,3 +1,4 @@
+import copy
 from typing import Tuple
 
 from vidur.entities import Batch, BatchStage, ExecutionTime
@@ -6,11 +7,11 @@ from vidur.execution_time_predictor import BaseExecutionTimePredictor
 
 class ReplicaStageScheduler:
     def __init__(
-        self,
-        replica_id: int,
-        stage_id: int,
-        is_last_stage: bool,
-        execution_time_predictor: BaseExecutionTimePredictor,
+            self,
+            replica_id: int,
+            stage_id: int,
+            is_last_stage: bool,
+            execution_time_predictor: BaseExecutionTimePredictor,
     ) -> None:
         self.current_execution_time = None
         self._replica_id = replica_id
@@ -62,3 +63,22 @@ class ReplicaStageScheduler:
         )
 
         return batch, batch_stage, execution_time
+
+    def __deepcopy__(self, memodict={}):
+        copied_replica_scheduler = ReplicaStageScheduler(
+            self._replica_id,
+            self._stage_id,
+            self._is_last_stage,
+            self._execution_time_predictor,
+        )
+
+        copied_replica_scheduler.current_execution_time = self.current_execution_time
+        copied_replica_scheduler._replica_id = self._replica_id
+        copied_replica_scheduler._stage_id = self._stage_id
+        copied_replica_scheduler._is_last_stage = self._is_last_stage
+        copied_replica_scheduler._execution_time_predictor = self._execution_time_predictor
+        copied_replica_scheduler._batch_queue = copy.deepcopy(self._batch_queue)
+        copied_replica_scheduler._is_busy = self._is_busy
+        return copied_replica_scheduler
+
+

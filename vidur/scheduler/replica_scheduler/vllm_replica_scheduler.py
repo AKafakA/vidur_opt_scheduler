@@ -1,3 +1,4 @@
+import copy
 from math import ceil
 
 from vidur.entities.batch import Batch, Request

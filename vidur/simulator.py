@@ -1,6 +1,7 @@
 import atexit
 import heapq
 import json
+import time
 from typing import List
 
 from vidur.config import SimulationConfig
@@ -61,6 +62,8 @@ class Simulator:
             f"Starting simulation with cluster: {self._cluster} and {len(self._event_queue)} requests"
         )
 
+        start_time = time.time()
+
         while self._event_queue and not self._terminate:
             _, event = heapq.heappop(self._event_queue)
             self._set_time(event._time)
@@ -76,6 +79,8 @@ class Simulator:
                     self._event_chrome_trace.append(chrome_trace)
 
         assert self._scheduler.is_empty() or self._terminate
+        end_time = time.time()
+        logger.info(f"Simulation took: {end_time - start_time}s")
 
         logger.info(f"Simulation ended at: {self._time}s")
 

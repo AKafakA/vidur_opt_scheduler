@@ -1,3 +1,4 @@
+import copy
 from typing import List
 
 from vidur.entities.base_entity import BaseEntity

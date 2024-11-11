@@ -24,7 +24,7 @@ def get_target_metric_value(target_metric: TargetMetric,
     elif target_metric == TargetMetric.MAX_AVG_BATCH_SIZE:
         return request_timeline_predictor.predict_average_batch_size(replica_scheduler, request)
     elif target_metric == TargetMetric.MAX_MIN_BATCH_SIZE:
-        return -request_timeline_predictor.predict_average_batch_size(replica_scheduler, request)
+        return request_timeline_predictor.predict_average_batch_size(replica_scheduler, request)
     else:
         raise ValueError("Invalid target metric")
 
