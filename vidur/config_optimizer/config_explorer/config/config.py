@@ -1,4 +1,5 @@
 import hashlib
+import os
 from dataclasses import dataclass
 from itertools import product
 from typing import List, Optional
@@ -268,4 +269,4 @@ class SimulationConfig:
         return f"{self.job_config.get_human_readable_name()}, QPS: {self.qps}"
 
     def get_run_dir(self):
-        return f"{self.output_dir}/runs/{self.job_config.get_hash()}/{self.qps}"
+        return os.getcwd() + "/" + f"{self.output_dir}/runs/{self.job_config.get_hash()}/{self.qps}"

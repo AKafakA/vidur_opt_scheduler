@@ -54,23 +54,22 @@ def get_args():
 
 if __name__ == "__main__":
     args = get_args()
-
-    config = yaml.safe_load(open(args.config_path))
+    config = yaml.safe_load(open(os.getcwd() + "/" + args.config_path))
 
     assert (
         args.scheduling_delay_slo_quantile >= 0
         and args.scheduling_delay_slo_quantile <= 1
     )
 
-    os.makedirs(args.output_dir, exist_ok=True)
+    os.makedirs(os.getcwd() + "/" + args.output_dir, exist_ok=True)
 
     logger.info("Starting config optimizer")
     logger.info(f"Args: {args}")
     logger.info(f"Config: {config}")
 
     # store the config and args
-    json.dump(vars(args), open(f"{args.output_dir}/args.json", "w"))
-    json.dump(config, open(f"{args.output_dir}/config.json", "w"))
+    json.dump(vars(args), open(os.getcwd() + "/" + f"{args.output_dir}/args.json", "w"))
+    json.dump(config, open(os.getcwd() + "/" + f"{args.output_dir}/config.json", "w"))
 
     multiple_capacity_search = ConfigExplorer(args, config)
 
