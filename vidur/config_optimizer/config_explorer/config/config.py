@@ -29,16 +29,16 @@ class TraceConfig:
     max_seq_len: int
     num_requests: int
     start_qps: float
+    type: str
 
     def get_key(self):
         return f"{self.name}_tk{self.max_seq_len}_rq{self.num_requests}"
 
     def to_config_dict(self):
         return {
-            "request_generator_config_type": "synthetic",
+            "request_generator_config_type": self.type,
             "length_generator_config_type": "trace",
-            "interval_generator_config_type": "poisson",
-            "synthetic_request_generator_config_max_tokens": self.max_seq_len,
+            "interval_generator_config_type": "poisson" if self.type == "synthetic" else "trace",
             "trace_request_length_generator_config_max_tokens": self.max_seq_len,
             "zipf_request_length_generator_config_max_tokens": self.max_seq_len,
             "uniform_request_length_generator_config_max_tokens": self.max_seq_len,
