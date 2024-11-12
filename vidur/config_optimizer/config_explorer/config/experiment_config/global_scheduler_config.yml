@@ -5,14 +5,14 @@ clusters:
 
 
 load_balancers:
-#  - name: round_robin
-#    identifier: round_robin
+  - name: round_robin
+    identifier: round_robin
   - name: optimal
     identifier: opt
-#  - name: least_of_requests
-#    identifier: lor
-#  - name: random
-#    identifier: random
+  - name: least_of_requests
+    identifier: lor
+  - name: random
+    identifier: random
 
 schedulers:
   - scheduler: vllm
@@ -22,7 +22,7 @@ traces:
     trace_file: "./data/processed_traces/arxiv_summarization_stats_llama2_tokenizer_filtered_v2.csv"
     max_seq_len: 4096
     num_requests: 1600
-    start_qps: 16
+    start_qps: 30.43
     generate_type: "synthetic"
 #  - name: chat
 #    trace_file: "./data/processed_traces/splitwise_code.csv"
