@@ -164,6 +164,11 @@ class JobConfig:
     def get_hash(self):
         return hashlib.sha1(self.get_key().encode("utf-8")).hexdigest()[:8]
 
+    def get_readable_exp_file_name(self):
+        return (f"{self.model_config.name}_{self.trace_config.name}_"
+                f"{self.cluster_config.device}_tp{self.num_tensor_parallel_workers}_"
+                f"pp{self.num_pipeline_stages}_bsz{self.batch_size}_{self.load_balancer_config.name}")
+
     def to_config_dict(self):
         return {
             **self.model_config.to_config_dict(),
@@ -296,4 +301,5 @@ class SimulationConfig:
         return f"{self.job_config.get_human_readable_name()}, QPS: {self.qps}"
 
     def get_run_dir(self):
-        return os.getcwd() + "/" + f"{self.output_dir}/runs/{self.job_config.get_hash()}/{self.qps}"
+        return os.getcwd() + "/" + (f"{self.output_dir}/runs/"
+                                    f"{self.job_config.get_readable_exp_file_name()}/{self.qps}")
