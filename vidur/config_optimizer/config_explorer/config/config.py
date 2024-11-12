@@ -6,6 +6,20 @@ from typing import List, Optional
 
 
 @dataclass
+class LoadBalancerConfig:
+    name: str
+    identifier: str
+
+    def get_key(self):
+        return self.name
+
+    def to_config_dict(self):
+        return {
+            "global_scheduler_config_type": self.identifier,
+        }
+
+
+@dataclass
 class ModelConfig:
     name: str
     identifier: str
@@ -26,20 +40,24 @@ class ModelConfig:
 @dataclass
 class TraceConfig:
     name: str
+    generate_type: str
     trace_file: str
     max_seq_len: int
     num_requests: int
     start_qps: float
-    type: str
 
     def get_key(self):
-        return f"{self.name}_tk{self.max_seq_len}_rq{self.num_requests}"
+        return f"{self.name}_tk{self.max_seq_len}_rq{self.num_requests}_t{self.generate_type}"
 
     def to_config_dict(self):
+        if self.generate_type == "synthetic":
+            generate_config_type = "poisson"
+        else:
+            generate_config_type = "trace"
         return {
-            "request_generator_config_type": self.type,
+            "request_generator_config_type": self.generate_type,
             "length_generator_config_type": "trace",
-            "interval_generator_config_type": "poisson" if self.type == "synthetic" else "trace",
+            "interval_generator_config_type": generate_config_type,
             "trace_request_length_generator_config_max_tokens": self.max_seq_len,
             "zipf_request_length_generator_config_max_tokens": self.max_seq_len,
             "uniform_request_length_generator_config_max_tokens": self.max_seq_len,
@@ -97,15 +115,17 @@ class SchedulerConfig:
 
 class JobConfig:
     def __init__(
-        self,
-        model_config: ModelConfig,
-        trace_config: TraceConfig,
-        cluster_config: ClusterConfig,
-        scheduler_config: SchedulerConfig,
-        num_tensor_parallel_workers: int,
-        num_pipeline_stages: int,
-        batch_size: int,
+            self,
+            load_balancer_config: LoadBalancerConfig,
+            model_config: ModelConfig,
+            trace_config: TraceConfig,
+            cluster_config: ClusterConfig,
+            scheduler_config: SchedulerConfig,
+            num_tensor_parallel_workers: int,
+            num_pipeline_stages: int,
+            batch_size: int,
     ):
+        self.load_balancer_config = load_balancer_config
         self.model_config = model_config
         self.trace_config = trace_config
         self.cluster_config = cluster_config
@@ -137,7 +157,8 @@ class JobConfig:
         return (
             f"Model: {self.model_config.name}, Trace: {self.trace_config.name}, Cluster: {self.cluster_config.device}, "
             f"Scheduler: {self.scheduler_config.scheduler}, TP: {self.num_tensor_parallel_workers}, "
-            f"PP: {self.num_pipeline_stages}, BSZ: {self.batch_size}, CS: {self.scheduler_config.chunk_size}, Hash: {self.get_hash()}"
+            f"PP: {self.num_pipeline_stages}, BSZ: {self.batch_size}, CS: {self.scheduler_config.chunk_size}, Hash: {self.get_hash()}, "
+            f"Global Scheduler: {self.load_balancer_config.name}"
         )
 
     def get_hash(self):
@@ -157,19 +178,21 @@ class JobConfig:
             "faster_transformer_scheduler_config_batch_size_cap": self.batch_size,
             "sarathi_scheduler_config_batch_size_cap": self.batch_size,
             "cluster_config_num_replicas": self.num_replicas,
+            "global_scheduler_config_type": self.load_balancer_config.identifier,
         }
 
     @classmethod
     def generate_job_configs(cls, config: dict):
         job_configs = []
         for (
-            model_config,
-            trace_config,
-            cluster_config,
-            scheduler_config,
-            tp_dimension,
-            pp_dimension,
-            batch_size,
+                model_config,
+                trace_config,
+                cluster_config,
+                scheduler_config,
+                tp_dimension,
+                pp_dimension,
+                batch_size,
+                load_balancer_config,
         ) in product(
             config["models"],
             config["traces"],
@@ -178,8 +201,10 @@ class JobConfig:
             config["tp_dimensions"],
             config["pp_dimensions"],
             config["batch_sizes"],
+            config["load_balancers"],
         ):
             job_config = cls(
+                LoadBalancerConfig(**load_balancer_config),
                 ModelConfig(**model_config),
                 TraceConfig(**trace_config),
                 ClusterConfig(**cluster_config),
@@ -206,13 +231,15 @@ class JobConfig:
         # set pp_dimensions to 2 because it covers all the options
         pp_dimensions = [2]
 
-        for model_config, cluster_config, tp_dimension, pp_dimension in product(
-            config["models"],
-            config["clusters"],
-            config["tp_dimensions"],
-            pp_dimensions,
+        for load_balancer_config, model_config, cluster_config, tp_dimension, pp_dimension in product(
+                config["load_balancers"],
+                config["models"],
+                config["clusters"],
+                config["tp_dimensions"],
+                pp_dimensions,
         ):
             job_config = cls(
+                LoadBalancerConfig(**load_balancer_config),
                 ModelConfig(**model_config),
                 trace_config,
                 ClusterConfig(**cluster_config),

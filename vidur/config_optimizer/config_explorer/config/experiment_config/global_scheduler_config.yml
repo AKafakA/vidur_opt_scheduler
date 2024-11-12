@@ -5,10 +5,10 @@ clusters:
 
 
 load_balancers:
-  - name: round_robin
-    identifier: round_robin
-#  - name: optimal
-#    identifier: opt
+#  - name: round_robin
+#    identifier: round_robin
+  - name: optimal
+    identifier: opt
 #  - name: least_of_requests
 #    identifier: lor
 #  - name: random
@@ -23,7 +23,7 @@ traces:
     max_seq_len: 4096
     num_requests: 1600
     start_qps: 16
-    type: "synthetic"
+    generate_type: "synthetic"
 #  - name: chat
 #    trace_file: "./data/processed_traces/splitwise_code.csv"
 #    max_seq_len: 4096
