@@ -9,14 +9,18 @@ from typing import List, Optional
 class LoadBalancerConfig:
     name: str
     identifier: str
+    target_metric: str = None
 
     def get_key(self):
         return self.name
 
     def to_config_dict(self):
-        return {
+        config_dict = {
             "global_scheduler_config_type": self.identifier,
         }
+        if self.target_metric is not None:
+            config_dict["length_aware_optimal_scheduler_config_target_metric"] = self.target_metric
+        return config_dict
 
 
 @dataclass
@@ -154,12 +158,14 @@ class JobConfig:
         )
 
     def get_human_readable_name(self):
-        return (
-            f"Model: {self.model_config.name}, Trace: {self.trace_config.name}, Cluster: {self.cluster_config.device}, "
-            f"Scheduler: {self.scheduler_config.scheduler}, TP: {self.num_tensor_parallel_workers}, "
-            f"PP: {self.num_pipeline_stages}, BSZ: {self.batch_size}, CS: {self.scheduler_config.chunk_size}, Hash: {self.get_hash()}, "
+        readable_name = f"Model: {self.model_config.name}, Trace: {self.trace_config.name}, Cluster: {self.cluster_config.device}, " + \
+            f"Scheduler: {self.scheduler_config.scheduler}, TP: {self.num_tensor_parallel_workers}, " + \
+            f"PP: {self.num_pipeline_stages}, BSZ: {self.batch_size}, CS: {self.scheduler_config.chunk_size}, Hash: {self.get_hash()}, " + \
             f"Global Scheduler: {self.load_balancer_config.name}"
-        )
+
+        if self.load_balancer_config.target_metric is not None:
+            readable_name += f", Target Metric: {self.load_balancer_config.target_metric}"
+        return readable_name
 
     def get_hash(self):
         return hashlib.sha1(self.get_key().encode("utf-8")).hexdigest()[:8]

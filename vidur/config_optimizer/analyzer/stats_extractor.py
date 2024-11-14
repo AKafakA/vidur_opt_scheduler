@@ -189,15 +189,22 @@ def process_run(run_dir: str):
 
 
 def get_sim_time(sim_results_dir: str):
-    output_file = f"{sim_results_dir}/output.log"
+    # output_file = f"{sim_results_dir}/output.log"
 
-    with open(output_file, "r") as f:
-        lines = f.readlines()
+    full_output_files = glob.glob(f"{sim_results_dir}/runs/*/*/output.log")
+    print(full_output_files)
+    sim_time = 0
+    for output_file in full_output_files:
+        with open(output_file, "r") as f:
+            lines = f.readlines()
 
-    # search for Simulation took time: xxx
-    for line in lines:
-        if "Simulation ended at:" in line:
-            return float(line.split(":")[-1].replace("s", "").strip())
+        # search for Simulation took time: xxx
+        for line in lines:
+            if "Simulation ended at:" in line:
+                sim_time += float(line.split(":")[-1].replace("s", "").strip())
+
+    return sim_time
+
 
 
 def process_trace(sim_results_dir: str):

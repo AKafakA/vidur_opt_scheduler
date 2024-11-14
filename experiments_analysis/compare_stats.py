@@ -3,7 +3,31 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import plotly_express as px
+import ast
+
+from vidur.types.optimal_global_scheduler_target_metric import from_value_to_short_metrics_name
+
+
+def generate_label_from_global_scheduler_config(row):
+    row = ast.literal_eval(row['cluster_config'])
+    global_scheduler_name = row["global_scheduler_config"]["name"]
+    if global_scheduler_name == "opt":
+        target_metric = row['global_scheduler_config']['target_metric']
+        target_metric_str = from_value_to_short_metrics_name(target_metric)
+        return f"{global_scheduler_name}_{target_metric_str}"
+    else:
+        return global_scheduler_name
+
+
+def flatten_dict(value, g, c=None):
+    if c is None:
+        c = []
+    if isinstance(value, dict):
+        for key, val in value.items():
+            flatten_dict(val, g, c + [key])
+    else:
+        c.append(value)
+        g.append(c)
 
 
 def plot_bar_chart(stats_dir, stats, metric_name):
@@ -19,10 +43,35 @@ def plot_bar_chart(stats_dir, stats, metric_name):
     plt.savefig(f"{target_dir}/{metric_name}_bar_chart.png")
 
 
+def if_condition(row, condition_list) -> bool:
+    target_value = condition_list[-1]
+    keys = condition_list[0:-1]
+    for key in keys:
+        if isinstance(row, str) and row.startswith("{"):
+            row = ast.literal_eval(row)
+        row = row[key]
+    if isinstance(row, float) and isinstance(target_value, int):
+        return target_value == int(row)
+    return row == target_value
+
+
+def data_filter(dataframe, rows_filtering_condition: dict):
+    g = []
+    flatten_dict(rows_filtering_condition, g)
+    selected_rows_index = set()
+    for index, row in dataframe.iterrows():
+        selected = []
+        for condition in g:
+            selected.append(if_condition(row, condition))
+        if all(selected):
+            selected_rows_index.add(index)
+    return dataframe.loc[list(selected_rows_index)]
+
+
 def parse_cdfs(cdf_str):
     cdf_str = cdf_str.replace("[", "").replace("]", "").replace(" ", "")
     cdfs = cdf_str.split(",")
-    return [float(cdf) for cdf in cdfs]
+    return [float(cdf) for cdf in cdfs if cdf]
 
 
 def plot_cdf(stats_dir, cdfs, metric_name):
@@ -30,7 +79,7 @@ def plot_cdf(stats_dir, cdfs, metric_name):
     target_dir = f"{stats_dir}/cdf_plots"
     os.makedirs(target_dir, exist_ok=True)
     for key, cdf in cdfs.items():
-        values = parse_cdfs(cdf[0])
+        values = parse_cdfs(cdf)
         values = np.array(values)
         num_bins = len(values)
         counts, bin_edges = np.histogram(values, bins=num_bins)
@@ -44,13 +93,11 @@ def plot_cdf(stats_dir, cdfs, metric_name):
     plt.savefig(f"{target_dir}/{metric_name}_cdf.png")
 
 
-def process_stats(stats_dir):
+def process_stats(stats_dir, data_filtering_condition: dict, label_getter: callable):
     ttft_cdfs = {}
     tbt_cdfs = {}
     batch_size_cdfs = {}
     scheduling_delay_cdfs = {}
-
-
 
     normalized_e2e_time_mean = {}
     normalized_e2e_p99 = {}
@@ -58,24 +105,26 @@ def process_stats(stats_dir):
     tbt_max = {}
     scheduling_delay_mean = {}
 
-    stat_files = os.listdir(stats_dir)
+    stat_files = os.listdir(os.getcwd() + "/" + stats_dir)
     for stat_file in stat_files:
         if not stat_file.endswith(".csv"):
             continue
         with open(stats_dir + "/" + stat_file, "r") as f:
-            data_frame = pd.read_csv(f)
-            label = "_".join(stat_file.split("_")[:-1])
-            ttft_cdfs[label] = data_frame["ttft_cdf"]
-            tbt_cdfs[label] = data_frame["tbt_cdf"]
-            batch_size_cdfs[label] = data_frame["batch_size_cdf"]
-            scheduling_delay_cdfs[label] = data_frame["scheduling_delay_cdf"]
+            data_frame = data_filter(pd.read_csv(f), data_filtering_condition)
+            for index, row in data_frame.iterrows():
+                label = label_getter(row)
+                print(label)
+                ttft_cdfs[label] = row["ttft_cdf"]
+                tbt_cdfs[label] = row["tbt_cdf"]
+                batch_size_cdfs[label] = row["batch_size_cdf"]
+                scheduling_delay_cdfs[label] = row["scheduling_delay_cdf"]
 
-            normalized_e2e_time_mean[label] = data_frame["request_e2e_time_normalized_mean"]
-            normalized_e2e_p99[label] = data_frame["request_e2e_time_normalized_99%"]
+                normalized_e2e_time_mean[label] = row["request_e2e_time_normalized_mean"]
+                normalized_e2e_p99[label] = row["request_e2e_time_normalized_99%"]
 
-            ttft_mean[label] = data_frame["ttft_mean"]
-            tbt_max[label] = data_frame["tbt_max"]
-            scheduling_delay_mean[label] = data_frame["request_scheduling_delay_mean"]
+                ttft_mean[label] = row["ttft_mean"]
+                tbt_max[label] = row["tbt_max"]
+                scheduling_delay_mean[label] = row["request_scheduling_delay_mean"]
 
     plot_cdf(stats_dir, ttft_cdfs, "TTFT")
     plot_cdf(stats_dir, tbt_cdfs, "TBT")
@@ -93,9 +142,28 @@ def process_stats(stats_dir):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--stats-dir", type=str, required=True)
+    parser.add_argument("--qps", type=int, required=True)
+    parser.add_argument("--num_replicas", type=int, required=True)
+    parser.add_argument("--device", type=str, required=False, default="a100")
+    parser.add_argument("--tensor-parallel-size", type=int, required=False, default=1)
+    parser.add_argument("--num-pipeline-stages", type=int, required=False, default=1)
     args = parser.parse_args()
 
-    process_stats(args.stats_dir)
+    data_filtering_condition = {
+        "poisson_request_interval_generator_qps": args.qps,
+        "cluster_config": {
+            "num_replicas": args.num_replicas,
+            "replica_config": {
+                "device": args.device,
+                "tensor_parallel_size": args.tensor_parallel_size,
+                "num_pipeline_stages": args.num_pipeline_stages
+            }
+        }
+    }
+
+    label_getter = generate_label_from_global_scheduler_config
+
+    process_stats(args.stats_dir, data_filtering_condition, label_getter)
 
 
 if __name__ == "__main__":

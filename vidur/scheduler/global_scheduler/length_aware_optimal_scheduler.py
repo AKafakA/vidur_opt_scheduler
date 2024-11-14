@@ -38,7 +38,7 @@ class LengthAwareOptimalScheduler(BaseGlobalScheduler):
         super().__init__(*args, **kwargs)
         if not isinstance(self._config.cluster_config.global_scheduler_config, LengthAwareOptimalSchedulerConfig):
             raise ValueError("Invalid global scheduler config type")
-        self._target_metric = self._config.cluster_config.global_scheduler_config.target_metric
+        self._target_metric = TargetMetric.from_str(self._config.cluster_config.global_scheduler_config.target_metric)
         self._request_timeline_predictor = RequestTimelinePredictorRegistry.get(
             self._config.cluster_config.global_scheduler_config.request_timeline_predictor_config.get_type()
         )

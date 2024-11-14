@@ -1,6 +1,17 @@
 from vidur.types.base_int_enum import BaseIntEnum
 
 
+def from_value_to_short_metrics_name(value):
+    short_cut = {
+        1: "min_l",
+        2: "max_avg_bs",
+        3: "max_min_bs",
+        4: "min_s_delay",
+        5: "min_d_delay"
+    }
+    return short_cut[value]
+
+
 class TargetMetric(BaseIntEnum):
     """
     Target metrics for the scheduler

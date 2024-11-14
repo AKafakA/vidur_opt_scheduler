@@ -15,7 +15,7 @@ class SimulatePredictReplicaScheduler:
     """
     def __init__(self, replica_scheduler: BaseReplicaScheduler, request: Request,
                  execution_time_predictor: BaseExecutionTimePredictor,
-                 use_estimated_execution_time=False) -> None:
+                 use_estimated_execution_time=True) -> None:
         self._replica_id = replica_scheduler.replica_id
         self._raw_replica_scheduler = replica_scheduler
         self._target_request = copy.deepcopy(request)

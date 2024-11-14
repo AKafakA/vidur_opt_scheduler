@@ -28,10 +28,21 @@ class SimulateRequestTimelinePredictor(BaseRequestTimelinePredictor):
         simulate_predict_replica_scheduler = SimulatePredictReplicaScheduler(
             replica_scheduler=replica_scheduler,
             request=request,
-            execution_time_predictor=self._execution_time_predictor
+            execution_time_predictor=self._execution_time_predictor,
+            use_estimated_execution_time=False
         )
         simulate_predict_replica_scheduler.simulate()
         return simulate_predict_replica_scheduler.average_batch_size
+
+    def predict_min_batch_size(self, replica_scheduler, request):
+        simulate_predict_replica_scheduler = SimulatePredictReplicaScheduler(
+            replica_scheduler=replica_scheduler,
+            request=request,
+            execution_time_predictor=self._execution_time_predictor,
+            use_estimated_execution_time=False
+        )
+        simulate_predict_replica_scheduler.simulate()
+        return simulate_predict_replica_scheduler.min_batch_size
 
     def predict_average_decoding_latency(self, replica_scheduler, request):
         simulate_predict_replica_scheduler = SimulatePredictReplicaScheduler(
@@ -41,12 +52,3 @@ class SimulateRequestTimelinePredictor(BaseRequestTimelinePredictor):
         )
         simulate_predict_replica_scheduler.simulate()
         return simulate_predict_replica_scheduler.average_decode_time
-
-    def predict_min_batch_size(self, replica_scheduler, request):
-        simulate_predict_replica_scheduler = SimulatePredictReplicaScheduler(
-            replica_scheduler=replica_scheduler,
-            request=request,
-            execution_time_predictor=self._execution_time_predictor
-        )
-        simulate_predict_replica_scheduler.simulate()
-        return simulate_predict_replica_scheduler.min_batch_size

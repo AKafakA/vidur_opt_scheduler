@@ -9,6 +9,7 @@ load_balancers:
     identifier: round_robin
   - name: optimal
     identifier: opt
+    target_metric: "min_latency"
   - name: least_of_requests
     identifier: lor
   - name: random

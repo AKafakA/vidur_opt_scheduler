@@ -504,8 +504,8 @@ class LORGlobalSchedulerConfig(BaseGlobalSchedulerConfig):
 
 @dataclass
 class LengthAwareOptimalSchedulerConfig(BaseGlobalSchedulerConfig):
-    target_metric: TargetMetric = field(
-        default=TargetMetric.MIN_SCHEDULING_DELAY,
+    target_metric: str = field(
+        default=str(TargetMetric.MIN_SCHEDULING_DELAY),
         metadata={"help": "Target metric for Length Aware Optimal Scheduler."},
     )
 
