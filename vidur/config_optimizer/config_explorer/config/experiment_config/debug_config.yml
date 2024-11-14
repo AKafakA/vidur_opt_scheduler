@@ -10,6 +10,9 @@ load_balancers:
   - name: optimal
     identifier: opt
     target_metric: "min_latency"
+  - name: optimal
+    identifier: opt
+    target_metric: "max_avg_batch_size"
 #  - name: least_of_requests
 #    identifier: lor
 #  - name: random

@@ -8,3 +8,4 @@ plotly_express
 matplotlib
 seaborn
 fasteners==0.18
+ray

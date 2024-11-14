@@ -12,13 +12,15 @@ class LoadBalancerConfig:
     target_metric: str = None
 
     def get_key(self):
+        if self.identifier == 'opt':
+            return f"{self.name}_{self.target_metric}"
         return self.name
 
     def to_config_dict(self):
         config_dict = {
             "global_scheduler_config_type": self.identifier,
         }
-        if self.target_metric is not None:
+        if self.identifier == 'opt':
             config_dict["length_aware_optimal_scheduler_config_target_metric"] = self.target_metric
         return config_dict
 
@@ -173,7 +175,7 @@ class JobConfig:
     def get_readable_exp_file_name(self):
         return (f"{self.model_config.name}_{self.trace_config.name}_"
                 f"{self.cluster_config.device}_tp{self.num_tensor_parallel_workers}_"
-                f"pp{self.num_pipeline_stages}_bsz{self.batch_size}_{self.load_balancer_config.name}")
+                f"pp{self.num_pipeline_stages}_bsz{self.batch_size}_{self.load_balancer_config.get_key()}")
 
     def to_config_dict(self):
         return {
@@ -181,6 +183,7 @@ class JobConfig:
             **self.trace_config.to_config_dict(),
             **self.cluster_config.to_config_dict(),
             **self.scheduler_config.to_config_dict(),
+            **self.load_balancer_config.to_config_dict(),
             "replica_config_tensor_parallel_size": self.num_tensor_parallel_workers,
             "replica_config_num_pipeline_stages": self.num_pipeline_stages,
             "vllm_scheduler_config_batch_size_cap": self.batch_size,
@@ -189,7 +192,6 @@ class JobConfig:
             "faster_transformer_scheduler_config_batch_size_cap": self.batch_size,
             "sarathi_scheduler_config_batch_size_cap": self.batch_size,
             "cluster_config_num_replicas": self.num_replicas,
-            "global_scheduler_config_type": self.load_balancer_config.identifier,
         }
 
     @classmethod
