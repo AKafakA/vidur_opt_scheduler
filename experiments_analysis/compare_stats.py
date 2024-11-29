@@ -5,7 +5,9 @@ import numpy as np
 import pandas as pd
 import ast
 
-from vidur.types.optimal_global_scheduler_target_metric import from_value_to_short_metrics_name
+from vidur.types.optimal_global_scheduler_target_metric import from_value_to_short_metrics_name, TargetMetric
+
+MAX_QPS_UNDER_SLO_MARKER = "Max QPS under SLO for"
 
 
 def generate_label_from_global_scheduler_config(row):
@@ -13,8 +15,11 @@ def generate_label_from_global_scheduler_config(row):
     global_scheduler_name = row["global_scheduler_config"]["name"]
     if global_scheduler_name == "opt":
         target_metric = row['global_scheduler_config']['target_metric']
-        target_metric_str = from_value_to_short_metrics_name(target_metric)
-        return f"{global_scheduler_name}_{target_metric_str}"
+        if isinstance(target_metric, int):
+            target_metric = from_value_to_short_metrics_name(target_metric)
+        else:
+            target_metric = from_value_to_short_metrics_name(TargetMetric.from_str(target_metric))
+        return f"{global_scheduler_name}_{target_metric}"
     else:
         return global_scheduler_name
 
@@ -30,7 +35,7 @@ def flatten_dict(value, g, c=None):
         g.append(c)
 
 
-def plot_bar_chart(stats_dir, stats, metric_name):
+def plot_bar_chart(stats_dir, stats, metric_name, print_stats=True):
     plt.figure()
     target_dir = f"{stats_dir}/bar_charts"
     os.makedirs(target_dir, exist_ok=True)
@@ -41,6 +46,11 @@ def plot_bar_chart(stats_dir, stats, metric_name):
     plt.ylabel(metric_name)
     plt.title(metric_name + " Bar Chart")
     plt.savefig(f"{target_dir}/{metric_name}_bar_chart.png")
+
+    if print_stats:
+        print(metric_name)
+        for key, value in stats.items():
+            print(f"\t {key}: {value}")
 
 
 def if_condition(row, condition_list) -> bool:
@@ -104,27 +114,45 @@ def process_stats(stats_dir, data_filtering_condition: dict, label_getter: calla
     ttft_mean = {}
     tbt_max = {}
     scheduling_delay_mean = {}
-
+    scheduling_delay_p99 = {}
+    max_qps_data = {}
     stat_files = os.listdir(os.getcwd() + "/" + stats_dir)
     for stat_file in stat_files:
-        if not stat_file.endswith(".csv"):
-            continue
-        with open(stats_dir + "/" + stat_file, "r") as f:
-            data_frame = data_filter(pd.read_csv(f), data_filtering_condition)
-            for index, row in data_frame.iterrows():
-                label = label_getter(row)
-                print(label)
-                ttft_cdfs[label] = row["ttft_cdf"]
-                tbt_cdfs[label] = row["tbt_cdf"]
-                batch_size_cdfs[label] = row["batch_size_cdf"]
-                scheduling_delay_cdfs[label] = row["scheduling_delay_cdf"]
+        if stat_file.endswith(".csv"):
+            with open(stats_dir + "/" + stat_file, "r") as f:
+                data_frame = data_filter(pd.read_csv(f), data_filtering_condition)
+                for index, row in data_frame.iterrows():
+                    label = label_getter(row)
+                    ttft_cdfs[label] = row["ttft_cdf"]
+                    tbt_cdfs[label] = row["tbt_cdf"]
+                    batch_size_cdfs[label] = row["batch_size_cdf"]
+                    scheduling_delay_cdfs[label] = row["scheduling_delay_cdf"]
 
-                normalized_e2e_time_mean[label] = row["request_e2e_time_normalized_mean"]
-                normalized_e2e_p99[label] = row["request_e2e_time_normalized_99%"]
+                    normalized_e2e_time_mean[label] = row["request_e2e_time_normalized_mean"]
+                    normalized_e2e_p99[label] = row["request_e2e_time_normalized_99%"]
 
-                ttft_mean[label] = row["ttft_mean"]
-                tbt_max[label] = row["tbt_max"]
-                scheduling_delay_mean[label] = row["request_scheduling_delay_mean"]
+                    ttft_mean[label] = row["ttft_mean"]
+                    tbt_max[label] = row["tbt_max"]
+                    scheduling_delay_mean[label] = row["request_scheduling_delay_mean"]
+                    scheduling_delay_p99[label] = row["request_scheduling_delay_99%"]
+        elif stat_file.endswith('out'):
+            with open(stats_dir + "/" + stat_file, "r") as f:
+                for line in f.readlines():
+                    if MAX_QPS_UNDER_SLO_MARKER in line:
+                        sub_str = line.split(MAX_QPS_UNDER_SLO_MARKER)[1]
+                        s = sub_str.split(", ")
+                        tp = int(s[4].split(": ")[1])
+                        pp = int(s[5].split(": ")[1])
+                        if data_filtering_condition["cluster_config"]["replica_config"]["tensor_parallel_size"] == tp and \
+                                data_filtering_condition["cluster_config"]["replica_config"]["num_pipeline_stages"] == pp:
+                            global_scheduler = s[9].split(": ")[1].strip()
+                            max_qps = s[9].split(": ")[-1]
+                            max_qps = float(max_qps)
+                            max_qps_data[global_scheduler] = max_qps
+    new_max_qps_data = {}
+    for key, value in scheduling_delay_mean.items():
+        if key in max_qps_data:
+            new_max_qps_data[key] = max_qps_data[key]
 
     plot_cdf(stats_dir, ttft_cdfs, "TTFT")
     plot_cdf(stats_dir, tbt_cdfs, "TBT")
@@ -134,9 +162,13 @@ def process_stats(stats_dir, data_filtering_condition: dict, label_getter: calla
     plot_bar_chart(stats_dir, ttft_mean, "TTFT mean")
     plot_bar_chart(stats_dir, tbt_max, "TBT max")
     plot_bar_chart(stats_dir, scheduling_delay_mean, "Scheduling Delay mean")
+    plot_bar_chart(stats_dir, scheduling_delay_p99, "Scheduling Delay p99")
 
     plot_bar_chart(stats_dir, normalized_e2e_time_mean, "Normalized E2E Time mean")
     plot_bar_chart(stats_dir, normalized_e2e_p99, "Normalized E2E Time p99")
+
+    if new_max_qps_data:
+        plot_bar_chart(stats_dir, new_max_qps_data, "Max QPS under SLO", print_stats=True)
 
 
 def main():
@@ -157,7 +189,7 @@ def main():
                 "device": args.device,
                 "tensor_parallel_size": args.tensor_parallel_size,
                 "num_pipeline_stages": args.num_pipeline_stages
-            }
+            },
         }
     }
 

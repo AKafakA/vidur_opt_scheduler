@@ -13,6 +13,7 @@ class BaseGlobalScheduler(ABC):
     def __init__(self, config: SimulationConfig, replicas: Dict[int, Replica]):
         self._config = config
         self._replicas = replicas
+        self.num_scheduled_requests = 0
 
         self._num_replicas = len(self._replicas)
 
@@ -61,3 +62,7 @@ class BaseGlobalScheduler(ABC):
     @abstractmethod
     def schedule(self) -> List[Tuple[int, Request]]:
         pass
+
+    @property
+    def num_schedule_requests(self):
+        return self.num_scheduled_requests

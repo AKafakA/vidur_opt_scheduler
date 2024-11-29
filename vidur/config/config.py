@@ -465,6 +465,7 @@ class ReplicaConfig:
             self.network_device
         )
 
+
 @dataclass
 class BaseRequestTimelinePredictorConfig(BasePolyConfig):
     pass
@@ -475,6 +476,7 @@ class SimulationRequestTimelinePredictorConfig(BaseRequestTimelinePredictorConfi
     @staticmethod
     def get_type():
         return RequestTimelinePredictorType.SIMULATE
+
 
 @dataclass
 class BaseGlobalSchedulerConfig(BasePolyConfig):
@@ -704,3 +706,9 @@ class SimulationConfig(ABC):
         config_dict = dataclass_to_dict(self)
         with open(f"{self.metrics_config.output_dir}/config.json", "w") as f:
             json.dump(config_dict, f, indent=4)
+
+    @classmethod
+    def create_from_file(cls, file_path: str):
+        with open(file_path, "r") as f:
+            config_dict = json.load(f)
+        return cls(**config_dict)

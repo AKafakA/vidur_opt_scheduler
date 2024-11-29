@@ -7,10 +7,12 @@ from typing import List
 from vidur.config import SimulationConfig
 from vidur.entities import Cluster
 from vidur.events import BaseEvent, RequestArrivalEvent
+from vidur.events.global_schedule_event import GlobalScheduleEvent
 from vidur.logger import init_logger
 from vidur.metrics import MetricsStore
 from vidur.request_generator import RequestGeneratorRegistry
 from vidur.scheduler import BaseGlobalScheduler, GlobalSchedulerRegistry
+from pyinstrument import Profiler
 
 logger = init_logger(__name__)
 
@@ -62,12 +64,19 @@ class Simulator:
             f"Starting simulation with cluster: {self._cluster} and {len(self._event_queue)} requests"
         )
 
+        profiler = Profiler()
+        profiler.start()
+        # code you want to profile
         start_time = time.time()
 
         while self._event_queue and not self._terminate:
             _, event = heapq.heappop(self._event_queue)
             self._set_time(event._time)
             new_events = event.handle_event(self._scheduler, self._metric_store)
+            for event in new_events:
+                if isinstance(event, GlobalScheduleEvent):
+                    if self._scheduler.num_scheduled_requests % 1000 == 0:
+                        logger.info(f"Processed {self._scheduler.num_scheduled_requests} requests")
             self._add_events(new_events)
 
             if self._config.metrics_config.write_json_trace:
@@ -83,6 +92,8 @@ class Simulator:
         logger.info(f"Simulation took: {end_time - start_time}s")
 
         logger.info(f"Simulation ended at: {self._time}s")
+        profiler.stop()
+        profiler.print(file=open("profiler.log", "w"))
 
     def _write_output(self) -> None:
         logger.info("Writing output")
