@@ -7,6 +7,7 @@ change `vllm/entrypoints/openai/api_server.py` instead.
 """
 import argparse
 import asyncio
+import json
 import logging
 import signal
 import ssl
@@ -16,11 +17,10 @@ import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, Response
 
-from vidur.config import SimulationConfig
+from vidur.prediction.predictor.predictor_config import PredictorConfig
 from vidur.prediction.predictor.predictor import Predictor
 from vidur.prediction.server_utils import convert_request, find_process_using_port, get_predictor
 from vidur.types.optimal_global_scheduler_target_metric import TargetMetric
-from vidur.utils.random import set_seeds
 
 TIMEOUT_KEEP_ALIVE = 5  # seconds.
 app = FastAPI()
@@ -33,22 +33,21 @@ async def health() -> Response:
     return Response(status_code=200)
 
 
-@app.get("/predict")
+@app.post("/predict")
 async def predict(request: Request) -> Response:
     """Predict completion for the request. """
     assert predictor is not None
     request_dict = await request.json()
     vidur_request = convert_request(request_dict)
-    target_metrics_str = request_dict.pop("target_metrics")
-    target_metrics = TargetMetric.from_str(target_metrics_str)
-    metric = predictor.predict(vidur_request, target_metrics)
+    metric = predictor.predict(vidur_request)
     ret = {"metric": metric}
+    print(ret)
     logging.debug("Predicted metric: %s for request: %s", metric, str(vidur_request.id))
     return JSONResponse(ret)
 
 
-@app.post("/schedule")
-async def schedule(request: Request) -> Response:
+@app.post("/update")
+async def update(request: Request) -> Response:
     """Schedule the request. """
     assert predictor is not None
     request_dict = await request.json()
@@ -71,8 +70,9 @@ async def init_app(
     app = build_app(args)
     instance_port = args.instance_port
     global predictor
-    config: SimulationConfig = SimulationConfig.create_from_file(args.simulator_config_path)
-    set_seeds(config.seed)
+    config_path = args.config_path
+    config_dict = json.load(open(config_path))
+    config: PredictorConfig = PredictorConfig.create_from_dict(config_dict)
     predictor = (instance_predictor if instance_predictor is not None else
                  get_predictor(args.predictor_type, config, instance_port))
     return app
@@ -119,13 +119,12 @@ async def run_server(args: Namespace,
                      instance_predictor: Optional[Predictor] = None,
                      **uvicorn_kwargs: Any) -> None:
     app = await init_app(args, instance_predictor)
-    assert engine is not None
+    assert predictor is not None
 
     shutdown_task = await serve_http(
         app,
         host=args.host,
         port=args.port,
-        log_level=args.log_level,
         timeout_keep_alive=TIMEOUT_KEEP_ALIVE,
         ssl_keyfile=args.ssl_keyfile,
         ssl_certfile=args.ssl_certfile,
@@ -159,7 +158,7 @@ if __name__ == "__main__":
         default=None,
         help="FastAPI root_path when app is behind a path based routing proxy")
     parser.add_argument("--instance-port", type=int, default=8000)
-    parser.add_argument("--simulator_config_path", type=str, required=True)
-    parser.add_argument("--predictor_type", type=str, default="dummy")
+    parser.add_argument("--config_path", type=str, default= "vidur/prediction/config/test_config.json")
+    parser.add_argument("--predictor_type", type=str, default="simulate")
     args = parser.parse_args()
     asyncio.run(run_server(args))

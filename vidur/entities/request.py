@@ -59,6 +59,8 @@ class Request(BaseEntity):
 
         self._num_restarts = 0
 
+    def set_id(self, id: int):
+        self._id = id
     @property
     def size(self) -> Tuple[int, int]:
         return (self._num_prefill_tokens, self._num_decode_tokens)

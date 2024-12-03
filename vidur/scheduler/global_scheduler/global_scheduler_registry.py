@@ -1,4 +1,3 @@
-from vidur.request_timeline_predictor.request_timeline_predictor_registry import RequestTimelinePredictorRegistry
 from vidur.scheduler.global_scheduler.lor_global_scheduler import LORGlobalScheduler
 from vidur.scheduler.global_scheduler.random_global_scheduler import (
     RandomGlobalScheduler,

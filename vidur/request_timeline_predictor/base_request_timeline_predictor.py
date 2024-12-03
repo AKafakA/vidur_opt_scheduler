@@ -1,4 +1,3 @@
-from vidur.config import BaseRequestTimelinePredictorConfig, ReplicaConfig, BaseReplicaSchedulerConfig
 from vidur.entities import Request
 from vidur.execution_time_predictor import BaseExecutionTimePredictor
 from vidur.scheduler.replica_scheduler.base_replica_scheduler import BaseReplicaScheduler

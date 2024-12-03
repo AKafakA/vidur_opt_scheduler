@@ -200,6 +200,18 @@ class BaseRequestGeneratorConfig(BasePolyConfig):
 
 
 @dataclass
+class DummyRequestGeneratorConfig(BaseRequestGeneratorConfig):
+    seed: int = field(
+        default=42,
+        metadata={"help": "Seed for the random number generator."},
+    )
+    max_tokens: int = field(
+        default=4096,
+        metadata={"help": "Maximum tokens for the Request Generator."},
+    )
+
+
+@dataclass
 class SyntheticRequestGeneratorConfig(BaseRequestGeneratorConfig):
     length_generator_config: BaseRequestLengthGeneratorConfig = field(
         default_factory=FixedRequestLengthGeneratorConfig,
@@ -706,9 +718,3 @@ class SimulationConfig(ABC):
         config_dict = dataclass_to_dict(self)
         with open(f"{self.metrics_config.output_dir}/config.json", "w") as f:
             json.dump(config_dict, f, indent=4)
-
-    @classmethod
-    def create_from_file(cls, file_path: str):
-        with open(file_path, "r") as f:
-            config_dict = json.load(f)
-        return cls(**config_dict)
