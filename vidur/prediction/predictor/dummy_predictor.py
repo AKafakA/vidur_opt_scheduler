@@ -7,9 +7,3 @@ class DummyPredictor(Predictor):
 
     def predict(self, target_request):
         return 1.0
-
-    def update(self, request):
-        pass
-
-    def reset(self):
-        pass

@@ -120,6 +120,9 @@ class BaseReplicaScheduler(ABC):
     def add_request(self, request: Request) -> None:
         self._request_queue.append(request)
 
+    def add_preempted_request(self, request: Request) -> None:
+        self._preempted_requests.append(request)
+
     def get_replica_stage_scheduler(self, stage_id: int):
         return self._replica_stage_schedulers[stage_id]
 

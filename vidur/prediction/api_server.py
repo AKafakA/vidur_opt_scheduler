@@ -41,7 +41,6 @@ async def predict(request: Request) -> Response:
     vidur_request = convert_request(request_dict)
     metric = predictor.predict(vidur_request)
     ret = {"metric": metric}
-    print(ret)
     logging.debug("Predicted metric: %s for request: %s", metric, str(vidur_request.id))
     return JSONResponse(ret)
 
@@ -157,7 +156,7 @@ if __name__ == "__main__":
         type=str,
         default=None,
         help="FastAPI root_path when app is behind a path based routing proxy")
-    parser.add_argument("--instance-port", type=int, default=8000)
+    parser.add_argument("--instance-port", type=int, default=8080)
     parser.add_argument("--config_path", type=str, default= "vidur/prediction/config/test_config.json")
     parser.add_argument("--predictor_type", type=str, default="simulate")
     args = parser.parse_args()

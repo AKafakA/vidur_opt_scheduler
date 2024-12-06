@@ -61,9 +61,14 @@ class Request(BaseEntity):
 
     def set_id(self, id: int):
         self._id = id
+
     @property
     def size(self) -> Tuple[int, int]:
         return (self._num_prefill_tokens, self._num_decode_tokens)
+
+    @property
+    def id(self) -> int:
+        return self._id
 
     @property
     @check_scheduled

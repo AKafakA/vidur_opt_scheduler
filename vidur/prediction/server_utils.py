@@ -1,6 +1,8 @@
 from typing import Optional, Dict
 
 import psutil
+import requests
+
 from vidur.entities import Request as VidurRequest, Request
 from vidur.prediction.predictor.predictor_config import PredictorConfig
 from vidur.prediction.predictor.dummy_predictor import DummyPredictor
@@ -34,4 +36,7 @@ def get_predictor(type_str: str, predictor_config: PredictorConfig, instance_por
         return SimulatePredictor(predictor_config, instance_port)
 
 
-
+def get_http_request(query_url: str) -> requests.Response:
+    headers = {"User-Agent": "Test Client"}
+    response = requests.get(query_url, headers=headers)
+    return response

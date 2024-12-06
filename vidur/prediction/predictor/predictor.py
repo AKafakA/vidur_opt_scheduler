@@ -19,15 +19,3 @@ class Predictor(ABC):
         """Predict the completion time of the request.
         """
         pass
-
-    @abstractmethod
-    def update(self, request: Request) -> None:
-        """Update the predictor with the new request.
-        """
-        pass
-
-    @abstractmethod
-    def reset(self) -> None:
-        """Reset the predictor to requests.
-        """
-        pass
