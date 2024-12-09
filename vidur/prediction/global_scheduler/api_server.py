@@ -46,7 +46,6 @@ async def generate_benchmark(request: Request) -> Response:
             request_id, num_context_tokens, num_decode_tokens, arrived_at))
 
     predict_results = await asyncio.gather(*predict_tasks)
-    selected_instances = instances[0]
     if metrics_type.startswith("min"):
         selected_instances = instances[predict_results.index(min(predict_results))]
     elif metrics_type.startswith("max") or metrics_type == "random":

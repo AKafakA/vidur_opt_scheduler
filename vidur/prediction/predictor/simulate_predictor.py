@@ -54,6 +54,7 @@ class SimulatePredictor(Predictor):
         self._start_time = time.time()
         self._backend_url = f"http://localhost:{self._port}/schedule_trace"
         self._current_gpu_blocks = 0
+        self._num_requests = 0
 
     def predict(self, target_request: Request):
         self.reset()
@@ -65,6 +66,8 @@ class SimulatePredictor(Predictor):
             return metric
         elif self._config.target_metric == "max_memory_usage":
             return self._current_gpu_blocks
+        elif self._config.target_metric == "min_request":
+            return self._num_requests
         else:
             return random.random()
 
@@ -82,12 +85,13 @@ class SimulatePredictor(Predictor):
         response = get_http_request(self._backend_url)
         serialized_response = response.json()
         current_gpu_blocks = 0
-        if self._need_to_predict:
-            for batch in serialized_response.keys():
-                batch_request_information = serialized_response[batch]
-                waiting_request_length = batch_request_information["waiting"]
-                running_request_length = batch_request_information["running"]
-                swap_request_length = batch_request_information["swap"]
+        current_num_requests = 0
+        for batch in serialized_response.keys():
+            batch_request_information = serialized_response[batch]
+            waiting_request_length = batch_request_information["waiting"]
+            running_request_length = batch_request_information["running"]
+            swap_request_length = batch_request_information["swap"]
+            if self._need_to_predict:
                 for requests_info in running_request_length:
                     request = self.__generate_requests_from_backend(requests_info)
                     self._replica_scheduler.add_request(request)
@@ -100,7 +104,7 @@ class SimulatePredictor(Predictor):
                 for requests_info in waiting_request_length:
                     request = self.__generate_requests_from_backend(requests_info)
                     self._replica_scheduler.add_request(request)
-                current_gpu_blocks += batch_request_information["free_gpu_blocks"]
+            current_gpu_blocks += batch_request_information["free_gpu_blocks"]
+            current_num_requests += len(running_request_length) + len(swap_request_length) + len(waiting_request_length)
         self._current_gpu_blocks = current_gpu_blocks
-
-
+        self._num_requests = current_num_requests
