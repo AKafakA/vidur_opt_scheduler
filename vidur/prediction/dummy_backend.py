@@ -25,6 +25,7 @@ TIMEOUT_KEEP_ALIVE = 5  # seconds.
 async def status() -> Response:
     """Status check."""
     dummy_status = {}
+    free_gpu_blocks = 1000
     dummy_statuses = {"1": dummy_status}
     running_request_info = {"request_id": 0, "arrival_time": 0, "seq_prompts_length": 100, "seq_total_output_length": 70,
                             "n_blocks": 35}
@@ -36,15 +37,18 @@ async def status() -> Response:
         dummy_status["running"] = []
         dummy_status["swap"] = []
         dummy_status["waiting"] = []
+        dummy_status["gpu_blocks"] = free_gpu_blocks
     elif counter == 1:
         dummy_status["running"] = [running_request_info]
         dummy_status["swap"] = []
         dummy_status["waiting"] = []
+        dummy_status["gpu_blocks"] = free_gpu_blocks - running_request_info["n_blocks"]
     elif counter == 2:
         dummy_status["running"] = [running_request_info, waiting_request_info]
         dummy_status["swap"] = []
         dummy_status["waiting"] = []
-
+        dummy_status["gpu_blocks"] = (free_gpu_blocks - running_request_info["n_blocks"]
+                                      - waiting_request_info["n_blocks"])
     counter += 1
     return JSONResponse(dummy_statuses)
 

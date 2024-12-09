@@ -49,12 +49,12 @@ async def generate_benchmark(request: Request) -> Response:
     selected_instances = instances[0]
     if metrics_type.startswith("min"):
         selected_instances = instances[predict_results.index(min(predict_results))]
-    elif metrics_type.startswith("max"):
+    elif metrics_type.startswith("max") or metrics_type == "random":
         selected_instances = instances[predict_results.index(max(predict_results))]
-    elif metrics_type == "random":
-        selected_instances = random.choice(instances)
     elif metrics_type == "round_robin":
         selected_instances = instances[num_requests % len(instances)]
+    else:
+        raise ValueError(f"Invalid metrics type: {metrics_type}")
     response = await selected_instances.query_backend(prompt, num_decode_tokens)
     return JSONResponse(response)
 
