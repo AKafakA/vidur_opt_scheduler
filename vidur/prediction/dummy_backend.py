@@ -11,10 +11,10 @@ import ssl
 from argparse import Namespace
 from typing import Any
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.responses import JSONResponse, Response
 
-from vidur.prediction.api_server import serve_http
+from vidur.prediction.server_utils import serve_http
 
 app = FastAPI()
 counter = 0

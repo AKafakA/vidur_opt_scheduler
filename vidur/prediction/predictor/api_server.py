@@ -1,26 +1,16 @@
-"""
-NOTE: This API server is used only for demonstrating usage of AsyncEngine
-and simple performance benchmarks. It is not intended for production use.
-For production use, we recommend using our OpenAI compatible server.
-We are also not going to accept PRs modifying this file, please
-change `vllm/entrypoints/openai/api_server.py` instead.
-"""
 import argparse
 import asyncio
 import json
 import logging
-import signal
 import ssl
 from argparse import Namespace
 from typing import Any, Optional
-import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, Response
 
 from vidur.prediction.predictor.predictor_config import PredictorConfig
 from vidur.prediction.predictor.predictor import Predictor
-from vidur.prediction.server_utils import convert_request, find_process_using_port, get_predictor
-from vidur.types.optimal_global_scheduler_target_metric import TargetMetric
+from vidur.prediction.server_utils import convert_request, get_predictor, serve_http
 
 TIMEOUT_KEEP_ALIVE = 5  # seconds.
 app = FastAPI()
@@ -45,17 +35,6 @@ async def predict(request: Request) -> Response:
     return JSONResponse(ret)
 
 
-@app.post("/update")
-async def update(request: Request) -> Response:
-    """Schedule the request. """
-    assert predictor is not None
-    request_dict = await request.json()
-    vidur_request = convert_request(request_dict)
-    predictor.update(vidur_request)
-    logging.debug("Scheduled request: %s", str(vidur_request.id))
-    return Response(status_code=200)
-
-
 def build_app(args: Namespace) -> FastAPI:
     global app
     app.root_path = args.root_path
@@ -75,43 +54,6 @@ async def init_app(
     predictor = (instance_predictor if instance_predictor is not None else
                  get_predictor(args.predictor_type, config, instance_port))
     return app
-
-
-async def serve_http(app: FastAPI, **uvicorn_kwargs: Any):
-    for route in app.routes:
-        methods = getattr(route, "methods", None)
-        path = getattr(route, "path", None)
-
-        if methods is None or path is None:
-            continue
-
-    config = uvicorn.Config(app, **uvicorn_kwargs)
-    server = uvicorn.Server(config)
-    loop = asyncio.get_running_loop()
-    server_task = loop.create_task(server.serve())
-
-    def signal_handler() -> None:
-        # prevents the uvicorn signal handler to exit early
-        server_task.cancel()
-
-    async def dummy_shutdown() -> None:
-        pass
-
-    loop.add_signal_handler(signal.SIGINT, signal_handler)
-    loop.add_signal_handler(signal.SIGTERM, signal_handler)
-
-    try:
-        await server_task
-        return dummy_shutdown()
-    except asyncio.CancelledError:
-        port = uvicorn_kwargs["port"]
-        process = find_process_using_port(port)
-        if process is not None:
-            logging.debug(
-                "port %s is used by process %s launched with command:\n%s",
-                port, process, " ".join(process.cmdline()))
-        logging.info("Shutting down FastAPI HTTP server.")
-        return server.shutdown()
 
 
 async def run_server(args: Namespace,

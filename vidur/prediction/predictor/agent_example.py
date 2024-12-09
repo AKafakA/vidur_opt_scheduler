@@ -8,31 +8,8 @@ import requests
 from vidur.config import FixedRequestLengthGeneratorConfig, PoissonRequestIntervalGeneratorConfig, \
     SyntheticRequestGeneratorConfig
 from vidur.entities import Request
+from vidur.prediction.server_utils import post_predicting_request, get_predicting_response
 from vidur.request_generator.synthetic_request_generator import SyntheticRequestGenerator
-
-
-def get_response(response: requests.Response) -> List[str]:
-    data = json.loads(response.content)
-    output = data["metric"]
-    return output
-
-
-def post_request(api_url,
-                 request_id: int, num_context_tokens: int, num_decode_tokens: int,
-                 arrived_at: float,
-                 stream: bool = False) -> requests.Response:
-    headers = {"User-Agent": "Test Client"}
-    pload = {
-        "id": request_id,
-        "arrival_time": arrived_at,
-        "num_context_tokens": num_context_tokens,
-        "num_decode_tokens": num_decode_tokens,
-    }
-    response = requests.post(api_url,
-                             headers=headers,
-                             json=pload,
-                             stream=stream)
-    return response
 
 
 def generate_requests():
@@ -68,11 +45,11 @@ if __name__ == "__main__":
         generated_requests = [request1, request2]
 
     for request in generated_requests:
-        res = post_request(predict_api_url,
+        res = post_predicting_request(predict_api_url,
                            request_id=request.id,
                            num_context_tokens=request.num_prefill_tokens,
                            num_decode_tokens=request.num_decode_tokens, arrived_at=request.arrived_at)
-        output = get_response(res)
+        output = get_predicting_response(res)
         print(output)
 
         time.sleep(1 / args.qps)
