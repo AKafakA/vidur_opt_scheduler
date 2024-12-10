@@ -13,6 +13,16 @@ class BaseNodeSKUConfig(BaseFixedConfig):
 
 
 @dataclass
+class A30SingleGPUConfig(BaseNodeSKUConfig):
+    device_sku_type: DeviceSKUType = DeviceSKUType.A30
+    num_devices_per_node: int = 1
+
+    @staticmethod
+    def get_type():
+        return NodeSKUType.A30_SINGLE_GPU
+
+
+@dataclass
 class A40PairwiseNvlinkNodeSKUConfig(BaseNodeSKUConfig):
     device_sku_type: DeviceSKUType = DeviceSKUType.A40
     num_devices_per_node: int = 8
