@@ -73,19 +73,23 @@ async def init_app(
     app = build_app(args)
     global instances, start_time, metrics_type
     config_path = args.config_path
+
     instance_dict = json.load(open(config_path))
-    for key, value in instance_dict.items():
-        instance = Instance(key, value["ip_address"], value["predictor_port"], value["backend_port"])
-        instances_list.append(instance)
+    if instances_list is not None:
+        instances.extend(instances_list)
+    else:
+        for key, value in instance_dict.items():
+            instance = Instance(key, value["ip_address"], value["predictor_port"], value["backend_port"])
+            instances.append(instance)
     start_time = time.time()
     metrics_type = args.metrics_type
     return app
 
 
 async def run_server(args: Namespace,
-                     instances: Optional[List[Instance]] = None,
+                     instances_list: Optional[List[Instance]] = None,
                      **uvicorn_kwargs: Any) -> None:
-    app = await init_app(args, instances)
+    app = await init_app(args, instances_list)
     assert len(instances) > 0
 
     shutdown_task = await serve_http(
@@ -106,7 +110,7 @@ async def run_server(args: Namespace,
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--host", type=str, default=None)
-    parser.add_argument("--port", type=int, default=8100)
+    parser.add_argument("--port", type=int, default=8200)
     parser.add_argument("--ssl-keyfile", type=str, default=None)
     parser.add_argument("--ssl-certfile", type=str, default=None)
     parser.add_argument("--ssl-ca-certs",
@@ -124,7 +128,7 @@ if __name__ == "__main__":
         type=str,
         default=None,
         help="FastAPI root_path when app is behind a path based routing proxy")
-    parser.add_argument("--config_path", type=str, default="vidur/prediction/config/test_host_config.json")
+    parser.add_argument("--config_path", type=str, default="vidur/prediction/config/test_host_configs.json")
     parser.add_argument("--metrics_type", type=str, default="min_latency")
     parser.add_argument("--num_query_predictor", type=int, default=1)
     parser.add_argument("--num_required_predictor", type=int, default=1)

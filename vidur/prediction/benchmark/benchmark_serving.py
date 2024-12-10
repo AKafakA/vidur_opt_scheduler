@@ -74,7 +74,7 @@ class GenerationBackend(str, Enum):
 
 
 async def query_model_block(prompt, verbose, ip_ports):
-    prompt, _, expected_response_len = prompt
+    prompt, prompt_len, expected_response_len = prompt
     global server_num_requests
     global_scheduler_ip_port = ip_ports[0]
     timeout = aiohttp.ClientTimeout(total=4 * 60 * 60)
@@ -83,6 +83,7 @@ async def query_model_block(prompt, verbose, ip_ports):
     request_dict = {
         "prompt": prompt,
         "expected_response_len": expected_response_len,
+        "prompt_len": prompt_len,
     }
 
     async with aiohttp.ClientSession(timeout=timeout) as session:
@@ -95,6 +96,7 @@ async def query_model_block(prompt, verbose, ip_ports):
 
                 output = await resp.json()
                 num_finished_requests += 1
+                output['response_len'] = expected_response_len
                 print("num_finised_requests: {}".format(num_finished_requests))
                 return prompt, output
         except aiohttp.ClientError as e:
@@ -165,15 +167,17 @@ def calculate_throughput(queries,
                          tokenizer,
                          median_token_latency,
                          median_e2e_latency,
-                         median_inference_latency,
                          all_e2e_latencies,
                          all_per_token_latencies,
                          all_inference_latencies,
                          all_request_ids,
                          all_decode_token_latencies,
                          all_request_lens,
+                         all_waiting_latencies,
                          log_latencies,
                          fail_on_response_failure):
+    # either should be provided
+    assert all_inference_latencies or all_waiting_latencies
     prompts = []
     responses = []
     naive_hf_lens = []
@@ -224,7 +228,13 @@ def calculate_throughput(queries,
     all_prompt_lens = prompt_lens
     all_response_lens = response_lens
     all_total_tokens = [all_prompt_lens[i] + all_response_lens[i] for i in range(len(all_prompt_lens))]
-    all_waiting_latencies = [all_e2e_latencies[i] - all_inference_latencies[i] for i in range(len(all_e2e_latencies))]
+    # if all waiting latencies are not provided, calculate them by e2e - inference
+    if not all_waiting_latencies and all_inference_latencies:
+        all_waiting_latencies = [all_e2e_latencies[i] - all_inference_latencies[i] for i in range(len(all_e2e_latencies))]
+    elif not all_inference_latencies and all_waiting_latencies:
+        all_inference_latencies = [all_e2e_latencies[i] - all_waiting_latencies[i] for i in range(len(all_e2e_latencies))]
+    median_waiting_latency = np.median(all_waiting_latencies)
+    median_inference_latency = np.median(all_inference_latencies)
 
     if naive_hf_lens:
         # Manually count naive hf tok len
@@ -235,11 +245,6 @@ def calculate_throughput(queries,
         response_token_count = total_prompt_tokens + total_resp_tokens
     if ray_gen_lens:
         response_token_count = sum(ray_gen_lens)
-    if backend == GenerationBackend.NaiveHfPipeline:
-        # It returns the prompt in the output.
-        prompt_token_count = 0
-    if backend == GenerationBackend.FasterTransformer:
-        response_token_count = sum(expected_response_lens)
     if cf_gen_lens:
         response_token_count = sum(cf_gen_lens)
 
@@ -249,7 +254,8 @@ def calculate_throughput(queries,
     qps = len(responses) / dur_s
     msg1 = f'backend {backend} dur_s {dur_s:.04f} tokens_per_s {throughput_tok_s:.02f} qps {qps:.04f}\n'
     msg2 = f'successful_responses {len(responses)} prompt_token_count {prompt_token_count} response_token_count {response_token_count}\n'
-    msg3 = f'{median_token_latency=:.04f}, {median_e2e_latency=:.04f}, {median_inference_latency=:.04f}\n'
+    msg3 = (f'{median_token_latency=:.04f}, {median_e2e_latency=:.04f}, {median_inference_latency=:.04f}, '
+            f'{median_waiting_latency=:.04f}\n')
     msg = msg1 + msg2 + msg3
     if log_latencies:
         msg += f'{all_request_lens=}\n{all_request_ids=}\n'
@@ -422,7 +428,8 @@ class MeasureLatency:
         self._decode_sum_latencies = []
         self._all_decode_token_latencies = []
         self._inference_latencies = []
-        self._per_token_latencies_breakdown_dict = []
+        self._waiting_latencies = []
+        self._ttft = []
 
     def measure(self, f):
         async def measured(*args, **kwargs):
@@ -446,14 +453,21 @@ class MeasureLatency:
                 decode_sum_latency = 0 if len(lat_arr) == 1 else np.sum(lat_arr[1:, 1])
                 self._decode_token_latencies.append(mean_decode_token_latency)
                 self._request_lens.append(len(lat_arr[1:, 1]))
-                self._prefill_token_latencies.append(lat_arr[0][1])
                 self._all_token_latencies.append(lat_arr)
                 self._decode_sum_latencies.append(decode_sum_latency)
                 self._all_decode_token_latencies.extend(lat_arr[1:, 1])
+                if 'ttft' in output:
+                    self._prefill_token_latencies.append(output['ttft'])
+                else:
+                    self._prefill_token_latencies.append(lat_arr[0][1])
             if 'per_token_latency_breakdown_dict' in output:
                 self._inference_latencies.append(
                     np.mean(output['per_token_latency_breakdown_dict']['step_latency_engine']))
-                self._per_token_latencies_breakdown_dict.append(output['per_token_latency_breakdown_dict'])
+            else:
+                if 'inference_latency' in output:
+                    self._inference_latencies.append(output['total_inference_latency'])
+                if 'waiting_latency' in output:
+                    self._waiting_latencies.append(output['waiting_latency'])
             return prompt, output
 
         return measured
@@ -517,7 +531,6 @@ async def benchmark(
     dur_s = time.time() - start_time
     median_token_latency = np.median(m._per_token_latencies)
     median_e2e_latency = np.median(m._request_latencies)
-    median_inference_latency = np.median(m._inference_latencies)
 
     throughput = calculate_throughput(queries,
                                       dur_s,
@@ -525,13 +538,13 @@ async def benchmark(
                                       tokenizer,
                                       median_token_latency,
                                       median_e2e_latency,
-                                      median_inference_latency,
                                       m._request_latencies,
                                       m._per_token_latencies,
                                       m._inference_latencies,
                                       m._request_ids,
                                       m._decode_token_latencies,
                                       m._request_lens,
+                                      m._waiting_latencies,
                                       log_latencies,
                                       fail_on_response_failure)
     calculate_cdf(m._request_latencies)
@@ -550,7 +563,7 @@ async def benchmark(
         m._decode_sum_latencies, \
         m._request_lens, \
         m._all_decode_token_latencies, \
-        m._per_token_latencies_breakdown_dict
+        m._waiting_latencies
 
 
 def gen_random_response_lens(distribution: str, len_mean, len_range, num_prompts):
@@ -848,7 +861,7 @@ def main():
         decode_sum_latencies, \
         request_lens, \
         all_decode_token_latencies, \
-        per_token_latencies_breakdown_dict = asyncio.run(benchmark(
+        waiting_latency = asyncio.run(benchmark(
         backend,
         tokenizer,
         prompts,
@@ -887,7 +900,6 @@ def main():
                         "decode_sum_latencies": decode_sum_latencies,
                         "all_decode_token_latencies": all_decode_token_latencies,
                         "inference_latencies": inference_latencies,
-                        "per_token_latencies_breakdown_dict": per_token_latencies_breakdown_dict,
                         "throughput": throughput,
                         "instance_num": avg_instance_num})
         json.dump(results, f)

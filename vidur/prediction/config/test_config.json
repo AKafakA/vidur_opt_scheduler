@@ -8,7 +8,7 @@
 		"network_device": "a100_pairwise_nvlink"
 	},
 	"vllm_scheduler_config": {
-		"max_tokens_in_batch": 4086
+		"max_tokens_in_batch": 8192
 	},
 	"target_metric": "min_latency"
 }

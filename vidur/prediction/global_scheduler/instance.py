@@ -31,17 +31,15 @@ class Instance:
                                       num_decode_tokens=num_decode_tokens,
                                       arrived_at=arrived_at)
         parsed_res = get_predicting_response(res)
-        return float(parsed_res[0])
+        return float(parsed_res)
 
     async def query_backend(self, prompt: str, expected_response_len: int):
-        use_beam_search = False
         output_len = expected_response_len
         request_dict = {
             "prompt": prompt,
             "n": 1,
             "best_of": 1,
-            "use_beam_search": use_beam_search,
-            "temperature": 0.0 if use_beam_search else 1.0,
+            "temperature": 0.0,
             "top_k": 1,
             "max_tokens": max(output_len, 1),
             "ignore_eos": True,

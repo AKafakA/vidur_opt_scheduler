@@ -103,7 +103,7 @@ def post_predicting_request(api_url: str,
     return response
 
 
-def get_predicting_response(response: requests.Response) -> List[str]:
+def get_predicting_response(response: requests.Response):
     data = json.loads(response.content)
     output = data["metric"]
     return output

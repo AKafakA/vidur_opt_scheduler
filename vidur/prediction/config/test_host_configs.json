@@ -1,7 +1,7 @@
 {
   "host1": {
     "ip_address": "128.105.146.33",
-    "prediction_port": 8000,
-    "backend_port": 8080
+    "predictor_port": 8100,
+    "backend_port": 8000
   }
 }
