@@ -19,7 +19,7 @@ class PredictorConfig(ABC):
         default_factory=RandomForrestExecutionTimePredictorConfig,
         metadata={"help": "Execution time predictor config."},
     )
-    replica_scheduler_config: BaseReplicaSchedulerConfig = field(
+    replica_scheduler_config: VllmSchedulerConfig = field(
         default_factory=VllmSchedulerConfig,
         metadata={"help": "Replica scheduler config."},
     )

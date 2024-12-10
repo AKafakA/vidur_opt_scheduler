@@ -1,5 +1,5 @@
 {
-	"ReplicaConfig": {
+	"replica_config": {
 		"model_name": "meta-llama/Llama-2-7b-hf",
 		"memory_margin_fraction": 0.1,
 		"num_pipeline_stages": 1,
@@ -7,7 +7,7 @@
 		"device": "a30",
 		"network_device": "a30_single_gpu"
 	},
-	"vllm_scheduler_config": {
+	"replica_scheduler_config": {
 		"max_tokens_in_batch": 8192
 	},
 	"target_metric": "min_latency"
