@@ -29,19 +29,26 @@ from scipy.stats import zipf
 from enum import Enum
 from transformers import AutoTokenizer
 from typing import List
+import resource
+
+resource.setrlimit(resource.RLIMIT_NOFILE, (65536, 65536))
 
 num_finished_requests = 0
 server_num_requests = {}
 
 
-def get_wait_time(mean_time_between_requests: float, distribution: str, coefficient_variation: float = 0.0) -> float:
+def get_wait_time(qps: float, distribution: str, burstiness: float = 1.0) -> float:
+    mean_time_between_requests = 1.0 / qps
     if distribution == "uniform":
         return mean_time_between_requests
     elif distribution == "gamma":
-        variance = (coefficient_variation * mean_time_between_requests) ** 2
-        shape = mean_time_between_requests ** 2 / variance
-        scale = variance / mean_time_between_requests
-        return np.random.gamma(shape, scale)
+        # variance = (coefficient_variation * mean_time_between_requests) ** 2
+        # shape = mean_time_between_requests ** 2 / variance
+        # scale = variance / mean_time_between_requests
+        assert burstiness > 0, (
+            f"A positive burstiness factor is expected, but given {burstiness}.")
+        theta = 1.0 / (qps * burstiness)
+        return np.random.gamma(shape=burstiness, scale=theta)
     else:
         return np.random.exponential(mean_time_between_requests)
 
@@ -57,13 +64,13 @@ def request_gen(generator, qps: float, distribution="uniform"):
             return
 
 
-async def async_request_gen(generator, qps: float, distribution="uniform", coefficient_variation: float = 0.0):
+async def async_request_gen(generator, qps: float, distribution="uniform", burstiness: float = 0.0):
     while True:
         try:
             item = next(generator)
             yield item
             if distribution != "burst":
-                await asyncio.sleep(get_wait_time(1.0 / qps, distribution, coefficient_variation))
+                await asyncio.sleep(get_wait_time(qps, distribution, burstiness))
         except StopIteration:
             return
 
@@ -231,9 +238,9 @@ def calculate_throughput(queries,
     all_total_tokens = [all_prompt_lens[i] + all_response_lens[i] for i in range(len(all_prompt_lens))]
     # if all waiting latencies are not provided, calculate them by e2e - inference
     if not all_waiting_latencies and all_inference_latencies:
-        all_waiting_latencies = [all_e2e_latencies[i] - all_inference_latencies[i] for i in range(len(all_e2e_latencies))]
+        all_waiting_latencies = [all_e2e_latencies[i] * 1000 - all_inference_latencies[i] for i in range(len(all_e2e_latencies))]
     elif not all_inference_latencies and all_waiting_latencies:
-        all_inference_latencies = [all_e2e_latencies[i] - all_waiting_latencies[i] for i in range(len(all_e2e_latencies))]
+        all_inference_latencies = [all_e2e_latencies[i] * 1000 - all_waiting_latencies[i] for i in range(len(all_e2e_latencies))]
     median_waiting_latency = np.median(all_waiting_latencies)
     median_inference_latency = np.median(all_inference_latencies)
     median_global_scheduling_overhead = np.median(global_scheduling_overhead)
@@ -256,8 +263,8 @@ def calculate_throughput(queries,
     qps = len(responses) / dur_s
     msg1 = f'backend {backend} dur_s {dur_s:.04f} tokens_per_s {throughput_tok_s:.02f} qps {qps:.04f}\n'
     msg2 = f'successful_responses {len(responses)} prompt_token_count {prompt_token_count} response_token_count {response_token_count}\n'
-    msg3 = (f'{median_token_latency=:.04f}, {median_e2e_latency=:.04f}, {median_inference_latency=:.04f}, '
-            f'{median_waiting_latency=:.04f}, {median_global_scheduling_overhead=:.04f} \n')
+    msg3 = (f'{median_token_latency=:.04f}(ms), {median_e2e_latency=:.04f}(s), {median_inference_latency=:.04f}(ms), '
+            f'{median_waiting_latency=:.04f}(ms), {median_global_scheduling_overhead=:.04f}(ms) \n')
 
     msg = msg1 + msg2 + msg3
     if log_latencies:
@@ -284,9 +291,10 @@ def calculate_cdf(latencies):
     print(f"{cumsum=}")
 
 
-def plot_latency_cdf(req_latencies, prefill_latencies, decode_latencies, scheduling_overhead, log_filename):
+def plot_latency_cdf(req_latencies, prefill_latencies, decode_latencies, scheduling_overhead, waiting_latency,
+                     log_filename):
     fig_filename = os.path.splitext(log_filename)[0] + "_latency.png"
-    fig, (ax_req, ax_prefill, ax_decode, ax_scheduling_overhead) = plt.subplots(1, 4, figsize=(4 * 7, 4.8))
+    fig, (ax_req, ax_prefill, ax_decode, ax_scheduling_overhead, ax_waiting_latency) = plt.subplots(1, 5, figsize=(5 * 7, 6))
 
     def plot_single(ax, latencies, is_prefill=False):
         hist, bin_edges = np.histogram(latencies, bins=50)
@@ -324,14 +332,17 @@ def plot_latency_cdf(req_latencies, prefill_latencies, decode_latencies, schedul
     plot_single(ax_prefill, prefill_latencies, is_prefill=True)
     plot_single(ax_decode, decode_latencies)
     plot_single(ax_scheduling_overhead, scheduling_overhead)
+    plot_single(ax_waiting_latency, waiting_latency)
     ax_req.set_xlabel('Latency/req(s)')
     ax_req.set_title('request cdf')
     ax_prefill.set_xlabel('Latency/token(ms)')
     ax_prefill.set_title('prefill cdf')
     ax_decode.set_xlabel('Latency/token(ms)')
     ax_decode.set_title('decode cdf')
-    ax_scheduling_overhead.set_xlabel('Latency/token(ms)')
+    ax_scheduling_overhead.set_xlabel('Latency/request(ms)')
     ax_scheduling_overhead.set_title('scheduling overhead cdf')
+    ax_waiting_latency.set_xlabel('Latency/request(ms)')
+    ax_waiting_latency.set_title('time in queue cdf')
     index1 = fig_filename.rfind('/')
     index2 = fig_filename.rfind('/', 0, index1)
     fig_filename_title = fig_filename[index2 + 1:]
@@ -474,7 +485,7 @@ class MeasureLatency:
                     np.mean(output['per_token_latency_breakdown_dict']['step_latency_engine']))
             else:
                 if 'inference_latency' in output:
-                    self._inference_latencies.append(output['total_inference_latency'])
+                    self._inference_latencies.append(output['inference_latency'])
             if 'waiting_latency' in output:
                 self._waiting_latencies.append(output['waiting_latency'])
             if 'ttft' in output:
@@ -501,7 +512,7 @@ async def benchmark(
         ip_ports: List[int],
         distribution: str,
         qps: float,
-        coefficient_variation: float,
+        burstiness: float,
         log_latencies: bool,
         fail_on_response_failure: bool,
 ):
@@ -529,12 +540,12 @@ async def benchmark(
 
     print(
         f'Starting with backend={backend}, num_prompts={len(prompts)}, allow_variable_generation_length={allow_variable_generation_length}')
-    print(f'traffic distribution={distribution}, qps={qps}, coefficient_variation={coefficient_variation}')
+    print(f'traffic distribution={distribution}, qps={qps}, burstiness={burstiness}')
 
     total_requests = len(prompts)
 
     async_prompts = async_request_gen(
-        iter(prompts), qps=qps, distribution=distribution, coefficient_variation=coefficient_variation)
+        iter(prompts), qps=qps, distribution=distribution, burstiness=burstiness)
 
     start_time = time.time()
     tasks = []
@@ -562,7 +573,7 @@ async def benchmark(
                                       log_latencies,
                                       fail_on_response_failure)
     calculate_cdf(m._request_latencies)
-    plot_latency_cdf(m._request_latencies, m._prefill_token_latencies, m._decode_token_latencies,
+    plot_latency_cdf(m._request_latencies, m._prefill_token_latencies, m._decode_token_latencies, m._waiting_latencies,
                      m._global_scheduling_overhead, log_filename)
     save_all_decode_token_latencies_npy(m._all_token_latencies, log_filename)
     # avg_instance_num = plot_instance(log_filename)
@@ -775,9 +786,9 @@ def main():
     parser.add_argument('--random_prompt_count', type=int)
     parser.add_argument('--max_request_len', type=int, default=8192)
     parser.add_argument(
-        '--distribution', choices=["burst", "uniform", "poisson", "gamma"], default="poisson")
+        '--distribution', choices=["uniform", "gamma", "exponential"], default="gamma")
     parser.add_argument('--qps', type=float, default=4.0)
-    parser.add_argument('--coefficient_variation', type=float, default=0.0)
+    parser.add_argument('--burstiness', type=float, default=1.0)
     parser.add_argument('--log_latencies', action="store_true",
                         help="Whether or not to write all latencies to the log file.")
     parser.add_argument('--fail_on_response_failure', action="store_true",
@@ -888,7 +899,7 @@ def main():
         args.ip_ports,
         args.distribution,
         args.qps,
-        args.coefficient_variation,
+        args.burstiness,
         args.log_latencies,
         args.fail_on_response_failure,
     )
@@ -908,7 +919,7 @@ def main():
         os.mknod(file_name)
     with open(file_name, 'w') as f:
         results.append({"qps": args.qps,
-                        "cv": args.coefficient_variation,
+                        "burstiness": args.burstiness,
                         "request_ids": request_ids,
                         "request_lens": request_lens,
                         "request_latencies": request_latencies,

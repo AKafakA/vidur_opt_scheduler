@@ -27,6 +27,10 @@ class PredictorConfig(ABC):
         default="min_latency",
         metadata={"help": "Target metric to optimize for."},
     )
+    disable_batch_time_estimation: bool = field(
+        default=True,
+        metadata={"help": "Whether to use the tree model to estimate the batch execution time"},
+    )
 
     @classmethod
     def create_from_dict(cls, data: dict):

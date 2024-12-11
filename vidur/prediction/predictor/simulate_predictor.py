@@ -49,6 +49,8 @@ class SimulatePredictor(Predictor):
             SimulateRequestTimelinePredictor
         self._request_timeline_predictor = SimulateRequestTimelinePredictor()
         self._request_timeline_predictor.attach_execution_time_predictor(self._execution_time_predictor)
+        if config.disable_batch_time_estimation:
+            self._request_timeline_predictor.disable_batch_time_estimation()
         self._port = port
         self._request_decode_length_prediction_map = {}
         self._start_time = time.time()

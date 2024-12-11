@@ -25,13 +25,17 @@ class Instance:
                               num_context_tokens: int,
                               num_decode_tokens: int,
                               arrived_at: float):
-        res = post_predicting_request(self._predictor_url,
-                                      request_id=request_id,
-                                      num_context_tokens=num_context_tokens,
-                                      num_decode_tokens=num_decode_tokens,
-                                      arrived_at=arrived_at)
-        parsed_res = get_predicting_response(res)
-        return float(parsed_res)
+        predict_parameters = {
+            "id": request_id,
+            "arrival_time": arrived_at,
+            "num_context_tokens": num_context_tokens,
+            "num_decode_tokens": num_decode_tokens,
+        }
+        async with aiohttp.ClientSession(timeout=AIOHTTP_TIMEOUT) as session:
+            async with session.post(self._predictor_url, json=predict_parameters) as response:
+                res = await response.json()
+                return float(res["metric"])
+
 
     async def query_backend(self, prompt: str, expected_response_len: int):
         output_len = expected_response_len

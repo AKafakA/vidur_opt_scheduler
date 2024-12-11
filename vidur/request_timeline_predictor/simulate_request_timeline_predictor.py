@@ -8,12 +8,17 @@ from vidur.types.optimal_global_scheduler_target_metric import TargetMetric
 class SimulateRequestTimelinePredictor(BaseRequestTimelinePredictor):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self._use_estimated_time = True
+
+    def disable_batch_time_estimation(self):
+        self._use_estimated_time = False
 
     def predict_scheduling_delay(self, replica_scheduler, request):
         simulate_predict_replica_scheduler = SimulatePredictReplicaScheduler(
             replica_scheduler=replica_scheduler,
             request=request,
-            execution_time_predictor=self._execution_time_predictor
+            execution_time_predictor=self._execution_time_predictor,
+            use_estimated_execution_time=self._use_estimated_time
         )
         simulate_predict_replica_scheduler.simulate()
         return simulate_predict_replica_scheduler.schedule_at
@@ -22,7 +27,8 @@ class SimulateRequestTimelinePredictor(BaseRequestTimelinePredictor):
         simulate_predict_replica_scheduler = SimulatePredictReplicaScheduler(
             replica_scheduler=replica_scheduler,
             request=request,
-            execution_time_predictor=self._execution_time_predictor
+            execution_time_predictor=self._execution_time_predictor,
+            use_estimated_execution_time=self._use_estimated_time
         )
         simulate_predict_replica_scheduler.simulate()
         return simulate_predict_replica_scheduler.completed_at
@@ -51,7 +57,8 @@ class SimulateRequestTimelinePredictor(BaseRequestTimelinePredictor):
         simulate_predict_replica_scheduler = SimulatePredictReplicaScheduler(
             replica_scheduler=replica_scheduler,
             request=request,
-            execution_time_predictor=self._execution_time_predictor
+            execution_time_predictor=self._execution_time_predictor,
+            use_estimated_execution_time=self._use_estimated_time
         )
         simulate_predict_replica_scheduler.simulate()
         return simulate_predict_replica_scheduler.average_decode_time

@@ -11,6 +11,7 @@ from fastapi.responses import JSONResponse, Response
 
 from vidur.prediction.global_scheduler.instance import Instance
 from vidur.prediction.server_utils import serve_http
+import resource
 
 TIMEOUT_KEEP_ALIVE = 5  # seconds.
 app = FastAPI()
@@ -133,4 +134,7 @@ if __name__ == "__main__":
     parser.add_argument("--num_query_predictor", type=int, default=1)
     parser.add_argument("--num_required_predictor", type=int, default=1)
     args = parser.parse_args()
+    # in case the limited by the number of files
+    resource.setrlimit(resource.RLIMIT_NOFILE, (65536, 65536))
+
     asyncio.run(run_server(args))

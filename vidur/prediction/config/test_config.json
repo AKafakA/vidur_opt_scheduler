@@ -10,5 +10,6 @@
 	"replica_scheduler_config": {
 		"max_tokens_in_batch": 8192
 	},
-	"target_metric": "min_latency"
+	"target_metric": "min_latency",
+	"disable_batch_time_estimation": false
 }

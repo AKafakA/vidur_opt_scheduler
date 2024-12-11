@@ -8,11 +8,14 @@ import psutil
 import requests
 import uvicorn
 from fastapi import FastAPI
+import aiohttp
 
 from vidur.entities import Request as VidurRequest, Request
 from vidur.prediction.predictor.predictor_config import PredictorConfig
 from vidur.prediction.predictor.dummy_predictor import DummyPredictor
 from vidur.prediction.predictor.simulate_predictor import SimulatePredictor
+
+AIOHTTP_TIMEOUT = aiohttp.ClientTimeout(total=6 * 60 * 60)
 
 
 def find_process_using_port(port: int) -> Optional[psutil.Process]:
