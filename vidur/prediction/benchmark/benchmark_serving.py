@@ -174,6 +174,7 @@ def calculate_throughput(queries,
                          all_decode_token_latencies,
                          all_request_lens,
                          all_waiting_latencies,
+                         global_scheduling_overhead,
                          log_latencies,
                          fail_on_response_failure):
     # either should be provided
@@ -235,6 +236,7 @@ def calculate_throughput(queries,
         all_inference_latencies = [all_e2e_latencies[i] - all_waiting_latencies[i] for i in range(len(all_e2e_latencies))]
     median_waiting_latency = np.median(all_waiting_latencies)
     median_inference_latency = np.median(all_inference_latencies)
+    median_global_scheduling_overhead = np.median(global_scheduling_overhead)
 
     if naive_hf_lens:
         # Manually count naive hf tok len
@@ -255,12 +257,15 @@ def calculate_throughput(queries,
     msg1 = f'backend {backend} dur_s {dur_s:.04f} tokens_per_s {throughput_tok_s:.02f} qps {qps:.04f}\n'
     msg2 = f'successful_responses {len(responses)} prompt_token_count {prompt_token_count} response_token_count {response_token_count}\n'
     msg3 = (f'{median_token_latency=:.04f}, {median_e2e_latency=:.04f}, {median_inference_latency=:.04f}, '
-            f'{median_waiting_latency=:.04f}\n')
+            f'{median_waiting_latency=:.04f}, {median_global_scheduling_overhead=:.04f} \n')
+
     msg = msg1 + msg2 + msg3
     if log_latencies:
         msg += f'{all_request_lens=}\n{all_request_ids=}\n'
         msg += f'{all_total_tokens=}\n{all_prompt_lens=}\n{all_response_lens=}\n'
         msg += f'{all_e2e_latencies=}\n{all_per_token_latencies=}\n{all_inference_latencies=}\n{all_waiting_latencies=}\n{all_decode_token_latencies=}\n'
+        msg += f'{global_scheduling_overhead=}\n'
+
     print(msg)
 
     if fail_on_response_failure:
@@ -279,9 +284,9 @@ def calculate_cdf(latencies):
     print(f"{cumsum=}")
 
 
-def plot_latency_cdf(req_latencies, prefill_latencies, decode_latencies, log_filename):
+def plot_latency_cdf(req_latencies, prefill_latencies, decode_latencies, scheduling_overhead, log_filename):
     fig_filename = os.path.splitext(log_filename)[0] + "_latency.png"
-    fig, (ax_req, ax_prefill, ax_decode) = plt.subplots(1, 3, figsize=(3 * 7, 4.8))
+    fig, (ax_req, ax_prefill, ax_decode, ax_scheduling_overhead) = plt.subplots(1, 4, figsize=(4 * 7, 4.8))
 
     def plot_single(ax, latencies, is_prefill=False):
         hist, bin_edges = np.histogram(latencies, bins=50)
@@ -318,12 +323,15 @@ def plot_latency_cdf(req_latencies, prefill_latencies, decode_latencies, log_fil
     plot_single(ax_req, req_latencies)
     plot_single(ax_prefill, prefill_latencies, is_prefill=True)
     plot_single(ax_decode, decode_latencies)
+    plot_single(ax_scheduling_overhead, scheduling_overhead)
     ax_req.set_xlabel('Latency/req(s)')
     ax_req.set_title('request cdf')
     ax_prefill.set_xlabel('Latency/token(ms)')
     ax_prefill.set_title('prefill cdf')
     ax_decode.set_xlabel('Latency/token(ms)')
     ax_decode.set_title('decode cdf')
+    ax_scheduling_overhead.set_xlabel('Latency/token(ms)')
+    ax_scheduling_overhead.set_title('scheduling overhead cdf')
     index1 = fig_filename.rfind('/')
     index2 = fig_filename.rfind('/', 0, index1)
     fig_filename_title = fig_filename[index2 + 1:]
@@ -429,7 +437,8 @@ class MeasureLatency:
         self._all_decode_token_latencies = []
         self._inference_latencies = []
         self._waiting_latencies = []
-        self._ttft = []
+        self._engine_ttft = []
+        self._global_scheduling_overhead = []
 
     def measure(self, f):
         async def measured(*args, **kwargs):
@@ -445,6 +454,8 @@ class MeasureLatency:
                 except ZeroDivisionError:
                     # Not currently using this metric..
                     pass
+            client_ttft = -1.0
+            engine_ttft = -1.0
             if 'request_id' in output:
                 self._request_ids.append(output['request_id'])
             if 'per_token_latency' in output:
@@ -456,20 +467,22 @@ class MeasureLatency:
                 self._all_token_latencies.append(lat_arr)
                 self._decode_sum_latencies.append(decode_sum_latency)
                 self._all_decode_token_latencies.extend(lat_arr[1:, 1])
-                if 'ttft' in output:
-                    self._prefill_token_latencies.append(output['ttft'])
-                else:
-                    self._prefill_token_latencies.append(lat_arr[0][1])
+                self._prefill_token_latencies.append(lat_arr[0][1])
+                client_ttft = lat_arr[0][1]
             if 'per_token_latency_breakdown_dict' in output:
                 self._inference_latencies.append(
                     np.mean(output['per_token_latency_breakdown_dict']['step_latency_engine']))
             else:
                 if 'inference_latency' in output:
                     self._inference_latencies.append(output['total_inference_latency'])
-                if 'waiting_latency' in output:
-                    self._waiting_latencies.append(output['waiting_latency'])
+            if 'waiting_latency' in output:
+                self._waiting_latencies.append(output['waiting_latency'])
+            if 'ttft' in output:
+                self._engine_ttft.append(output['ttft'])
+                engine_ttft = output['ttft']
+            if client_ttft > 0 and engine_ttft > 0:
+                self._global_scheduling_overhead.append(client_ttft - engine_ttft)
             return prompt, output
-
         return measured
 
 
@@ -545,10 +558,12 @@ async def benchmark(
                                       m._decode_token_latencies,
                                       m._request_lens,
                                       m._waiting_latencies,
+                                      m._global_scheduling_overhead,
                                       log_latencies,
                                       fail_on_response_failure)
     calculate_cdf(m._request_latencies)
-    plot_latency_cdf(m._request_latencies, m._prefill_token_latencies, m._decode_token_latencies, log_filename)
+    plot_latency_cdf(m._request_latencies, m._prefill_token_latencies, m._decode_token_latencies,
+                     m._global_scheduling_overhead, log_filename)
     save_all_decode_token_latencies_npy(m._all_token_latencies, log_filename)
     # avg_instance_num = plot_instance(log_filename)
     avg_instance_num = 0.0
@@ -563,7 +578,8 @@ async def benchmark(
         m._decode_sum_latencies, \
         m._request_lens, \
         m._all_decode_token_latencies, \
-        m._waiting_latencies
+        m._waiting_latencies,\
+        m._global_scheduling_overhead
 
 
 def gen_random_response_lens(distribution: str, len_mean, len_range, num_prompts):
@@ -780,8 +796,8 @@ def main():
     parser.add_argument('--print_generation_lens_and_exit',
                         action='store_true')
 
-    parser.add_argument('--enable_migration', type=int, default=0)
-    parser.add_argument('--priority_ratio', type=float, default=0.0)
+    # parser.add_argument('--enable_migration', type=int, default=0)
+    # parser.add_argument('--priority_ratio', type=float, default=0.0)
 
     args = parser.parse_args()
 
@@ -861,7 +877,8 @@ def main():
         decode_sum_latencies, \
         request_lens, \
         all_decode_token_latencies, \
-        waiting_latency = asyncio.run(benchmark(
+        waiting_latency,\
+        scheduling_overhead = asyncio.run(benchmark(
         backend,
         tokenizer,
         prompts,
@@ -900,6 +917,7 @@ def main():
                         "decode_sum_latencies": decode_sum_latencies,
                         "all_decode_token_latencies": all_decode_token_latencies,
                         "inference_latencies": inference_latencies,
+                        "scheduling_overhead": scheduling_overhead,
                         "throughput": throughput,
                         "instance_num": avg_instance_num})
         json.dump(results, f)
