@@ -36,7 +36,6 @@ class Instance:
                 res = await response.json()
                 return float(res["metric"])
 
-
     async def query_backend(self, prompt: str, expected_response_len: int):
         output_len = expected_response_len
         request_dict = {

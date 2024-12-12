@@ -25,10 +25,10 @@ metrics_type = "min_latency"
 
 @app.post("/generate_benchmark")
 async def generate_benchmark(request: Request) -> Response:
-    """Generate completion for the request with profilling.
+    """Generate completion for the request with profiling.
     This API will 1) calling the predictor to predict the completion time of the request,
     2) select the host based on target metrics and call its vllm generate API to generate the completion.
-    3) return the completion to the client with profilling
+    3) return the completion to the client with profiling
     """
     assert len(instances) > 0
     request_dict = await request.json()
@@ -42,19 +42,39 @@ async def generate_benchmark(request: Request) -> Response:
     num_requests += 1
     predict_tasks = []
 
-    for instance in random.sample(instances, n):
-        predict_tasks.append(instance.query_predictor(
-            request_id, num_context_tokens, num_decode_tokens, arrived_at))
-
-    predict_results = await asyncio.gather(*predict_tasks)
-    if metrics_type.startswith("min"):
-        selected_instances = instances[predict_results.index(min(predict_results))]
-    elif metrics_type.startswith("max") or metrics_type == "random":
-        selected_instances = instances[predict_results.index(max(predict_results))]
-    elif metrics_type == "round_robin":
-        selected_instances = instances[num_requests % len(instances)]
+    if metrics_type == "random":
+        selected_instances = random.choice(instances)
     else:
-        raise ValueError(f"Invalid metrics type: {metrics_type}")
+        for instance in random.sample(instances, n):
+            predict_tasks.append(instance.query_predictor(
+                request_id, num_context_tokens, num_decode_tokens, arrived_at))
+        if n == m:
+            predict_results = await asyncio.gather(*predict_tasks)
+        elif m > n:
+            raise ValueError("The number of required predictors should be less or equal to the number of predictors")
+        else:
+            predict_results = []
+            unfinished_tasks = None
+            while predict_tasks and len(predict_results) < m:
+                finished, unfinished = await asyncio.wait(predict_tasks, return_when=asyncio.FIRST_COMPLETED)
+                for x in finished:
+                    result = x.result()
+                    predict_results.append(result)
+                if unfinished:
+                    unfinished_tasks = unfinished
+            if unfinished_tasks:
+                for task in unfinished_tasks:
+                    task.cancel()
+                await asyncio.wait(unfinished_tasks)
+
+        if metrics_type.startswith("min"):
+            selected_instances = instances[predict_results.index(min(predict_results))]
+        elif metrics_type.startswith("max"):
+            selected_instances = instances[predict_results.index(max(predict_results))]
+        elif metrics_type == "round_robin":
+            selected_instances = instances[num_requests % len(instances)]
+        else:
+            raise ValueError(f"Invalid metrics type: {metrics_type}")
     response = await selected_instances.query_backend(prompt, num_decode_tokens)
     return JSONResponse(response)
 

@@ -24,7 +24,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import sys
 import glob
-
+import jsonlines
 from scipy.stats import zipf
 from enum import Enum
 from transformers import AutoTokenizer
@@ -238,9 +238,11 @@ def calculate_throughput(queries,
     all_total_tokens = [all_prompt_lens[i] + all_response_lens[i] for i in range(len(all_prompt_lens))]
     # if all waiting latencies are not provided, calculate them by e2e - inference
     if not all_waiting_latencies and all_inference_latencies:
-        all_waiting_latencies = [all_e2e_latencies[i] * 1000 - all_inference_latencies[i] for i in range(len(all_e2e_latencies))]
+        all_waiting_latencies = [all_e2e_latencies[i] * 1000 - all_inference_latencies[i] for i in
+                                 range(len(all_e2e_latencies))]
     elif not all_inference_latencies and all_waiting_latencies:
-        all_inference_latencies = [all_e2e_latencies[i] * 1000 - all_waiting_latencies[i] for i in range(len(all_e2e_latencies))]
+        all_inference_latencies = [all_e2e_latencies[i] * 1000 - all_waiting_latencies[i] for i in
+                                   range(len(all_e2e_latencies))]
     median_waiting_latency = np.median(all_waiting_latencies)
     median_inference_latency = np.median(all_inference_latencies)
     median_global_scheduling_overhead = np.median(global_scheduling_overhead)
@@ -294,7 +296,8 @@ def calculate_cdf(latencies):
 def plot_latency_cdf(req_latencies, prefill_latencies, decode_latencies, scheduling_overhead, waiting_latency,
                      log_filename):
     fig_filename = os.path.splitext(log_filename)[0] + "_latency.png"
-    fig, (ax_req, ax_prefill, ax_decode, ax_scheduling_overhead, ax_waiting_latency) = plt.subplots(1, 5, figsize=(5 * 7, 6))
+    fig, (ax_req, ax_prefill, ax_decode, ax_scheduling_overhead, ax_waiting_latency) = plt.subplots(1, 5,
+                                                                                                    figsize=(5 * 7, 6))
 
     def plot_single(ax, latencies, is_prefill=False):
         hist, bin_edges = np.histogram(latencies, bins=50)
@@ -515,6 +518,7 @@ async def benchmark(
         burstiness: float,
         log_latencies: bool,
         fail_on_response_failure: bool,
+        output_gen_lens: bool = False,
 ):
     if backend == GenerationBackend.vLLM:
         query_model = query_model_vllm
@@ -556,6 +560,16 @@ async def benchmark(
     median_token_latency = np.median(m._per_token_latencies)
     median_e2e_latency = np.median(m._request_latencies)
 
+    sampled_prompts = []
+    sampled_responses = []
+    sampled_responses_length = []
+    if output_gen_lens:
+        for prompt, output in queries:
+            if 'generated_text' in output:
+                sampled_prompts.append(prompt)
+                sampled_responses.append(output['generated_text'])
+        sampled_responses_length = get_tok_id_lens(tokenizer, sampled_responses)
+
     throughput = calculate_throughput(queries,
                                       dur_s,
                                       backend,
@@ -589,8 +603,11 @@ async def benchmark(
         m._decode_sum_latencies, \
         m._request_lens, \
         m._all_decode_token_latencies, \
-        m._waiting_latencies,\
-        m._global_scheduling_overhead
+        m._waiting_latencies, \
+        m._global_scheduling_overhead, \
+        sampled_prompts, \
+        sampled_responses, \
+        sampled_responses_length
 
 
 def gen_random_response_lens(distribution: str, len_mean, len_range, num_prompts):
@@ -695,27 +712,63 @@ def sample_sharegpt_requests(
     prompts = []
     prompt_lens = []
     response_lens = []
-    with open(dataset_path) as f:
-        for line in f:
-            data = json.loads(line)
-            if len(data["conversations"]) >= 2:
-                prompt = data["conversations"][0]["value"]
-                res = data["conversations"][1]["value"]
-                prompt_token_ids = tokenizer(prompt).input_ids
-                completion_token_ids = tokenizer(res).input_ids
-                if len(prompt_token_ids) + len(completion_token_ids) < max_seqlen and \
-                        len(prompt_token_ids) > 0 and len(completion_token_ids) > 0:
-                    prompts.append(prompt)
-                    prompt_lens.append(len(prompt_token_ids))
-                    response_lens.append(len(completion_token_ids))
-            if len(prompts) > num_requests:
-                break
+    with open(dataset_path, encoding='utf-8') as f:
+        dataset = json.load(f)
+        # Filter out the conversations with less than 2 turns.
+    dataset = [data for data in dataset if len(data["conversations"]) >= 2]
+    # Only keep the first two turns of each conversation.
+    dataset = [(data["conversations"][0]["value"],
+                data["conversations"][1]["value"]) for data in dataset]
+
+    # Shuffle the dataset.
+    random.shuffle(dataset)
+    for i in range(len(dataset)):
+        # Tokenize the prompts and completions.
+        prompt = dataset[i][0]
+        prompt_token_ids = tokenizer(prompt).input_ids
+        completion = dataset[i][1]
+        completion_token_ids = tokenizer(completion).input_ids
+        # Filter out the conversations that more than the maximum sequence length
+        # and those with empty prompts or completions.
+        if len(prompt_token_ids) + len(completion_token_ids) < max_seqlen and \
+                len(prompt_token_ids) > 0 and len(completion_token_ids) > 0:
+            prompts.append(prompt)
+            prompt_lens.append(len(prompt_token_ids))
+            response_lens.append(len(completion_token_ids))
+
     sampled_ids = [random.randint(0, len(prompts) - 1) for _ in range(num_requests)]
     sampled_prompts = [prompts[idx] for idx in sampled_ids]
     sampled_prompt_lens = [prompt_lens[idx] for idx in sampled_ids]
     sampled_response_lens = [response_lens[idx] for idx in sampled_ids]
     # print(f"max len:{max(a+b for a,b in zip(prompt_lens, response_lens))}")
     return sampled_prompts, sampled_prompt_lens, sampled_response_lens
+
+
+def generate_lens_files(
+        length_output_file,
+        prompt_lens,
+        response_lens):
+    import csv
+    assert length_output_file.endswith('.csv')
+    with open(length_output_file, 'w') as f:
+        writer = csv.writer(f)
+        writer.writerow(['num_prefill_tokens', 'num_decode_tokens', 'num_total_tokens', 'pd_ratio'])
+        for prompt_len, response_len in zip(prompt_lens, response_lens):
+            writer.writerow([prompt_len, response_len, prompt_len + response_len, (response_len * 1.0) / prompt_len])
+    print(f"Dataset with real response lens saved to {length_output_file}")
+
+
+def tag_dataset_with_real_response_lens(
+        prompts,
+        responses,
+        new_dataset_path: str):
+    assert new_dataset_path.endswith('.jsonl')
+    data = []
+    for prompt, response in zip(prompts, responses):
+        record = {'conversation': [{'from': 'human', 'value': prompt}, {'from': 'model', 'value': response}]}
+        data.append(record)
+    with jsonlines.open(new_dataset_path, 'w') as writer:
+        writer.write_all(data)
 
 
 def sample_burstgpt_request(
@@ -806,6 +859,9 @@ def main():
     group.add_argument('--dataset_path', type=str)
     parser.add_argument('--print_generation_lens_and_exit',
                         action='store_true')
+    parser.add_argument('--tag_dataset_with_real_response_lens',
+                        action='store_false')
+    parser.add_argument('--enable_csv_files', action='store_false')
 
     # parser.add_argument('--enable_migration', type=int, default=0)
     # parser.add_argument('--priority_ratio', type=float, default=0.0)
@@ -888,8 +944,11 @@ def main():
         decode_sum_latencies, \
         request_lens, \
         all_decode_token_latencies, \
-        waiting_latency,\
-        scheduling_overhead = asyncio.run(benchmark(
+        waiting_latency, \
+        scheduling_overhead,\
+        sampled_prompts,\
+        sampled_responses,\
+        sampled_responses_length = asyncio.run(benchmark(
         backend,
         tokenizer,
         prompts,
@@ -932,6 +991,16 @@ def main():
                         "throughput": throughput,
                         "instance_num": avg_instance_num})
         json.dump(results, f)
+
+    if args.tag_dataset_with_real_response_lens or args.enable_csv_files:
+        assert sampled_responses_length
+        if args.tag_dataset_with_real_response_lens:
+            tagged_dataset_name = args.dataset_path.replace('.jsonl', '_with_real_response_lens.jsonl')
+            tag_dataset_with_real_response_lens(
+                sampled_prompts, sampled_responses, tagged_dataset_name)
+        if args.enable_csv_files:
+            csv_file_name = args.dataset_path.replace('.jsonl', '_lens.csv')
+            generate_lens_files(csv_file_name, sampled_prompts, sampled_responses_length)
 
 
 if __name__ == '__main__':
