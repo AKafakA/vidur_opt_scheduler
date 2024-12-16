@@ -712,21 +712,27 @@ def sample_sharegpt_requests(
     prompts = []
     prompt_lens = []
     response_lens = []
-    with open(dataset_path) as f:
-        for line in f:
-            data = json.loads(line)
-            if len(data["conversations"]) >= 2:
-                prompt = data["conversations"][0]["value"]
-                res = data["conversations"][1]["value"]
-                prompt_token_ids = tokenizer(prompt).input_ids
-                completion_token_ids = tokenizer(res).input_ids
-                if len(prompt_token_ids) + len(completion_token_ids) < max_seqlen and \
-                    len(prompt_token_ids) > 0 and len(completion_token_ids) > 0:
-                    prompts.append(prompt)
-                    prompt_lens.append(len(prompt_token_ids))
-                    response_lens.append(len(completion_token_ids))
-            if len(prompts)>num_requests:
-                break
+    dataset = []
+    if dataset_path.endswith('.jsonl'):
+        with open(dataset_path) as f:
+            for line in f:
+                dataset.append(json.loads(line))
+    elif dataset_path.endswith('.json'):
+        with open(dataset_path) as f:
+            dataset = json.load(f)
+    dataset = [data for data in dataset if len(data["conversations"]) >= 2]
+    random.shuffle(dataset)
+    for data in dataset:
+        prompt = data["conversations"][0]["value"]
+        res = data["conversations"][1]["value"]
+        prompt_token_ids = tokenizer(prompt).input_ids
+        completion_token_ids = tokenizer(res).input_ids
+        if len(prompt_token_ids) + len(completion_token_ids) < max_seqlen and \
+                len(prompt_token_ids) > 0 and len(completion_token_ids) > 0:
+            prompts.append(prompt)
+            prompt_lens.append(len(prompt_token_ids))
+            response_lens.append(len(completion_token_ids))
+
     sampled_ids = [random.randint(0, len(prompts) - 1) for _ in range(num_requests)]
     sampled_prompts = [prompts[idx] for idx in sampled_ids]
     sampled_prompt_lens = [prompt_lens[idx] for idx in sampled_ids]
@@ -749,7 +755,7 @@ def generate_lens_files(
     print(f"Dataset with real response lens saved to {length_output_file}")
 
 
-def tag_dataset_with_real_response_lens(
+def tag_dataset_with_real_response(
         prompts,
         responses,
         new_dataset_path: str):
@@ -850,7 +856,7 @@ def main():
     group.add_argument('--dataset_path', type=str)
     parser.add_argument('--print_generation_lens_and_exit',
                         action='store_true')
-    parser.add_argument('--tag_dataset_with_real_response_lens',
+    parser.add_argument('--tag_dataset_with_real_response',
                         action='store_false')
     parser.add_argument('--enable_csv_files', action='store_false')
 
@@ -952,7 +958,7 @@ def main():
         args.burstiness,
         args.log_latencies,
         args.fail_on_response_failure,
-        args.tag_dataset_with_real_response_lens or args.enable_csv_files,
+        args.tag_dataset_with_real_response or args.enable_csv_files,
     )
     )
 
@@ -984,11 +990,11 @@ def main():
                         "instance_num": avg_instance_num})
         json.dump(results, f)
 
-    if args.tag_dataset_with_real_response_lens or args.enable_csv_files:
+    if args.tag_dataset_with_real_response or args.enable_csv_files:
         assert sampled_responses_length
-        if args.tag_dataset_with_real_response_lens:
-            tagged_dataset_name = args.dataset_path.replace('.jsonl', '_with_real_response_lens.jsonl')
-            tag_dataset_with_real_response_lens(
+        if args.tag_dataset_with_real_response:
+            tagged_dataset_name = args.dataset_path.replace('.jsonl', '_with_real_response.jsonl')
+            tag_dataset_with_real_response(
                 sampled_prompts, sampled_responses, tagged_dataset_name)
         if args.enable_csv_files:
             csv_file_name = args.dataset_path.replace('.jsonl', '_lens.csv')

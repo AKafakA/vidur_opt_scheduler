@@ -269,7 +269,7 @@ class TraceRequestGeneratorConfig(BaseRequestGeneratorConfig):
 @dataclass
 class BaseReplicaSchedulerConfig(BasePolyConfig):
     batch_size_cap: int = field(
-        default=128,
+        default=256,
         metadata={"help": "Maximum batch size cap."},
     )
     block_size: int = field(
