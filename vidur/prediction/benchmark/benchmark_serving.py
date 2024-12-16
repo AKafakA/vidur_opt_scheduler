@@ -992,7 +992,7 @@ def main():
                 sampled_prompts, sampled_responses, tagged_dataset_name)
         if args.enable_csv_files:
             csv_file_name = args.dataset_path.replace('.jsonl', '_lens.csv')
-            generate_lens_files(csv_file_name, sampled_prompts, sampled_responses_length)
+            generate_lens_files(csv_file_name, prompt_lens, sampled_responses_length)
 
 
 if __name__ == '__main__':
