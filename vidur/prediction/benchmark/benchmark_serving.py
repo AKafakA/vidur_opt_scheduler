@@ -551,7 +551,7 @@ class MeasureLatency:
                 self._var_num_waiting_requests.append(output['sampled_var_n_request'])
                 record_timestamp = True
             if 'num_preempted' in output:
-                self._num_preempted.append(output['n_preempted'])
+                self._num_preempted.append(output['num_preempted'])
             if record_timestamp:
                 self._requested_timestamps.append(start)
             return prompt, output
