@@ -955,7 +955,7 @@ def main():
     parser.add_argument('--random_prompt_lens_range', type=int)
     parser.add_argument('--variable_prompt_lens_distribution', choices=[
         "uniform", "exponential", "capped_exponential", "zipf"], default="uniform")
-    parser.add_argument('--random_prompt_count', type=int)
+    parser.add_argument('--num_sampled_requests', type=int, default=10)
     parser.add_argument('--max_request_len', type=int, default=8192)
     parser.add_argument(
         '--distribution', choices=["uniform", "gamma", "exponential"], default="gamma")
@@ -990,7 +990,7 @@ def main():
     start_time = time.time()
 
     if args.gen_random_prompts:
-        assert args.random_prompt_count is not None
+        assert args.num_sampled_requests is not None
 
     backend = GenerationBackend[args.backend]
     tokenizer = AutoTokenizer.from_pretrained(args.tokenizer, trust_remote_code=args.trust_remote_code)
@@ -1001,22 +1001,22 @@ def main():
         random.seed(0xCADE)
         np.random.seed(0xCADE)
         if args.dataset_type == "sharegpt":
-            prompts, prompt_lens, response_lens = sample_sharegpt_requests(args.dataset_path, args.random_prompt_count,
+            prompts, prompt_lens, response_lens = sample_sharegpt_requests(args.dataset_path, args.num_sampled_requests,
                                                                            tokenizer, args.max_request_len)
         elif args.dataset_type == "burstgpt":
-            prompts, prompt_lens, response_lens = sample_burstgpt_request(args.dataset_path, args.random_prompt_count,
+            prompts, prompt_lens, response_lens = sample_burstgpt_request(args.dataset_path, args.num_sampled_requests,
                                                                           tokenizer, args.max_request_len)
         elif args.dataset_type == "arxiv":
-            prompts, prompt_lens, response_lens = sample_arxiv_request(args.dataset_path, args.random_prompt_count,
+            prompts, prompt_lens, response_lens = sample_arxiv_request(args.dataset_path, args.num_sampled_requests,
                                                                        tokenizer, args.max_request_len)
         elif args.dataset_type == "alpaca":
             prompts, prompt_lens, response_lens, estimated_response_lens = sample_alpaca_requests(
-                args.dataset_path, args.random_prompt_count, tokenizer, args.max_request_len)
+                args.dataset_path, args.num_sampled_requests, tokenizer, args.max_request_len)
         else:
             raise ValueError("unknown dataset type")
         num_prompts = len(prompts)
     elif args.gen_random_prompts:
-        num_prompts = args.random_prompt_count
+        num_prompts = args.num_sampled_requests
         random.seed(0xCADE)
         np.random.seed(0xCADE)
         prompts, prompt_lens = gen_random_prompts_return_lens(
