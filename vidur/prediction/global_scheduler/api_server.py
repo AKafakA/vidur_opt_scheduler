@@ -24,7 +24,8 @@ n = 0
 m = 0
 start_time = 0
 metrics_type = "min_latency"
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', filemode='w',
+logging.basicConfig(level=logging.INFO,
+                    filemode='a+',
                     filename='benchmark.log')
 logger = logging.getLogger(__name__)
 
@@ -86,11 +87,10 @@ async def generate_benchmark(request: Request) -> Response:
         raise ValueError(f"Invalid metrics type: {metrics_type}")
 
     selected_instance = instances[selected_index]
-
-    logger.info(f"Selected instance: {selected_instance.ip_address} for request {request_id} "
-                f"with metrics type: {metrics_type} and predict results: {predict_results}")
     response = await selected_instance.query_backend(prompt, num_decode_tokens)
     if args.debugging_logs:
+        logger.info(f"Selected instance: {selected_instance.ip_address} for request {request_id} "
+                    f"with metrics type: {metrics_type} and predict results: {predict_results}")
         predict_results[selected_index]['num_requests'] += 1
         response['sampled_avg_gpu_blocks'] = np.mean([x['gpu_blocks'] for x in predict_results])
         response['sampled_var_gpu_blocks'] = np.var([x['gpu_blocks'] for x in predict_results])
