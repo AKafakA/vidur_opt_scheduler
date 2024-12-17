@@ -247,10 +247,10 @@ def calculate_throughput(queries,
     all_response_lens = response_lens
     all_total_tokens = [all_prompt_lens[i] + all_response_lens[i] for i in range(len(all_prompt_lens))]
     # if all waiting latencies are not provided, calculate them by e2e - inference
-    if not all_waiting_latencies and all_inference_latencies:
+    if not all_waiting_latencies and all_inference_latencies and len(all_inference_latencies) == len(all_e2e_latencies):
         all_waiting_latencies = [all_e2e_latencies[i] - all_inference_latencies[i] for i in
                                  range(len(all_e2e_latencies))]
-    elif not all_inference_latencies and all_waiting_latencies:
+    elif not all_inference_latencies and all_waiting_latencies and len(all_waiting_latencies) == len(all_e2e_latencies):
         all_inference_latencies = [all_e2e_latencies[i] - all_waiting_latencies[i] for i in
                                    range(len(all_e2e_latencies))]
     median_waiting_latency = np.median(all_waiting_latencies)
