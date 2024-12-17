@@ -248,10 +248,10 @@ def calculate_throughput(queries,
     all_total_tokens = [all_prompt_lens[i] + all_response_lens[i] for i in range(len(all_prompt_lens))]
     # if all waiting latencies are not provided, calculate them by e2e - inference
     if not all_waiting_latencies and all_inference_latencies:
-        all_waiting_latencies = [all_e2e_latencies[i] * 1000 - all_inference_latencies[i] for i in
+        all_waiting_latencies = [all_e2e_latencies[i] - all_inference_latencies[i] for i in
                                  range(len(all_e2e_latencies))]
     elif not all_inference_latencies and all_waiting_latencies:
-        all_inference_latencies = [all_e2e_latencies[i] * 1000 - all_waiting_latencies[i] for i in
+        all_inference_latencies = [all_e2e_latencies[i] - all_waiting_latencies[i] for i in
                                    range(len(all_e2e_latencies))]
     median_waiting_latency = np.median(all_waiting_latencies)
     median_inference_latency = np.median(all_inference_latencies)
@@ -275,7 +275,7 @@ def calculate_throughput(queries,
     qps = len(responses) / dur_s
     msg1 = f'backend {backend} dur_s {dur_s:.04f} tokens_per_s {throughput_tok_s:.02f} qps {qps:.04f}\n'
     msg2 = f'successful_responses {len(responses)} prompt_token_count {prompt_token_count} response_token_count {response_token_count}\n'
-    msg3 = (f'{median_token_latency=:.04f}(ms), {median_e2e_latency=:.04f}(s), {median_inference_latency=:.04f}(ms), '
+    msg3 = (f'{median_token_latency=:.04f}(ms), {median_e2e_latency=:.04f}(ms), {median_inference_latency=:.04f}(ms), '
             f'{median_waiting_latency=:.04f}(ms), {median_global_scheduling_overhead=:.04f}(ms) \n')
 
     msg = msg1 + msg2 + msg3

@@ -87,8 +87,8 @@ async def generate_benchmark(request: Request) -> Response:
 
     selected_instance = instances[selected_index]
 
-    logger.debug(f"Selected instance: {selected_instance.ip_address} for request {request_id} "
-                 f"with metrics type: {metrics_type} and predict results: {predict_results}")
+    logger.info(f"Selected instance: {selected_instance.ip_address} for request {request_id} "
+                f"with metrics type: {metrics_type} and predict results: {predict_results}")
     response = await selected_instance.query_backend(prompt, num_decode_tokens)
     if args.debugging_logs:
         predict_results[selected_index]['num_requests'] += 1
@@ -136,7 +136,6 @@ async def run_server(args: Namespace,
 
     if args.debugging_logs:
         logger.setLevel(logging.DEBUG)
-
 
     shutdown_task = await serve_http(
         app,
