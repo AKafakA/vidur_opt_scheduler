@@ -33,8 +33,8 @@ class Instance:
         }
         async with aiohttp.ClientSession(timeout=AIOHTTP_TIMEOUT) as session:
             async with session.post(self._predictor_url, json=predict_parameters) as response:
-                res = await response.json()
-                return float(res["metric"])
+                return await response.json()
+
 
     async def query_backend(self, prompt: str, expected_response_len: int):
         output_len = expected_response_len

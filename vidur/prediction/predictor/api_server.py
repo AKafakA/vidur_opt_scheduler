@@ -30,9 +30,8 @@ async def predict(request: Request) -> Response:
     request_dict = await request.json()
     vidur_request = convert_request(request_dict)
     metric = predictor.predict(vidur_request)
-    ret = {"metric": metric}
     logging.debug("Predicted metric: %s for request: %s", metric, str(vidur_request.id))
-    return JSONResponse(ret)
+    return JSONResponse(metric)
 
 
 def build_app(args: Namespace) -> FastAPI:

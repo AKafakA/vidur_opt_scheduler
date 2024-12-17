@@ -1095,7 +1095,7 @@ def main():
         args.burstiness,
         args.log_latencies,
         args.fail_on_response_failure,
-        args.tag_dataset_with_real_response_lens or args.enable_csv_files,
+        args.tag_dataset_with_real_response or args.enable_csv_files,
         start_time
     )
     )
