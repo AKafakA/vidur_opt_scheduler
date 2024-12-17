@@ -72,8 +72,10 @@ class SimulatePredictor(Predictor):
             target_metric = self._current_gpu_blocks
         elif self._config.target_metric == "min_requests":
             target_metric = self._num_requests
-        else:
+        elif self._config.target_metric == "random" or self._config.target_metric == "round_robin":
             target_metric = random.randint(0, 100)
+        else:
+            raise ValueError(f"Invalid metrics type: {self._config.target_metric}")
         metrics["target_metric"] = target_metric
         metrics["gpu_blocks"] = self._current_gpu_blocks
         metrics["num_requests"] = self._num_requests
