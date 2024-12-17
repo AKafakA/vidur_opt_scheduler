@@ -3,7 +3,7 @@ from typing import List, Tuple
 from vidur.config import LengthAwareOptimalSchedulerConfig
 from vidur.entities import Request
 from vidur.request_timeline_predictor.request_timeline_predictor_registry import RequestTimelinePredictorRegistry
-from vidur.request_timeline_predictor.simulate_request_timeline_predictor import get_target_metric_value
+from vidur.request_timeline_predictor.base_request_timeline_predictor import get_target_metric_value
 from vidur.scheduler.global_scheduler.base_global_scheduler import BaseGlobalScheduler
 from vidur.types.optimal_global_scheduler_target_metric import TargetMetric
 

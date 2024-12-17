@@ -9,5 +9,6 @@ class DummyPredictor(Predictor):
         return {
             "target_metric": 1.0,
             "gpu_blocks": 1.0,
-            "num_requests": 1.0
+            "num_requests": 1.0,
+            "num_preempted": 1.0
         }

@@ -103,7 +103,12 @@ async def query_model_block(prompt, verbose, ip_ports):
 
                 output = await resp.json()
                 num_finished_requests += 1
-                output['response_len'] = expected_response_len
+                if 'per_token_latency' in output:
+                    output['response_len'] = len(output['per_token_latency'])
+                elif 'generated_text' in output:
+                    output['response_len'] = len(output['generated_text'].split())
+                else:
+                    output['response_len'] = 0
                 print("num_finised_requests: {}".format(num_finished_requests))
                 return prompt, output
         except aiohttp.ClientError as e:
@@ -145,7 +150,12 @@ async def query_model_vllm(prompt, verbose, ip_ports):
 
                 output = await resp.json()
                 # necessary for latency calc
-                output['response_len'] = expected_response_len
+                if 'per_token_latency' in output:
+                    output['response_len'] = len(output['per_token_latency'])
+                elif 'generated_text' in output:
+                    output['response_len'] = len(output['generated_text'].split())
+                else:
+                    output['response_len'] = 0
                 if verbose and 'generated_text' in output:
                     print(json.dumps(output['generated_text']))
                 num_finished_requests += 1
@@ -328,7 +338,7 @@ def plot_latency_cdf(req_latencies, prefill_latencies, decode_latencies, schedul
         mean_percentage = cumsum[np.where(bin_edges[:-1] <= mean)][-1] / np.sum(hist) * 100
         ax.axvline(mean_value, color='black', linestyle='-', label='mean={:.2f}'.format(mean))
         ax.text(mean_value, mean_percentage, f"{mean_percentage:.2f}", va='bottom', ha='right', color='black')
-        ax.legend(loc='best')
+        # ax.legend(loc='best')
         ax.set_ylabel('Cumulative Percentage(%)')
 
     plot_single(ax_req, req_latencies)
@@ -350,12 +360,21 @@ def plot_latency_cdf(req_latencies, prefill_latencies, decode_latencies, schedul
     index2 = fig_filename.rfind('/', 0, index1)
     fig_filename_title = fig_filename[index2 + 1:]
     plt.suptitle(fig_filename_title, fontsize=6)
+    # set the labels
+    lines_labels = [ax.get_legend_handles_labels() for ax in fig.axes]
+    lines, labels = [sum(lol, []) for lol in zip(*lines_labels)]
+    fig.legend(lines, labels, loc='upper center', ncol=4)
+    # save the figure
     fig.savefig(fig_filename)
 
 
-def plot_len_cdf(prompt_lens, response_lens, total_tokens, log_filename):
+def plot_len_cdf(prompt_lens, response_lens, total_tokens, log_filename, estimated_length=None):
     fig_filename = os.path.splitext(log_filename)[0] + "_len.png"
-    fig, (ax_prompt, ax_response, ax_total) = plt.subplots(1, 3, figsize=(3 * 7, 4.8))
+    if estimated_length:
+        fig, (ax_prompt, ax_response, ax_total, ax_estimated) = plt.subplots(1, 4, figsize=(4 * 7, 4.8))
+    else:
+        fig, (ax_prompt, ax_response, ax_total) = plt.subplots(1, 3, figsize=(3 * 7, 4.8))
+        ax_estimated = None
 
     def plot_single(ax, lens, x_label_str, title_str):
         hist, bin_edges = np.histogram(lens, bins=50)
@@ -382,7 +401,6 @@ def plot_len_cdf(prompt_lens, response_lens, total_tokens, log_filename):
         mean_percentage = cumsum[np.where(bin_edges[:-1] <= mean)][-1] / np.sum(hist) * 100
         ax.axvline(mean_value, color='black', linestyle='-', label='mean={:.2f}'.format(mean))
         ax.text(mean_value, mean_percentage, f"{mean_percentage:.2f}", va='bottom', ha='right', color='black')
-        ax.legend(loc='upper right')
         ax.set_xlabel(x_label_str)
         ax.set_ylabel('Cumulative Percentage(%)')
         ax.set_title(title_str)
@@ -390,11 +408,20 @@ def plot_len_cdf(prompt_lens, response_lens, total_tokens, log_filename):
     plot_single(ax_prompt, prompt_lens, 'prompt len', 'prompt len cdf')
     plot_single(ax_response, response_lens, 'response len', 'response len cdf')
     plot_single(ax_total, total_tokens, 'total token', 'total token cdf')
+    if ax_estimated:
+        plot_single(ax_estimated, [estimated_length[i] - response_lens[i] for i in range(len(estimated_length))],
+                    'Diff between res real/estimated len', 'estimated len cdf')
     index1 = fig_filename.rfind('/')
     index2 = fig_filename.rfind('/', 0, index1)
     fig_filename_title = fig_filename[index2 + 1:]
     plt.suptitle(fig_filename_title, fontsize=6)
+    # set the labels
+    lines_labels = [ax.get_legend_handles_labels() for ax in fig.axes]
+    lines, labels = [sum(lol, []) for lol in zip(*lines_labels)]
+    fig.legend(lines, labels, loc='upper center', ncol=4)
+    # save the figure
     fig.savefig(fig_filename)
+
 
 def plot_sampled_timestamp_metrics(data, log_filename, metric_name):
     fig_filename = os.path.splitext(log_filename)[0] + f"_{metric_name}.png"
@@ -407,6 +434,7 @@ def plot_sampled_timestamp_metrics(data, log_filename, metric_name):
     fig_filename_title = fig_filename[index2 + 1:]
     plt.suptitle(fig_filename_title, fontsize=6)
     fig.savefig(fig_filename)
+
 
 def plot_instance(log_filename_0):
     current_dir = os.path.dirname(os.path.abspath(log_filename_0))
@@ -469,6 +497,7 @@ class MeasureLatency:
         self._var_gpu_blocks = []
         self._var_num_waiting_requests = []
         self._requested_timestamps = []
+        self._num_preempted = []
 
     def measure(self, f):
         async def measured(*args, **kwargs):
@@ -521,9 +550,12 @@ class MeasureLatency:
                 self._avg_num_waiting_requests.append(output['sampled_avg_n_request'])
                 self._var_num_waiting_requests.append(output['sampled_var_n_request'])
                 record_timestamp = True
+            if 'num_preempted' in output:
+                self._num_preempted.append(output['n_preempted'])
             if record_timestamp:
                 self._requested_timestamps.append(start)
             return prompt, output
+
         return measured
 
 
@@ -597,32 +629,31 @@ async def benchmark(
         sampled_responses_length = get_tok_id_lens(tokenizer, sampled_responses)
 
     throughput, actual_qps = calculate_throughput(queries,
-                                      dur_s,
-                                      backend,
-                                      tokenizer,
-                                      median_token_latency,
-                                      median_e2e_latency,
-                                      m._request_latencies,
-                                      m._per_token_latencies,
-                                      m._inference_latencies,
-                                      m._request_ids,
-                                      m._decode_token_latencies,
-                                      m._request_lens,
-                                      m._waiting_latencies,
-                                      m._global_scheduling_overhead,
-                                      log_latencies,
-                                      fail_on_response_failure)
+                                                  dur_s,
+                                                  backend,
+                                                  tokenizer,
+                                                  median_token_latency,
+                                                  median_e2e_latency,
+                                                  m._request_latencies,
+                                                  m._per_token_latencies,
+                                                  m._inference_latencies,
+                                                  m._request_ids,
+                                                  m._decode_token_latencies,
+                                                  m._request_lens,
+                                                  m._waiting_latencies,
+                                                  m._global_scheduling_overhead,
+                                                  log_latencies,
+                                                  fail_on_response_failure)
     calculate_cdf(m._request_latencies)
     plot_latency_cdf(m._request_latencies, m._prefill_token_latencies, m._decode_token_latencies, m._waiting_latencies,
                      m._global_scheduling_overhead, log_filename)
     save_all_decode_token_latencies_npy(m._all_token_latencies, log_filename)
-
-    if m._requested_timestamps:
+    timestamps = [int((x - start_time) * 1000) for x in m._requested_timestamps]
+    if timestamps:
         # data = {'timestamp': m._requested_timestamps, 'metric': m._avg_gpu_blocks}
         # plot_sampled_timestamp_metrics(data, log_filename, "avg_gpu_blocks")
         # data = {'timestamp': m._requested_timestamps, 'metric': m._avg_num_waiting_requests}
         # plot_sampled_timestamp_metrics(data, log_filename, "avg_num_waiting_requests")
-        timestamps = [int((x - start_time) * 1000)  for x in m._requested_timestamps]
         if m._avg_gpu_blocks:
             data = {'timestamp': timestamps, 'metric': m._avg_gpu_blocks}
             plot_sampled_timestamp_metrics(data, log_filename, "avg_gpu_blocks")
@@ -635,6 +666,9 @@ async def benchmark(
         if m._var_num_waiting_requests:
             data = {'timestamp': timestamps, 'metric': m._var_num_waiting_requests}
             plot_sampled_timestamp_metrics(data, log_filename, "var_num_waiting_requests")
+        if m._num_preempted:
+            data = {'timestamp': timestamps, 'metric': m._num_preempted}
+            plot_sampled_timestamp_metrics(data, log_filename, "num_preempted")
 
     # avg_instance_num = plot_instance(log_filename)
     avg_instance_num = 0.0
@@ -653,7 +687,13 @@ async def benchmark(
         m._global_scheduling_overhead, \
         sampled_prompts, \
         sampled_responses, \
-        sampled_responses_length
+        sampled_responses_length, \
+        m._avg_gpu_blocks, \
+        m._var_gpu_blocks, \
+        m._avg_num_waiting_requests, \
+        m._var_num_waiting_requests, \
+        m._num_preempted, \
+        timestamps
 
 
 def gen_random_response_lens(distribution: str, len_mean, len_range, num_prompts):
@@ -746,6 +786,42 @@ def gen_random_prompts_return_lens(tokenizer, distribution: str, len_mean, len_r
         prompts[i] = decoded
 
     return prompts, prompt_lens
+
+
+def sample_alpaca_requests(
+        dataset_path: str,
+        num_requests: int,
+        tokenizer,
+        max_seqlen: int,
+):
+    prompts = []
+    prompt_lens = []
+    response_lens = []
+    estimated_response_lens = []
+    assert dataset_path.endswith('.json')
+    with open(dataset_path) as f:
+        dataset = json.load(f)
+    dataset = [data for data in dataset if len(data["conversations"]) >= 2 and "estimated_response_len"
+               in data["conversations"][1]]
+    for data in dataset:
+        prompt = data["conversations"][0]["value"]
+        response = data["conversations"][1]["value"]
+        target_len = int(data["conversations"][1]["estimated_response_len"])
+        prompt_token_ids = tokenizer(prompt).input_ids
+        completion_token_ids = tokenizer(response).input_ids
+        if len(prompt_token_ids) + len(completion_token_ids) < max_seqlen and \
+                len(prompt_token_ids) > 0 and len(completion_token_ids) > 0:
+            prompts.append(prompt)
+            prompt_lens.append(len(prompt_token_ids))
+            response_lens.append(len(completion_token_ids))
+            estimated_response_lens.append(target_len)
+
+    sampled_ids = [random.randint(0, len(prompts) - 1) for _ in range(num_requests)]
+    sampled_prompts = [prompts[idx] for idx in sampled_ids]
+    sampled_prompt_lens = [prompt_lens[idx] for idx in sampled_ids]
+    sampled_response_lens = [response_lens[idx] for idx in sampled_ids]
+    sampled_estimated_response_lens = [estimated_response_lens[idx] for idx in sampled_ids]
+    return sampled_prompts, sampled_prompt_lens, sampled_response_lens, sampled_estimated_response_lens
 
 
 def sample_sharegpt_requests(
@@ -919,6 +995,7 @@ def main():
     backend = GenerationBackend[args.backend]
     tokenizer = AutoTokenizer.from_pretrained(args.tokenizer, trust_remote_code=args.trust_remote_code)
     print(tokenizer)
+    estimated_response_lens = None
 
     if args.dataset_type:
         random.seed(0xCADE)
@@ -932,6 +1009,11 @@ def main():
         elif args.dataset_type == "arxiv":
             prompts, prompt_lens, response_lens = sample_arxiv_request(args.dataset_path, args.random_prompt_count,
                                                                        tokenizer, args.max_request_len)
+        elif args.dataset_type == "alpaca":
+            prompts, prompt_lens, response_lens, estimated_response_lens = sample_alpaca_requests(
+                args.dataset_path, args.random_prompt_count, tokenizer, args.max_request_len)
+        else:
+            raise ValueError("unknown dataset type")
         num_prompts = len(prompts)
     elif args.gen_random_prompts:
         num_prompts = args.random_prompt_count
@@ -975,26 +1057,32 @@ def main():
             total_tokens.append(prompt_len + gen_len)
         print('total tokens', sorted(list(total_tokens)))
 
-    plot_len_cdf(prompt_lens, response_lens, total_tokens, args.log_filename)
+    plot_len_cdf(prompt_lens, response_lens, total_tokens, args.log_filename, estimated_length=estimated_response_lens)
 
-    prompts = list(zip(prompts, prompt_lens, response_lens))
+    if estimated_response_lens is not None:
+        prompts = list(zip(prompts, prompt_lens, estimated_response_lens))
+    else:
+        prompts = list(zip(prompts, prompt_lens, response_lens))
 
-    throughput, \
-        actual_qps, \
-        prefill_token_latencies, \
-        decode_token_latencies, \
-        inference_latencies, \
-        avg_instance_num, \
-        request_latencies, \
-        request_ids, \
-        decode_sum_latencies, \
-        request_lens, \
-        all_decode_token_latencies, \
-        waiting_latency, \
-        scheduling_overhead,\
-        sampled_prompts,\
-        sampled_responses,\
-        sampled_responses_length = asyncio.run(benchmark(
+    (throughput,
+     actual_qps,
+     prefill_token_latencies,
+     decode_token_latencies,
+     inference_latencies,
+     avg_instance_num,
+     request_latencies, request_ids,
+     decode_sum_latencies, request_lens,
+     all_decode_token_latencies,
+     waiting_latency,
+     scheduling_overhead,
+     sampled_prompts,
+     sampled_responses,
+     sampled_responses_length,
+     avg_gpu_blocks, var_gpu_blocks,
+     avg_num_waiting_requests,
+     var_num_waiting_requests,
+     num_preempted,
+     request_timestamps) = asyncio.run(benchmark(
         backend,
         tokenizer,
         prompts,
@@ -1009,7 +1097,7 @@ def main():
         args.fail_on_response_failure,
         args.tag_dataset_with_real_response_lens or args.enable_csv_files,
         start_time
-        )
+    )
     )
 
     file_name = os.path.splitext(args.log_filename)[0] + "_latency_info.json"
@@ -1061,28 +1149,23 @@ def main():
         # print(f"Average instance number: {avg_instance_num}")
         # print(f"Total time: {time.time() - start_time} s")
         data = {
-            "Throughput": throughput,
-            "prefill_token_latencies": prefill_token_latencies,
-            # decode_token_latencies, \
-            # inference_latencies, \
-            # avg_instance_num, \
-            # request_latencies, \
-            # request_ids, \
-            # decode_sum_latencies, \
-            # request_lens, \
-            # all_decode_token_latencies, \
-            # waiting_latency, \
-            # scheduling_overhead
-            "decode_token_latencies": decode_token_latencies,
-            "decode_sum_latencies": decode_sum_latencies,
-            "inference_latencies": inference_latencies,
-            "request_latencies": request_latencies,
-            "all_decode_token_latencies": all_decode_token_latencies,
-            "waiting_latency": waiting_latency,
-            "scheduling_overhead": scheduling_overhead,
-            "actual_qps": actual_qps,
+            "Throughput": np.float32(throughput),
+            "prefill_token_latencies": np.array(prefill_token_latencies),
+            "decode_token_latencies": np.array(decode_token_latencies),
+            "decode_sum_latencies": np.array(decode_sum_latencies),
+            "inference_latencies": np.array(inference_latencies),
+            "request_latencies": np.array(request_latencies),
+            "waiting_latency": np.array(waiting_latency),
+            "scheduling_overhead": np.array(scheduling_overhead),
+            "actual_qps": np.float32(actual_qps),
+            "avg_gpu_blocks": np.array(avg_gpu_blocks),
+            "var_gpu_blocks": np.array(var_gpu_blocks),
+            "avg_num_waiting_requests": np.array(avg_num_waiting_requests),
+            "var_num_waiting_requests": np.array(var_num_waiting_requests),
+            "num_preempted": np.array(num_preempted),
+            "request_timestamps_in_ms": np.array(request_timestamps),
         }
-        np.savez(os.path.splitext(args.log_filename)[0] + "_all_metrics.npz", **data)
+        np.savez(os.path.splitext(args.log_filename)[0] + f"_all_metrics.npz", **data)
 
 
 if __name__ == '__main__':

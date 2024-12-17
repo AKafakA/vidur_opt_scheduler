@@ -96,6 +96,7 @@ async def generate_benchmark(request: Request) -> Response:
         response['sampled_var_gpu_blocks'] = np.var([x['gpu_blocks'] for x in predict_results])
         response['sampled_avg_n_request'] = np.mean([x['num_requests'] for x in predict_results])
         response['sampled_var_n_request'] = np.var([x['num_requests'] for x in predict_results])
+        response['num_preempted'] = sum([x['num_preempted'] for x in predict_results])
     return JSONResponse(response)
 
 
@@ -177,7 +178,7 @@ if __name__ == "__main__":
     parser.add_argument("--metrics_type", type=str, default="min_latency")
     parser.add_argument("--num_query_predictor", type=int, default=1)
     parser.add_argument("--num_required_predictor", type=int, default=1)
-    parser.add_argument("--debugging_logs", type=bool, default=False)
+    parser.add_argument("--debugging_logs", type=bool, default=True)
     args = parser.parse_args()
     # in case the limited by the number of files
     resource.setrlimit(resource.RLIMIT_NOFILE, (65536, 65536))

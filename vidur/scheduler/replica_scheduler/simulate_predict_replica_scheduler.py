@@ -44,13 +44,14 @@ class SimulatePredictReplicaScheduler:
             self.__push_batch(new_batch, self._start_time)
 
         while not self._target_request.completed and self._scheduled_batch_heap:
-            (batch_id, batch_execution_time, schedule_time, batch) = self.__pop_batch()
+            (batch_id, batch_execution_time, schedule_time, batch, num_allocated_blocks) = self.__pop_batch()
             if self._target_request.id in batch.request_ids:
                 self._target_request_batch_info.append({
                     "batch_id": batch_id,
                     "batch_execution_time": batch_execution_time,
                     "schedule_time": schedule_time,
-                    "batch_size": batch.size
+                    "batch_size": batch.size,
+                    "num_allocated_blocks": num_allocated_blocks
                 })
 
     def __push_batch(self, batch: Batch, schedule_time: int):
@@ -74,9 +75,10 @@ class SimulatePredictReplicaScheduler:
         batch.on_batch_end(completed_at)
         self._replica_scheduler.on_batch_end(batch)
         new_batches = self._replica_scheduler.on_schedule()
+        num_allocated_blocks = self._replica_scheduler.num_allocated_blocks
         for new_batch in new_batches:
             self.__push_batch(new_batch, completed_at)
-        return batch_id, batch_execution_time, schedule_time, batch
+        return batch_id, batch_execution_time, schedule_time, batch, num_allocated_blocks
 
     def __get_execution_time(self, batch: Batch, stage_id: int):
         if self._estimate_execution_time:
@@ -117,6 +119,11 @@ class SimulatePredictReplicaScheduler:
     @property
     def max_batch_size(self):
         return max([info["batch_size"] for info in self._target_request_batch_info])
+
+    @property
+    def avg_block_size(self):
+        return (sum([info["num_allocated_blocks"] for info in self._target_request_batch_info]) /
+                len(self._target_request_batch_info))
 
     def get_execution_time(self, batch: Batch, stage_id: int):
         if self._estimate_execution_time:
