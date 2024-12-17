@@ -281,7 +281,7 @@ def calculate_throughput(queries,
         assert len(responses) == len(queries), \
             f"{fail_on_response_failure=}, expected number of successful respones to equal number of queries, got {len(responses)} vs {len(queries)}"
 
-    return throughput_tok_s
+    return throughput_tok_s, qps
 
 
 def calculate_cdf(latencies):
@@ -328,7 +328,7 @@ def plot_latency_cdf(req_latencies, prefill_latencies, decode_latencies, schedul
         mean_percentage = cumsum[np.where(bin_edges[:-1] <= mean)][-1] / np.sum(hist) * 100
         ax.axvline(mean_value, color='black', linestyle='-', label='mean={:.2f}'.format(mean))
         ax.text(mean_value, mean_percentage, f"{mean_percentage:.2f}", va='bottom', ha='right', color='black')
-        ax.legend(loc='upper right')
+        ax.legend(loc='best')
         ax.set_ylabel('Cumulative Percentage(%)')
 
     plot_single(ax_req, req_latencies)
@@ -336,7 +336,7 @@ def plot_latency_cdf(req_latencies, prefill_latencies, decode_latencies, schedul
     plot_single(ax_decode, decode_latencies)
     plot_single(ax_scheduling_overhead, scheduling_overhead)
     plot_single(ax_waiting_latency, waiting_latency)
-    ax_req.set_xlabel('Latency/req(s)')
+    ax_req.set_xlabel('Latency/req(ms)')
     ax_req.set_title('request cdf')
     ax_prefill.set_xlabel('Latency/token(ms)')
     ax_prefill.set_title('prefill cdf')
@@ -396,6 +396,17 @@ def plot_len_cdf(prompt_lens, response_lens, total_tokens, log_filename):
     plt.suptitle(fig_filename_title, fontsize=6)
     fig.savefig(fig_filename)
 
+def plot_sampled_timestamp_metrics(data, log_filename, metric_name):
+    fig_filename = os.path.splitext(log_filename)[0] + f"_{metric_name}.png"
+    fig, ax = plt.subplots()
+    ax.plot(data['timestamp'], data['metric'])
+    ax.set_xlabel('timestamp (ms)')
+    ax.set_ylabel(metric_name)
+    index1 = fig_filename.rfind('/')
+    index2 = fig_filename.rfind('/', 0, index1)
+    fig_filename_title = fig_filename[index2 + 1:]
+    plt.suptitle(fig_filename_title, fontsize=6)
+    fig.savefig(fig_filename)
 
 def plot_instance(log_filename_0):
     current_dir = os.path.dirname(os.path.abspath(log_filename_0))
@@ -453,6 +464,11 @@ class MeasureLatency:
         self._waiting_latencies = []
         self._engine_ttft = []
         self._global_scheduling_overhead = []
+        self._avg_gpu_blocks = []
+        self._avg_num_waiting_requests = []
+        self._var_gpu_blocks = []
+        self._var_num_waiting_requests = []
+        self._requested_timestamps = []
 
     def measure(self, f):
         async def measured(*args, **kwargs):
@@ -461,7 +477,7 @@ class MeasureLatency:
             # Do not record latency if request failed.
             if 'generated_text' in output:
                 latency = time.time() - start
-                self._request_latencies.append(latency)
+                self._request_latencies.append(latency * 1000)
                 try:
                     self._per_token_latencies.append(
                         latency / output['response_len'])
@@ -496,6 +512,17 @@ class MeasureLatency:
                 engine_ttft = output['ttft']
             if client_ttft > 0 and engine_ttft > 0:
                 self._global_scheduling_overhead.append(client_ttft - engine_ttft)
+            record_timestamp = False
+            if 'sampled_avg_gpu_blocks' in output:
+                self._avg_gpu_blocks.append(output['sampled_avg_gpu_blocks'])
+                self._var_gpu_blocks.append(output['sampled_var_gpu_blocks'])
+                record_timestamp = True
+            if 'sampled_avg_n_request' in output:
+                self._avg_num_waiting_requests.append(output['sampled_avg_n_request'])
+                self._var_num_waiting_requests.append(output['sampled_var_n_request'])
+                record_timestamp = True
+            if record_timestamp:
+                self._requested_timestamps.append(start)
             return prompt, output
         return measured
 
@@ -519,6 +546,7 @@ async def benchmark(
         log_latencies: bool,
         fail_on_response_failure: bool,
         output_gen_lens: bool = False,
+        start_time: float = 0.0,
 ):
     if backend == GenerationBackend.vLLM:
         query_model = query_model_vllm
@@ -539,8 +567,6 @@ async def benchmark(
 
     if distribution == "burst":
         qps = float('inf')
-    if distribution != "gamma":
-        coefficient_variation = 0.0
 
     print(
         f'Starting with backend={backend}, num_prompts={len(prompts)}, allow_variable_generation_length={allow_variable_generation_length}')
@@ -570,7 +596,7 @@ async def benchmark(
                 sampled_responses.append(output['generated_text'])
         sampled_responses_length = get_tok_id_lens(tokenizer, sampled_responses)
 
-    throughput = calculate_throughput(queries,
+    throughput, actual_qps = calculate_throughput(queries,
                                       dur_s,
                                       backend,
                                       tokenizer,
@@ -590,10 +616,30 @@ async def benchmark(
     plot_latency_cdf(m._request_latencies, m._prefill_token_latencies, m._decode_token_latencies, m._waiting_latencies,
                      m._global_scheduling_overhead, log_filename)
     save_all_decode_token_latencies_npy(m._all_token_latencies, log_filename)
+
+    if m._requested_timestamps:
+        # data = {'timestamp': m._requested_timestamps, 'metric': m._avg_gpu_blocks}
+        # plot_sampled_timestamp_metrics(data, log_filename, "avg_gpu_blocks")
+        # data = {'timestamp': m._requested_timestamps, 'metric': m._avg_num_waiting_requests}
+        # plot_sampled_timestamp_metrics(data, log_filename, "avg_num_waiting_requests")
+        timestamps = [int((x - start_time) * 1000)  for x in m._requested_timestamps]
+        if m._avg_gpu_blocks:
+            data = {'timestamp': timestamps, 'metric': m._avg_gpu_blocks}
+            plot_sampled_timestamp_metrics(data, log_filename, "avg_gpu_blocks")
+        if m._avg_num_waiting_requests:
+            data = {'timestamp': timestamps, 'metric': m._avg_num_waiting_requests}
+            plot_sampled_timestamp_metrics(data, log_filename, "avg_num_waiting_requests")
+        if m._var_gpu_blocks:
+            data = {'timestamp': timestamps, 'metric': m._var_gpu_blocks}
+            plot_sampled_timestamp_metrics(data, log_filename, "var_gpu_blocks")
+        if m._var_num_waiting_requests:
+            data = {'timestamp': timestamps, 'metric': m._var_num_waiting_requests}
+            plot_sampled_timestamp_metrics(data, log_filename, "var_num_waiting_requests")
+
     # avg_instance_num = plot_instance(log_filename)
     avg_instance_num = 0.0
-
     return throughput, \
+        actual_qps, \
         m._prefill_token_latencies, \
         m._decode_token_latencies, \
         m._inference_latencies, \
@@ -859,11 +905,13 @@ def main():
     parser.add_argument('--tag_dataset_with_real_response',
                         action='store_false')
     parser.add_argument('--enable_csv_files', action='store_false')
+    parser.add_argument('--keep_all_metrics', action='store_false')
 
     # parser.add_argument('--enable_migration', type=int, default=0)
     # parser.add_argument('--priority_ratio', type=float, default=0.0)
 
     args = parser.parse_args()
+    start_time = time.time()
 
     if args.gen_random_prompts:
         assert args.random_prompt_count is not None
@@ -932,6 +980,7 @@ def main():
     prompts = list(zip(prompts, prompt_lens, response_lens))
 
     throughput, \
+        actual_qps, \
         prefill_token_latencies, \
         decode_token_latencies, \
         inference_latencies, \
@@ -958,8 +1007,9 @@ def main():
         args.burstiness,
         args.log_latencies,
         args.fail_on_response_failure,
-        args.tag_dataset_with_real_response or args.enable_csv_files,
-    )
+        args.tag_dataset_with_real_response_lens or args.enable_csv_files,
+        start_time
+        )
     )
 
     file_name = os.path.splitext(args.log_filename)[0] + "_latency_info.json"
@@ -999,6 +1049,40 @@ def main():
         if args.enable_csv_files:
             csv_file_name = args.dataset_path.replace('.jsonl', '_lens.csv')
             generate_lens_files(csv_file_name, prompt_lens, sampled_responses_length)
+
+    if args.keep_all_metrics:
+        # print(f"Throughput: {throughput} req/s")
+        # print(f"Average prefill token latency: {np.mean(prefill_token_latencies)} ms")
+        # print(f"Average decode token latency: {np.mean(decode_token_latencies)} ms")
+        # print(f"Average inference latency: {np.mean(inference_latencies)} ms")
+        # print(f"Average request latency: {np.mean(request_latencies)} ms")
+        # print(f"Average waiting latency: {np.mean(waiting_latency)} ms")
+        # print(f"Average scheduling overhead: {np.mean(scheduling_overhead)} ms")
+        # print(f"Average instance number: {avg_instance_num}")
+        # print(f"Total time: {time.time() - start_time} s")
+        data = {
+            "Throughput": throughput,
+            "prefill_token_latencies": prefill_token_latencies,
+            # decode_token_latencies, \
+            # inference_latencies, \
+            # avg_instance_num, \
+            # request_latencies, \
+            # request_ids, \
+            # decode_sum_latencies, \
+            # request_lens, \
+            # all_decode_token_latencies, \
+            # waiting_latency, \
+            # scheduling_overhead
+            "decode_token_latencies": decode_token_latencies,
+            "decode_sum_latencies": decode_sum_latencies,
+            "inference_latencies": inference_latencies,
+            "request_latencies": request_latencies,
+            "all_decode_token_latencies": all_decode_token_latencies,
+            "waiting_latency": waiting_latency,
+            "scheduling_overhead": scheduling_overhead,
+            "actual_qps": actual_qps,
+        }
+        np.savez(os.path.splitext(args.log_filename)[0] + "_all_metrics.npz", **data)
 
 
 if __name__ == '__main__':

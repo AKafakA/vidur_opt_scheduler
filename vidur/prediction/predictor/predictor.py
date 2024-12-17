@@ -1,3 +1,5 @@
+from typing import Dict
+
 from vidur.entities import Request
 from vidur.prediction.predictor.predictor_config import PredictorConfig
 from abc import ABC, abstractmethod
@@ -15,7 +17,7 @@ class Predictor(ABC):
         self._instance_port = port
 
     @abstractmethod
-    def predict(self, target_request: Request) -> float:
+    def predict(self, target_request: Request) -> Dict:
         """Predict the completion time of the request.
         """
         pass

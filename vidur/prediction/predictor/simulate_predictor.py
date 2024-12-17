@@ -60,18 +60,23 @@ class SimulatePredictor(Predictor):
 
     def predict(self, target_request: Request):
         self.reset()
+        metrics = {}
         if self._need_to_predict:
             from vidur.request_timeline_predictor.simulate_request_timeline_predictor import get_target_metric_value
             metric = get_target_metric_value(self._target_metric, self._replica_scheduler, target_request,
                                              self._request_timeline_predictor)
             self._request_decode_length_prediction_map[target_request.id] = target_request.num_decode_tokens
-            return metric
-        elif self._config.target_metric == "max_memory_usage":
-            return self._current_gpu_blocks
-        elif self._config.target_metric == "min_request":
-            return self._num_requests
+            target_metric = metric
+        elif self._config.target_metric == "min_gpu_blocks":
+            target_metric = self._current_gpu_blocks
+        elif self._config.target_metric == "min_requests":
+            target_metric = self._num_requests
         else:
-            return random.random()
+            target_metric = random.randint(0, 100)
+        metrics["target_metric"] = target_metric
+        metrics["gpu_blocks"] = self._current_gpu_blocks
+        metrics["num_requests"] = self._num_requests
+        return metrics
 
     def __generate_requests_from_backend(self, request_info: dict):
         request_id = request_info["request_id"]

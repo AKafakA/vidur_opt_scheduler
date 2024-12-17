@@ -6,4 +6,8 @@ class DummyPredictor(Predictor):
         super().__init__(config, port)
 
     def predict(self, target_request):
-        return 1.0
+        return {
+            "target_metric": 1.0,
+            "gpu_blocks": 1.0,
+            "num_requests": 1.0
+        }

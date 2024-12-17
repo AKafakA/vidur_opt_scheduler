@@ -21,3 +21,5 @@ class TargetMetric(BaseIntEnum):
     MAX_MIN_BATCH_SIZE = 3
     MIN_SCHEDULING_DELAY = 4
     MIN_DECODING_DELAY = 5
+    MIN_GPU_BLOCKS = 6
+    MIN_REQUESTS = 7
