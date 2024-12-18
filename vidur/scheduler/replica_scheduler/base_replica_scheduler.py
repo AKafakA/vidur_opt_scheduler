@@ -166,3 +166,7 @@ class BaseReplicaScheduler(ABC):
             self._num_running_batches += 1
             self.running_batches.append(batch)
         return scheduled_batches
+
+    def print_requests(self):
+        for request in self._request_queue:
+            print(f"request id: {request.id} and processed token: {request.num_processed_tokens}")

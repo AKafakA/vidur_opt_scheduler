@@ -234,6 +234,14 @@ class Request(BaseEntity):
         self._num_processed_tokens += num_tokens_processed
         self._latest_iteration_completed_at = time
 
+        # print("request_id " + str(self.id))
+        # print("prefilled token")
+        # print(self._num_prefill_tokens)
+        # print("decode token")
+        # print(self._num_decode_tokens)
+        # print("generated token")
+        # print(self._num_processed_tokens)
+
         assert self._num_processed_tokens <= self.total_tokens
 
         if self._num_processed_tokens == self._num_prefill_tokens:

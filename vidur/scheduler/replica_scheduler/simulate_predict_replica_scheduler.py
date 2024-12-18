@@ -17,11 +17,17 @@ class SimulatePredictReplicaScheduler:
                  request: Request,
                  execution_time_predictor: BaseExecutionTimePredictor,
                  use_estimated_execution_time=True,
+                 copy_replica_scheduler=True,
                  start_time=0) -> None:
         self._replica_id = replica_scheduler.replica_id
         self._raw_replica_scheduler = replica_scheduler
-        self._target_request = copy.deepcopy(request)
-        self._replica_scheduler = copy.deepcopy(replica_scheduler)
+        if copy_replica_scheduler:
+            self._replica_scheduler = copy.deepcopy(replica_scheduler)
+            self._target_request = copy.deepcopy(request)
+        else:
+            self._replica_scheduler = replica_scheduler
+            self._target_request = request
+        self._copy_needed = copy_replica_scheduler
         self._execution_time_predictor = execution_time_predictor
         self._target_request_batch_info = []
         self._scheduled_batch_heap = []
@@ -38,10 +44,12 @@ class SimulatePredictReplicaScheduler:
         for batch in existing_batches:
             self.__push_batch(copy.copy(batch), self._start_time)
         new_batches = self._replica_scheduler.on_schedule()
+
         # so the initialized batch == the number of stages then only be pushed after pop so that the batch number
         # is limited by the number of stages
         for new_batch in new_batches:
             self.__push_batch(new_batch, self._start_time)
+
 
         while not self._target_request.completed and self._scheduled_batch_heap:
             (batch_id, batch_execution_time, schedule_time, batch, num_allocated_blocks) = self.__pop_batch()
