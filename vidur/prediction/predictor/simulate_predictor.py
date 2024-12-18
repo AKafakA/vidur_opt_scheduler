@@ -40,7 +40,7 @@ class SimulatePredictor(Predictor):
             execution_time_predictor=self._execution_time_predictor,
         )
         self._request_queue = []
-        if config.target_metric in TargetMetric.__members__:
+        if config.target_metric.upper() in TargetMetric.__members__.keys():
             self._target_metric = TargetMetric.from_str(config.target_metric)
             self._need_to_predict = True
         else:
@@ -67,6 +67,7 @@ class SimulatePredictor(Predictor):
             metric = get_target_metric_value(self._target_metric, self._replica_scheduler, target_request,
                                              self._request_timeline_predictor)
             self._request_decode_length_prediction_map[target_request.id] = target_request.num_decode_tokens
+            print(self._request_decode_length_prediction_map.keys())
             target_metric = metric
         elif self._config.target_metric == "min_gpu_blocks":
             target_metric = self._current_gpu_blocks
@@ -83,7 +84,7 @@ class SimulatePredictor(Predictor):
         return metrics
 
     def __generate_requests_from_backend(self, request_info: dict):
-        request_id = request_info["request_id"]
+        request_id = int(request_info["request_id"])
         arrival_time = request_info["arrival_time"]
         context_length = request_info["seq_prompts_length"]
         decoded_length = request_info["seq_total_output_length"]

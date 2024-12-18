@@ -87,7 +87,7 @@ async def generate_benchmark(request: Request) -> Response:
         raise ValueError(f"Invalid metrics type: {metrics_type}")
 
     selected_instance = instances[selected_index]
-    response = await selected_instance.query_backend(prompt, num_decode_tokens)
+    response = await selected_instance.query_backend(prompt, num_decode_tokens, request_id)
     if args.debugging_logs:
         logger.info(f"Selected instance: {selected_instance.ip_address} for request {request_id} "
                     f"with metrics type: {metrics_type} and predict results: {predict_results}")

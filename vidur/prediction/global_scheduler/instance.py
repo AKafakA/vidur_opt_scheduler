@@ -36,7 +36,7 @@ class Instance:
                 return await response.json()
 
 
-    async def query_backend(self, prompt: str, expected_response_len: int):
+    async def query_backend(self, prompt: str, expected_response_len: int, request_id: int):
         output_len = expected_response_len
         request_dict = {
             "prompt": prompt,
@@ -47,6 +47,7 @@ class Instance:
             "max_tokens": max(output_len, 1),
             "ignore_eos": True,
             "stream": False,
+            "request_id": str(request_id)
         }
         async with aiohttp.ClientSession(timeout=AIOHTTP_TIMEOUT) as session:
             async with session.post(self._backend_url, json=request_dict) as response:

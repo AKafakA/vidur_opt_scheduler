@@ -2,6 +2,7 @@
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
+import shutil
 
 # http://www.apache.org/licenses/LICENSE-2.0
 
@@ -304,7 +305,7 @@ def calculate_cdf(latencies):
 
 
 def plot_latency_cdf(req_latencies, prefill_latencies, decode_latencies, scheduling_overhead, waiting_latency,
-                     log_filename):
+                     log_filename, output_dir='.'):
     fig_filename = os.path.splitext(log_filename)[0] + "_latency.png"
     fig, (ax_req, ax_prefill, ax_decode, ax_scheduling_overhead, ax_waiting_latency) = plt.subplots(1, 5,
                                                                                                     figsize=(5 * 7, 6))
@@ -365,10 +366,10 @@ def plot_latency_cdf(req_latencies, prefill_latencies, decode_latencies, schedul
     lines, labels = [sum(lol, []) for lol in zip(*lines_labels)]
     fig.legend(lines, labels, loc='upper center', ncol=4)
     # save the figure
-    fig.savefig(fig_filename)
+    fig.savefig(output_dir + '/' + fig_filename)
 
 
-def plot_len_cdf(prompt_lens, response_lens, total_tokens, log_filename, estimated_length=None):
+def plot_len_cdf(prompt_lens, response_lens, total_tokens, log_filename, estimated_length=None, output_dir='.'):
     fig_filename = os.path.splitext(log_filename)[0] + "_len.png"
     if estimated_length:
         fig, (ax_prompt, ax_response, ax_total, ax_estimated) = plt.subplots(1, 4, figsize=(4 * 7, 4.8))
@@ -420,20 +421,17 @@ def plot_len_cdf(prompt_lens, response_lens, total_tokens, log_filename, estimat
     lines, labels = [sum(lol, []) for lol in zip(*lines_labels)]
     fig.legend(lines, labels, loc='upper center', ncol=4)
     # save the figure
-    fig.savefig(fig_filename)
+    fig.savefig(output_dir + "/" + fig_filename)
 
 
-def plot_sampled_timestamp_metrics(data, log_filename, metric_name):
+def plot_sampled_timestamp_metrics(data, log_filename, metric_name, output_dir='.'):
     fig_filename = os.path.splitext(log_filename)[0] + f"_{metric_name}.png"
     fig, ax = plt.subplots()
     ax.plot(data['timestamp'], data['metric'])
     ax.set_xlabel('timestamp (ms)')
     ax.set_ylabel(metric_name)
-    index1 = fig_filename.rfind('/')
-    index2 = fig_filename.rfind('/', 0, index1)
-    fig_filename_title = fig_filename[index2 + 1:]
-    plt.suptitle(fig_filename_title, fontsize=6)
-    fig.savefig(fig_filename)
+    plt.suptitle(metric_name, fontsize=6)
+    fig.savefig(output_dir + "/" + fig_filename)
 
 
 def plot_instance(log_filename_0):
@@ -465,7 +463,7 @@ def plot_instance(log_filename_0):
     return avg_instance_num
 
 
-def save_all_decode_token_latencies_npy(all_token_latencies: List[np.ndarray], log_filename):
+def save_all_decode_token_latencies_npy(all_token_latencies: List[np.ndarray], log_filename, output_dir='.'):
     dtype = [('timestamp', float), ('latency', float)]
     all_lat_pairs = []
     for arr in all_token_latencies:
@@ -474,7 +472,7 @@ def save_all_decode_token_latencies_npy(all_token_latencies: List[np.ndarray], l
             all_lat_pairs.append((pair[0], pair[1]))
     all_lat_pairs = np.array(all_lat_pairs, dtype=dtype)
     all_lat_pairs = np.sort(all_lat_pairs, order='timestamp')
-    np.save(os.path.splitext(log_filename)[0], all_lat_pairs)
+    np.save(output_dir + '/' + os.path.splitext(log_filename)[0], all_lat_pairs)
 
 
 class MeasureLatency:
@@ -578,7 +576,7 @@ async def benchmark(
         log_latencies: bool,
         fail_on_response_failure: bool,
         output_gen_lens: bool = False,
-        start_time: float = 0.0,
+        output_dir: str = '.'
 ):
     if backend == GenerationBackend.vLLM:
         query_model = query_model_vllm
@@ -646,8 +644,8 @@ async def benchmark(
                                                   fail_on_response_failure)
     calculate_cdf(m._request_latencies)
     plot_latency_cdf(m._request_latencies, m._prefill_token_latencies, m._decode_token_latencies, m._waiting_latencies,
-                     m._global_scheduling_overhead, log_filename)
-    save_all_decode_token_latencies_npy(m._all_token_latencies, log_filename)
+                     m._global_scheduling_overhead, log_filename, output_dir=output_dir)
+    save_all_decode_token_latencies_npy(m._all_token_latencies, log_filename, output_dir=output_dir)
     timestamps = [int((x - start_time) * 1000) for x in m._requested_timestamps]
     if timestamps:
         # data = {'timestamp': m._requested_timestamps, 'metric': m._avg_gpu_blocks}
@@ -656,19 +654,19 @@ async def benchmark(
         # plot_sampled_timestamp_metrics(data, log_filename, "avg_num_waiting_requests")
         if m._avg_gpu_blocks:
             data = {'timestamp': timestamps, 'metric': m._avg_gpu_blocks}
-            plot_sampled_timestamp_metrics(data, log_filename, "avg_gpu_blocks")
+            plot_sampled_timestamp_metrics(data, log_filename, "avg_gpu_blocks", output_dir)
         if m._avg_num_waiting_requests:
             data = {'timestamp': timestamps, 'metric': m._avg_num_waiting_requests}
-            plot_sampled_timestamp_metrics(data, log_filename, "avg_num_waiting_requests")
+            plot_sampled_timestamp_metrics(data, log_filename, "avg_num_waiting_requests", output_dir=output_dir)
         if m._var_gpu_blocks:
             data = {'timestamp': timestamps, 'metric': m._var_gpu_blocks}
-            plot_sampled_timestamp_metrics(data, log_filename, "var_gpu_blocks")
+            plot_sampled_timestamp_metrics(data, log_filename, "var_gpu_blocks", output_dir)
         if m._var_num_waiting_requests:
             data = {'timestamp': timestamps, 'metric': m._var_num_waiting_requests}
-            plot_sampled_timestamp_metrics(data, log_filename, "var_num_waiting_requests")
+            plot_sampled_timestamp_metrics(data, log_filename, "var_num_waiting_requests", output_dir)
         if m._num_preempted:
             data = {'timestamp': timestamps, 'metric': m._num_preempted}
-            plot_sampled_timestamp_metrics(data, log_filename, "num_preempted")
+            plot_sampled_timestamp_metrics(data, log_filename, "num_preempted", output_dir)
 
     # avg_instance_num = plot_instance(log_filename)
     avg_instance_num = 0.0
@@ -982,12 +980,17 @@ def main():
                         action='store_false')
     parser.add_argument('--enable_csv_files', action='store_false')
     parser.add_argument('--keep_all_metrics', action='store_false')
+    parser.add_argument("--output_dir", type=str, default="./benchmark_output")
 
     # parser.add_argument('--enable_migration', type=int, default=0)
     # parser.add_argument('--priority_ratio', type=float, default=0.0)
 
     args = parser.parse_args()
     start_time = time.time()
+
+    if os.path.exists(args.output_dir):
+        shutil.rmtree(args.output_dir)
+    os.makedirs(args.output_dir)
 
     if args.gen_random_prompts:
         assert args.num_sampled_requests is not None
@@ -1057,7 +1060,8 @@ def main():
             total_tokens.append(prompt_len + gen_len)
         print('total tokens', sorted(list(total_tokens)))
 
-    plot_len_cdf(prompt_lens, response_lens, total_tokens, args.log_filename, estimated_length=estimated_response_lens)
+    plot_len_cdf(prompt_lens, response_lens, total_tokens, args.log_filename, estimated_length=estimated_response_lens,
+                 output_dir = args.output_dir)
 
     if estimated_response_lens is not None:
         prompts = list(zip(prompts, prompt_lens, estimated_response_lens))
@@ -1096,7 +1100,7 @@ def main():
         args.log_latencies,
         args.fail_on_response_failure,
         args.tag_dataset_with_real_response or args.enable_csv_files,
-        start_time
+        args.output_dir
     )
     )
 
@@ -1165,7 +1169,7 @@ def main():
             "num_preempted": np.array(num_preempted),
             "request_timestamps_in_ms": np.array(request_timestamps),
         }
-        np.savez(os.path.splitext(args.log_filename)[0] + f"_all_metrics.npz", **data)
+        np.savez(args.output_dir + '/' + os.path.splitext(args.log_filename)[0] + f"_all_metrics.npz", **data)
 
 
 if __name__ == '__main__':
