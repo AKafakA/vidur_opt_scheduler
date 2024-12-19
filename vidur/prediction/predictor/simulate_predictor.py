@@ -57,6 +57,8 @@ class SimulatePredictor(Predictor):
         replica_scheduler = self.get_replica_scheduler()
         metrics = {}
         self._request_decode_length_prediction_map[target_request.id] = target_request.num_decode_tokens
+        print(f"target request id {target_request.id} and current decode length cache "
+              f"{self._request_decode_length_prediction_map.keys()}")
         # replica_scheduler.print_requests()
         if self._need_to_predict:
             from vidur.request_timeline_predictor.base_request_timeline_predictor import get_target_metric_value
@@ -114,8 +116,8 @@ class SimulatePredictor(Predictor):
             if self._need_to_predict:
                 print('running')
                 for requests_info in running_request_length:
+                    print(f'{requests_info["request_id"]}')
                     request = self.__generate_requests_from_backend(requests_info)
-                    print(f'{request.id}')
                     num_required_blocks = ceil(
                         request.num_processed_tokens / self._config.replica_scheduler_config.block_size
                     )
