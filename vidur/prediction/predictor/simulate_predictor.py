@@ -112,8 +112,10 @@ class SimulatePredictor(Predictor):
             running_request_length = batch_request_information["running"]
             swap_request_length = batch_request_information["swap"]
             if self._need_to_predict:
+                print('running')
                 for requests_info in running_request_length:
                     request = self.__generate_requests_from_backend(requests_info)
+                    print(f'{request.id}')
                     num_required_blocks = ceil(
                         request.num_processed_tokens / self._config.replica_scheduler_config.block_size
                     )
@@ -124,8 +126,10 @@ class SimulatePredictor(Predictor):
                 preempted_request = []
                 waiting_request = []
 
+                print('waiting')
                 for requests_info in itertools.chain(waiting_request_length, swap_request_length):
                     request = self.__generate_requests_from_backend(requests_info)
+                    print(f'{request.id}')
                     if request.num_processed_tokens > 0:
                         request.restart()
                         preempted_request.append(request)

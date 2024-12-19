@@ -1,0 +1,1 @@
+parallel-ssh -h vidur/prediction/config/hosts "pkill -f vllm && pkill -f vidur"
