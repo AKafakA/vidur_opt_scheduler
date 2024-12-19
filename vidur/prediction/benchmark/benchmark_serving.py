@@ -954,7 +954,7 @@ def main():
     parser.add_argument('--variable_prompt_lens_distribution', choices=[
         "uniform", "exponential", "capped_exponential", "zipf"], default="uniform")
     parser.add_argument('--num_sampled_requests', type=int, default=10)
-    parser.add_argument('--max_request_len', type=int, default=8192)
+    parser.add_argument('--max_request_len', type=int, default=4096)
     parser.add_argument(
         '--distribution', choices=["uniform", "gamma", "exponential"], default="gamma")
     parser.add_argument('--qps', type=float, default=4.0)

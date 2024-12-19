@@ -2,7 +2,7 @@ import aiohttp
 
 from vidur.prediction.server_utils import post_predicting_request, get_predicting_response
 
-AIOHTTP_TIMEOUT = aiohttp.ClientTimeout(total=6 * 60 * 60)
+AIOHTTP_TIMEOUT = aiohttp.ClientTimeout(total=6 * 60 * 60 * 10)
 
 
 class Instance:

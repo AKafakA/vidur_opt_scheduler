@@ -1,6 +1,7 @@
 import random
 import time
-
+from math import ceil
+import itertools
 
 from vidur.config import DummyRequestGeneratorConfig, MetricsConfig, \
     SimulationRequestTimelinePredictorConfig
@@ -60,7 +61,6 @@ class SimulatePredictor(Predictor):
             from vidur.request_timeline_predictor.base_request_timeline_predictor import get_target_metric_value
             metric = get_target_metric_value(self._target_metric, replica_scheduler, target_request,
                                              self._request_timeline_predictor)
-            self._request_decode_length_prediction_map[target_request.id] = target_request.num_decode_tokens
             target_metric = metric
         elif self._config.target_metric == "min_gpu_blocks":
             target_metric = self._current_gpu_blocks
@@ -70,6 +70,7 @@ class SimulatePredictor(Predictor):
             target_metric = random.randint(0, 100)
         else:
             raise ValueError(f"Invalid metrics type: {self._config.target_metric}")
+        self._request_decode_length_prediction_map[target_request.id] = target_request.num_decode_tokens
         metrics["target_metric"] = target_metric
         metrics["gpu_blocks"] = self._current_gpu_blocks
         metrics["num_requests"] = self._num_requests
@@ -113,17 +114,25 @@ class SimulatePredictor(Predictor):
             if self._need_to_predict:
                 for requests_info in running_request_length:
                     request = self.__generate_requests_from_backend(requests_info)
-                    replica_scheduler.add_request(request)
-                    replica_scheduler.allocate(request.id, requests_info["n_blocks"])
-                    if request.num_processed_tokens > request.num_prefill_tokens:
-                        request._is_prefill_complete = True
-
-                for requests_info in swap_request_length:
-                    request = self.__generate_requests_from_backend(requests_info)
+                    num_required_blocks = ceil(
+                        request.num_processed_tokens / self._config.replica_scheduler_config.block_size
+                    )
+                    replica_scheduler.allocate(request.id, num_required_blocks)
+                    request._is_prefill_complete = True
                     replica_scheduler.add_preempted_request(request)
 
-                for requests_info in waiting_request_length:
+                preempted_request = []
+                waiting_request = []
+
+                for requests_info in itertools.chain(waiting_request_length, swap_request_length):
                     request = self.__generate_requests_from_backend(requests_info)
+                    if request.num_processed_tokens > 0:
+                        request.restart()
+                        preempted_request.append(request)
+                    else:
+                        waiting_request.append(request)
+
+                for request in itertools.chain(preempted_request,  waiting_request):
                     replica_scheduler.add_request(request)
 
             current_gpu_blocks += batch_request_information["free_gpu_blocks"]
