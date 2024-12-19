@@ -105,6 +105,9 @@ class VLLMReplicaScheduler(BaseReplicaScheduler):
                 break
 
             request = self._preempted_requests.pop(0)
+            if request.completed:
+                self.free(request.id)
+                continue
 
             while not self._can_allocate_request(request):
                 if self._preempted_requests:

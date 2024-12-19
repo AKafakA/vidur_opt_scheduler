@@ -115,8 +115,6 @@ class BaseReplicaScheduler(ABC):
         if request.is_prefill_complete:
             return 1
 
-        print(f"request id {request.id}, {request.is_prefill_complete}, {request.num_processed_tokens}")
-
         return request.num_prefill_tokens
 
     def add_request(self, request: Request) -> None:

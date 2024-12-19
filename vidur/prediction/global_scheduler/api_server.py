@@ -175,8 +175,8 @@ if __name__ == "__main__":
         help="FastAPI root_path when app is behind a path based routing proxy")
     parser.add_argument("--config_path", type=str, default="vidur/prediction/config/test_host_configs.json")
     parser.add_argument("--metrics_type", type=str, default="min_latency")
-    parser.add_argument("--num_query_predictor", type=int, default=1)
-    parser.add_argument("--num_required_predictor", type=int, default=1)
+    parser.add_argument("-n", "--num_query_predictor", type=int, default=1)
+    parser.add_argument("-m", "--num_required_predictor", type=int, default=1)
     parser.add_argument("--debugging_logs", type=bool, default=True)
     args = parser.parse_args()
     # in case the limited by the number of files

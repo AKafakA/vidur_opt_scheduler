@@ -61,8 +61,6 @@ class SimulatePredictor(Predictor):
 
     def predict(self, target_request: Request):
         self._request_decode_length_prediction_map[target_request.id] = target_request.num_decode_tokens
-        print(f"target request id {target_request.id} and current decode length cache "
-              f"{self._request_decode_length_prediction_map.keys()}")
         replica_scheduler = self.get_replica_scheduler()
         metrics = {}
         # replica_scheduler.print_requests()
@@ -71,7 +69,7 @@ class SimulatePredictor(Predictor):
             metric = get_target_metric_value(self._target_metric, replica_scheduler, target_request,
                                              self._request_timeline_predictor)
             target_metric = metric
-            self._logger.info(f"Predicted metric: {metric} for request: {str(target_request.id)}")
+            # self._logger.info(f"Predicted metric: {metric} for request: {str(target_request.id)}")
         elif self._config.target_metric == "min_gpu_blocks":
             target_metric = self._current_gpu_blocks
         elif self._config.target_metric == "min_requests":
@@ -121,29 +119,33 @@ class SimulatePredictor(Predictor):
             running_request_length = batch_request_information["running"]
             swap_request_length = batch_request_information["swap"]
             if self._need_to_predict:
-                print('running')
                 for requests_info in running_request_length:
-                    print(f'{requests_info["request_id"]}')
                     request = self.__generate_requests_from_backend(requests_info)
+                    if request.num_processed_tokens == request.total_tokens:
+                        continue
+                    # print(f"request id {request.id} and processed {request._num_processed_tokens} and total {request.total_tokens}")
                     num_required_blocks = ceil(
                         request.num_processed_tokens / self._config.replica_scheduler_config.block_size
                     )
                     replica_scheduler.allocate(request.id, num_required_blocks)
                     request._is_prefill_complete = True
+                    request.source = 'running'
+                    request.loading_tokens = request.num_processed_tokens
                     replica_scheduler.add_preempted_request(request)
 
                 preempted_request = []
                 waiting_request = []
 
-                print('waiting')
                 for requests_info in itertools.chain(waiting_request_length, swap_request_length):
                     request = self.__generate_requests_from_backend(requests_info)
-                    print(f'{request.id}')
+                    if request.num_processed_tokens == request.total_tokens:
+                        continue
                     if request.num_processed_tokens > 0:
                         request.restart()
                         preempted_request.append(request)
                     else:
                         waiting_request.append(request)
+                    request.source = 'waiting'
 
                 for request in itertools.chain(preempted_request,  waiting_request):
                     replica_scheduler.add_request(request)

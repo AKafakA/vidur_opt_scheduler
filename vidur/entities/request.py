@@ -58,6 +58,8 @@ class Request(BaseEntity):
         self._is_prefill_complete = False
 
         self._num_restarts = 0
+        self.source = None
+        self.loading_tokens =0
 
     def set_id(self, id: int):
         self._id = id
@@ -241,6 +243,13 @@ class Request(BaseEntity):
         # print(self._num_decode_tokens)
         # print("generated token")
         # print(self._num_processed_tokens)
+
+        if self._num_processed_tokens > self.total_tokens:
+            print("request_id " + str(self.id) + f" processed {self.num_processed_tokens} and source {self.source} "
+                                                 f"and new tokens {num_tokens_processed}",
+                                                 f"and the total tokens {self.num_decode_tokens + self._num_prefill_tokens}, "
+                                                 f"and loading tokens {self.loading_tokens}"
+                  )
 
         assert self._num_processed_tokens <= self.total_tokens
 
