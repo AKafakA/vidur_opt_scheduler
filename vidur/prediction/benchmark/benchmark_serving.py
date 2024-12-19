@@ -840,11 +840,11 @@ def sample_sharegpt_requests(
     elif dataset_path.endswith('.json'):
         with open(dataset_path) as f:
             dataset = json.load(f)
-    dataset = [data for data in dataset if len(data["conversations"]) >= 2]
+    dataset = [data for data in dataset if len(data["conversation"]) >= 2]
     random.shuffle(dataset)
     for data in dataset:
-        prompt = data["conversations"][0]["value"]
-        res = data["conversations"][1]["value"]
+        prompt = data["conversation"][0]["value"]
+        res = data["conversation"][1]["value"]
         prompt_token_ids = tokenizer(prompt).input_ids
         completion_token_ids = tokenizer(res).input_ids
         if len(prompt_token_ids) + len(completion_token_ids) < max_seqlen and \
@@ -882,7 +882,7 @@ def tag_dataset_with_real_response(
     assert new_dataset_path.endswith('.jsonl')
     data = []
     for prompt, response in zip(prompts, responses):
-        record = {'conversation': [{'from': 'human', 'value': prompt}, {'from': 'model', 'value': response}]}
+        record = {'conversations': [{'from': 'human', 'value': prompt}, {'from': 'model', 'value': response}]}
         data.append(record)
     with jsonlines.open(new_dataset_path, 'w') as writer:
         writer.write_all(data)
@@ -977,9 +977,9 @@ def main():
     parser.add_argument('--print_generation_lens_and_exit',
                         action='store_true')
     parser.add_argument('--tag_dataset_with_real_response',
-                        action='store_false')
-    parser.add_argument('--enable_csv_files', action='store_false')
-    parser.add_argument('--keep_all_metrics', action='store_false')
+                        type=bool, default=True)
+    parser.add_argument('--enable_csv_files', type=bool, default=True)
+    parser.add_argument('--keep_all_metrics', type=bool, default=True)
     parser.add_argument("--output_dir", type=str, default="./benchmark_output")
 
     # parser.add_argument('--enable_migration', type=int, default=0)
