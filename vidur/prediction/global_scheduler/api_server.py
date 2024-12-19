@@ -10,6 +10,7 @@ from typing import Any, Optional, List
 import numpy as np
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, Response
+from requests.packages import target
 
 from vidur.prediction.global_scheduler.instance import Instance
 from vidur.prediction.server_utils import serve_http
@@ -75,12 +76,16 @@ async def generate_benchmark(request: Request) -> Response:
 
     target_metrics = [x['target_metric'] for x in predict_results]
 
-    if metrics_type.startswith("min"):
-        selected_index = target_metrics.index(min(target_metrics))
-    elif metrics_type.startswith("max"):
-        selected_index = target_metrics.index(max(target_metrics))
+    if metrics_type.startswith("min") or metrics_type.startswith("max"):
+        if metrics_type.startswith("min"):
+            target_metric = min(target_metrics)
+        else:
+            target_metric = max(target_metrics)
+        metric_selected_index = random.choice([i for i, value in enumerate(target_metrics) if value == target_metric])
+        selected_instance_id = (predict_results[metric_selected_index])['instance_id']
+        selected_index = [i for i, instance in enumerate(instances) if selected_instance_id == instance._instance_id][0]
     elif metrics_type == "random":
-        selected_index = random.randint(0, len(target_metrics) - 1)
+        selected_index = random.randint(0, len(instances) - 1)
     elif metrics_type == "round_robin":
         selected_index = num_requests % len(instances)
     else:

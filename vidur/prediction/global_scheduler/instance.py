@@ -33,7 +33,9 @@ class Instance:
         }
         async with aiohttp.ClientSession(timeout=AIOHTTP_TIMEOUT) as session:
             async with session.post(self._predictor_url, json=predict_parameters) as response:
-                return await response.json()
+                response_dict = await response.json()
+                response_dict['instance_id'] = self._instance_id
+                return response_dict
 
 
     async def query_backend(self, prompt: str, expected_response_len: int, request_id: int):
