@@ -56,6 +56,7 @@ class SimulatePredictor(Predictor):
     def predict(self, target_request: Request):
         replica_scheduler = self.get_replica_scheduler()
         metrics = {}
+        self._request_decode_length_prediction_map[target_request.id] = target_request.num_decode_tokens
         # replica_scheduler.print_requests()
         if self._need_to_predict:
             from vidur.request_timeline_predictor.base_request_timeline_predictor import get_target_metric_value
@@ -70,7 +71,6 @@ class SimulatePredictor(Predictor):
             target_metric = random.randint(0, 100)
         else:
             raise ValueError(f"Invalid metrics type: {self._config.target_metric}")
-        self._request_decode_length_prediction_map[target_request.id] = target_request.num_decode_tokens
         metrics["target_metric"] = target_metric
         metrics["gpu_blocks"] = self._current_gpu_blocks
         metrics["num_requests"] = self._num_requests
