@@ -11,6 +11,6 @@
 		"max_tokens_in_batch": 8192,
 		"batch_size_cap": 128
 	},
-	"target_metric": "min_latency",
+	"target_metric": "random",
 	"disable_batch_time_estimation": false
 }

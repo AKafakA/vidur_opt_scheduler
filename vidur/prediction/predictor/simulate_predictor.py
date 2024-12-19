@@ -2,6 +2,7 @@ import random
 import time
 from math import ceil
 import itertools
+import logging
 
 from vidur.config import DummyRequestGeneratorConfig, MetricsConfig, \
     SimulationRequestTimelinePredictorConfig
@@ -10,6 +11,10 @@ from vidur.execution_time_predictor import ExecutionTimePredictorRegistry
 from vidur.prediction.predictor.predictor import Predictor
 from vidur.scheduler.replica_scheduler.replica_scheduler_registry import ReplicaSchedulerRegistry
 from vidur.types.optimal_global_scheduler_target_metric import TargetMetric
+
+logging.basicConfig(level=logging.INFO,
+                    filemode='a+',
+                    filename='predictor_benchmark.log')
 
 
 class SimulatePredictor(Predictor):
@@ -20,6 +25,7 @@ class SimulatePredictor(Predictor):
 
     def __init__(self, config, port):
         super().__init__(config, port)
+        self._logger = logging.getLogger(__name__)
         self._config = config
         self._generate_config = DummyRequestGeneratorConfig()
         self._metrics_config = MetricsConfig()
@@ -65,6 +71,7 @@ class SimulatePredictor(Predictor):
             metric = get_target_metric_value(self._target_metric, replica_scheduler, target_request,
                                              self._request_timeline_predictor)
             target_metric = metric
+            self._logger.info(f"Predicted metric: {metric} for request: {str(target_request.id)}")
         elif self._config.target_metric == "min_gpu_blocks":
             target_metric = self._current_gpu_blocks
         elif self._config.target_metric == "min_requests":
