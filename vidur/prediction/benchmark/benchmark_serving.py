@@ -988,9 +988,8 @@ def main():
     args = parser.parse_args()
     start_time = time.time()
 
-    if os.path.exists(args.output_dir):
-        shutil.rmtree(args.output_dir)
-    os.makedirs(args.output_dir)
+    if not os.path.exists(args.output_dir):
+        os.makedirs(args.output_dir)
 
     if args.gen_random_prompts:
         assert args.num_sampled_requests is not None
