@@ -1108,7 +1108,7 @@ def main():
     results = []
     import datetime
     current_time = datetime.datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
-    file_name = os.path.splitext(args.log_filename)[0] + "_latency_info.json"
+    file_name = args.output_dir + '/' + os.path.splitext(args.log_filename)[0] + "_latency_info.json"
     try:
         with open(file_name, 'r') as f:
             results = json.load(f)

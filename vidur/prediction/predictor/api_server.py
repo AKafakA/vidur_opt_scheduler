@@ -11,6 +11,7 @@ from fastapi.responses import JSONResponse, Response
 from vidur.prediction.predictor.predictor_config import PredictorConfig
 from vidur.prediction.predictor.predictor import Predictor
 from vidur.prediction.server_utils import convert_request, get_predictor, serve_http
+import resource
 
 TIMEOUT_KEEP_ALIVE = 5  # seconds.
 app = FastAPI()
@@ -105,4 +106,5 @@ if __name__ == "__main__":
     parser.add_argument("--metric_type", type=str, default="random")
     parser.add_argument("--disable_time_estimation", type=bool, default=True)
     args = parser.parse_args()
+    resource.setrlimit(resource.RLIMIT_NOFILE, (65536, 65536))
     asyncio.run(run_server(args))

@@ -10,7 +10,6 @@ from typing import Any, Optional, List
 import numpy as np
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, Response
-from requests.packages import target
 
 from vidur.prediction.global_scheduler.instance import Instance
 from vidur.prediction.server_utils import serve_http
