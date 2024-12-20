@@ -26,7 +26,7 @@ start_time = 0
 metrics_type = "random"
 logging.basicConfig(level=logging.INFO,
                     filemode='a+',
-                    filename='benchmark.log')
+                    filename='experiment_output/logs/predictor_output.log')
 logger = logging.getLogger(__name__)
 
 
@@ -57,7 +57,7 @@ async def generate_benchmark(request: Request) -> Response:
         try:
             predict_results = await asyncio.gather(*predict_tasks)
         except Exception as e:
-            print(f"Error during prediction: {e}")
+            logger.error(f"Error during prediction: {e}")
             return JSONResponse({"error": "Prediction failed"}, status_code=500)
     elif n > m:
         predict_results = []
@@ -88,7 +88,12 @@ async def generate_benchmark(request: Request) -> Response:
             target_metric = min(target_metrics)
         else:
             target_metric = max(target_metrics)
-        metric_selected_index = random.choice([i for i, value in enumerate(target_metrics) if value == target_metric])
+        candidates_indexes = [i for i, value in enumerate(target_metrics) if value == target_metric]
+        # if args.debugging_logs:
+        #     free_gpus = [predict_results[i]['gpu_blocks'] for i in candidates_indexes]
+        #     max_gpu = max(free_gpus)
+        #     candidates_indexes = [i for i in candidates_indexes if predict_results[i]['gpu_blocks'] == max_gpu]
+        metric_selected_index = random.choice(candidates_indexes)
         selected_instance_id = (predict_results[metric_selected_index])['instance_id']
         selected_index = [i for i, instance in enumerate(instances) if selected_instance_id == instance._instance_id][0]
     elif metrics_type == "random":
@@ -102,10 +107,10 @@ async def generate_benchmark(request: Request) -> Response:
     try:
         response = await selected_instance.query_backend(prompt, num_decode_tokens, request_id)
     except Exception as e:
-        logger.error(f"Error during prediction: {e}")
+        print(f"Error during prediction: {e}")
         return JSONResponse({"error": "Prediction failed"}, status_code=500)
     if args.debugging_logs:
-        logger.info(f"Selected instance: {selected_instance.ip_address} for request {request_id} "
+        print(f"Selected instance: {selected_instance.ip_address} for request {request_id} "
                     f"with metrics type: {metrics_type} and predict results: {predict_results}")
         predict_results[selected_index]['num_requests'] += 1
         response['sampled_avg_gpu_blocks'] = np.mean([x['gpu_blocks'] for x in predict_results])

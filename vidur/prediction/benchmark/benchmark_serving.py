@@ -183,8 +183,8 @@ def calculate_throughput(queries,
                          dur_s,
                          backend,
                          tokenizer,
-                         median_token_latency,
-                         median_e2e_latency,
+                         mean_token_latency,
+                         mean_e2e_latency,
                          all_e2e_latencies,
                          all_per_token_latencies,
                          all_inference_latencies,
@@ -254,9 +254,9 @@ def calculate_throughput(queries,
     elif not all_inference_latencies and all_waiting_latencies and len(all_waiting_latencies) == len(all_e2e_latencies):
         all_inference_latencies = [all_e2e_latencies[i] - all_waiting_latencies[i] for i in
                                    range(len(all_e2e_latencies))]
-    median_waiting_latency = np.median(all_waiting_latencies)
-    median_inference_latency = np.median(all_inference_latencies)
-    median_global_scheduling_overhead = np.median(global_scheduling_overhead)
+    mean_waiting_latency = np.mean(all_waiting_latencies)
+    mean_inference_latency = np.mean(all_inference_latencies)
+    mean_global_scheduling_overhead = np.mean(global_scheduling_overhead)
 
     if naive_hf_lens:
         # Manually count naive hf tok len
@@ -276,8 +276,8 @@ def calculate_throughput(queries,
     qps = len(responses) / dur_s
     msg1 = f'backend {backend} dur_s {dur_s:.04f} tokens_per_s {throughput_tok_s:.02f} qps {qps:.04f}\n'
     msg2 = f'successful_responses {len(responses)} prompt_token_count {prompt_token_count} response_token_count {response_token_count}\n'
-    msg3 = (f'{median_token_latency=:.04f}(ms), {median_e2e_latency=:.04f}(ms), {median_inference_latency=:.04f}(ms), '
-            f'{median_waiting_latency=:.04f}(ms), {median_global_scheduling_overhead=:.04f}(ms) \n')
+    msg3 = (f'{mean_token_latency=:.04f}(ms), {mean_e2e_latency=:.04f}(ms), {mean_inference_latency=:.04f}(ms), '
+            f'{mean_waiting_latency=:.04f}(ms), {mean_global_scheduling_overhead=:.04f}(ms) \n')
 
     msg = msg1 + msg2 + msg3
     if log_latencies:
@@ -613,8 +613,8 @@ async def benchmark(
         tasks.append(asyncio.create_task(query_model(prompt, verbose, ip_ports)))
     queries = await asyncio.gather(*tasks)
     dur_s = time.time() - start_time
-    median_token_latency = np.median(m._per_token_latencies)
-    median_e2e_latency = np.median(m._request_latencies)
+    mean_token_latency = np.mean(m._per_token_latencies)
+    mean_e2e_latency = np.mean(m._request_latencies)
 
     sampled_prompts = []
     sampled_responses = []
@@ -630,8 +630,8 @@ async def benchmark(
                                                   dur_s,
                                                   backend,
                                                   tokenizer,
-                                                  median_token_latency,
-                                                  median_e2e_latency,
+                                                  mean_token_latency,
+                                                  mean_e2e_latency,
                                                   m._request_latencies,
                                                   m._per_token_latencies,
                                                   m._inference_latencies,
