@@ -692,7 +692,7 @@ async def benchmark(
         m._var_num_waiting_requests, \
         m._num_preempted, \
         timestamps, \
-        message
+        msg
 
 
 def gen_random_response_lens(distribution: str, len_mean, len_range, num_prompts):
