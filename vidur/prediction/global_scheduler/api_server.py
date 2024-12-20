@@ -17,7 +17,7 @@ from vidur.prediction.server_utils import serve_http
 import resource
 import logging
 
-TIMEOUT_KEEP_ALIVE = 5  # seconds.
+TIMEOUT_KEEP_ALIVE = 10  # seconds.
 app = FastAPI()
 instances = []
 num_requests = 0
@@ -55,12 +55,20 @@ async def generate_benchmark(request: Request) -> Response:
             request_id, num_context_tokens, num_decode_tokens, arrived_at))
 
     if n == m:
-        predict_results = await asyncio.gather(*predict_tasks)
+        try:
+            predict_results = await asyncio.gather(*predict_tasks)
+        except Exception as e:
+            print(f"Error during prediction: {e}")
+            return JSONResponse({"error": "Prediction failed"}, status_code=500)
     elif n > m:
         predict_results = []
         unfinished_tasks = None
         while predict_tasks and len(predict_results) < m:
-            finished, unfinished = await asyncio.wait(predict_tasks, return_when=asyncio.FIRST_COMPLETED)
+            try:
+                finished, unfinished = await asyncio.wait(predict_tasks, return_when=asyncio.FIRST_COMPLETED)
+            except Exception as e:
+                print(f"Error during prediction: {e}")
+                return JSONResponse({"error": "Prediction failed"}, status_code=500)
             for x in finished:
                 result = x.result()
                 predict_results.append(result)
@@ -92,7 +100,11 @@ async def generate_benchmark(request: Request) -> Response:
         raise ValueError(f"Invalid metrics type: {metrics_type}")
 
     selected_instance = instances[selected_index]
-    response = await selected_instance.query_backend(prompt, num_decode_tokens, request_id)
+    try:
+        response = await selected_instance.query_backend(prompt, num_decode_tokens, request_id)
+    except Exception as e:
+        logger.error(f"Error during prediction: {e}")
+        return JSONResponse({"error": "Prediction failed"}, status_code=500)
     if args.debugging_logs:
         logger.info(f"Selected instance: {selected_instance.ip_address} for request {request_id} "
                     f"with metrics type: {metrics_type} and predict results: {predict_results}")

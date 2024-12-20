@@ -840,11 +840,11 @@ def sample_sharegpt_requests(
     elif dataset_path.endswith('.json'):
         with open(dataset_path) as f:
             dataset = json.load(f)
-    dataset = [data for data in dataset if len(data["conversation"]) >= 2]
+    dataset = [data for data in dataset if len(data["conversations"]) >= 2]
     random.shuffle(dataset)
     for data in dataset:
-        prompt = data["conversation"][0]["value"]
-        res = data["conversation"][1]["value"]
+        prompt = data["conversations"][0]["value"]
+        res = data["conversations"][1]["value"]
         prompt_token_ids = tokenizer(prompt).input_ids
         completion_token_ids = tokenizer(res).input_ids
         if len(prompt_token_ids) + len(completion_token_ids) < max_seqlen and \
@@ -980,7 +980,7 @@ def main():
                         type=bool, default=True)
     parser.add_argument('--enable_csv_files', type=bool, default=True)
     parser.add_argument('--keep_all_metrics', type=bool, default=True)
-    parser.add_argument("--output_dir", type=str, default="./benchmark_output")
+    parser.add_argument("--output_dir", type=str, default="benchmark_output")
 
     # parser.add_argument('--enable_migration', type=int, default=0)
     # parser.add_argument('--priority_ratio', type=float, default=0.0)
@@ -988,6 +988,7 @@ def main():
     args = parser.parse_args()
     start_time = time.time()
 
+    args.output_dir = "experiment_output/" + args.output_dir
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir)
 
