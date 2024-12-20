@@ -52,6 +52,7 @@ async def init_app(
     config_dict = json.load(open(config_path))
     config: PredictorConfig = PredictorConfig.create_from_dict(config_dict)
     config.target_metric = args.metric_type
+    config.replica_scheduler_config.batch_size_cap = args.batch_size_cap
     config.disable_batch_time_estimation = args.disable_time_estimation
     predictor = (instance_predictor if instance_predictor is not None else
                  get_predictor(args.predictor_type, config, instance_port))
@@ -105,6 +106,7 @@ if __name__ == "__main__":
     parser.add_argument("--predictor_type", type=str, default="simulate")
     parser.add_argument("--metric_type", type=str, default="random")
     parser.add_argument("--disable_time_estimation", type=bool, default=True)
+    parser.add_argument("--batch_size_cap", type=int, default=128)
     args = parser.parse_args()
     resource.setrlimit(resource.RLIMIT_NOFILE, (65536, 65536))
     asyncio.run(run_server(args))
