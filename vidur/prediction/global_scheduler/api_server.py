@@ -110,7 +110,7 @@ async def generate_benchmark(request: Request) -> Response:
         print(f"Error during prediction: {e}")
         return JSONResponse({"error": "Prediction failed"}, status_code=500)
     if args.debugging_logs:
-        print(f"Selected instance: {selected_instance.ip_address} for request {request_id} "
+        print(f"Selected instance: {selected_instance._instance_id} for request {request_id} "
                     f"with metrics type: {metrics_type} and predict results: {predict_results}")
         predict_results[selected_index]['num_requests'] += 1
         response['sampled_avg_gpu_blocks'] = np.mean([x['gpu_blocks'] for x in predict_results])

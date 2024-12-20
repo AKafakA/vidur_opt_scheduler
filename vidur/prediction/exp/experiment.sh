@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #METRIC_TYPE="min_latency"
-METRIC_TYPE="min_latency"
+METRIC_TYPE="random"
 BATCH_CAP=48
 MODEL="meta-llama/Llama-2-7b-hf"
 
