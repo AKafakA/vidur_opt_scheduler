@@ -112,7 +112,6 @@ async def generate_benchmark(request: Request) -> Response:
     if args.debugging_logs:
         print(f"Selected instance: {selected_instance._instance_id} for request {request_id} "
                     f"with metrics type: {metrics_type} and predict results: {predict_results}")
-        predict_results[selected_index]['num_requests'] += 1
         response['sampled_avg_gpu_blocks'] = np.mean([x['gpu_blocks'] for x in predict_results])
         response['sampled_var_gpu_blocks'] = np.var([x['gpu_blocks'] for x in predict_results])
         response['sampled_avg_n_request'] = np.mean([x['num_requests'] for x in predict_results])
