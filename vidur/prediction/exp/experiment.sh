@@ -55,7 +55,7 @@ if [ "$RUN_EXP" = "true" ]; then
                   LOG_FILENAME="${qps}_${num_queries}_${n}"
                   LOG_FILES_DIR="experiment_output/$metric_type/logs/"
                   parallel-ssh --host $TARGET_HOST "mkdir -p $LOG_FILES_DIR"
-                  parallel-ssh --host $TARGET_HOST "cd vidur_opt_scheduler && export PYTHONPATH=. && nohup python vidur/prediction/benchmark/benchmark_serving.py --ip_ports 127.0.0.1:8200 --tokenizer $MODEL --num_sampled_requests $num_queries --dataset_type $DATASET_TYPE --dataset_path $DATASET_PATH --qps $qps --backend block --log_filename $LOG_FILENAME --output_dir $metric_type --tag_dataset_with_real_response false --enable_csv_files false > ${LOG_FILES_DIR}${LOG_FILENAME}.log 2>&1 &"
+                  parallel-ssh --host $TARGET_HOST "cd vidur_opt_scheduler && export PYTHONPATH=. && python vidur/prediction/benchmark/benchmark_serving.py --ip_ports 127.0.0.1:8200 --tokenizer $MODEL --num_sampled_requests $num_queries --dataset_type $DATASET_TYPE --dataset_path $DATASET_PATH --qps $qps --backend block --log_filename $LOG_FILENAME --output_dir $metric_type --tag_dataset_with_real_response false --enable_csv_files false > ${LOG_FILES_DIR}${LOG_FILENAME}.log"
               done
           done
       done
