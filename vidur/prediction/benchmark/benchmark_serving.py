@@ -292,7 +292,7 @@ def calculate_throughput(queries,
         assert len(responses) == len(queries), \
             f"{fail_on_response_failure=}, expected number of successful respones to equal number of queries, got {len(responses)} vs {len(queries)}"
 
-    return throughput_tok_s, qps
+    return throughput_tok_s, qps, msg
 
 
 def calculate_cdf(latencies):
@@ -626,7 +626,7 @@ async def benchmark(
                 sampled_responses.append(output['generated_text'])
         sampled_responses_length = get_tok_id_lens(tokenizer, sampled_responses)
 
-    throughput, actual_qps = calculate_throughput(queries,
+    throughput, actual_qps, msg = calculate_throughput(queries,
                                                   dur_s,
                                                   backend,
                                                   tokenizer,
@@ -691,7 +691,8 @@ async def benchmark(
         m._avg_num_waiting_requests, \
         m._var_num_waiting_requests, \
         m._num_preempted, \
-        timestamps
+        timestamps, \
+        message
 
 
 def gen_random_response_lens(distribution: str, len_mean, len_range, num_prompts):
@@ -1086,7 +1087,8 @@ def main():
      avg_num_waiting_requests,
      var_num_waiting_requests,
      num_preempted,
-     request_timestamps) = asyncio.run(benchmark(
+     request_timestamps,
+     messages) = asyncio.run(benchmark(
         backend,
         tokenizer,
         prompts,
@@ -1131,6 +1133,9 @@ def main():
                         "throughput": throughput,
                         "instance_num": avg_instance_num})
         json.dump(results, f)
+
+    with open(args.output_dir + '/' + os.path.splitext(args.log_filename)[0] + "_logs.txt", 'w') as f:
+        f.write(messages)
 
     if args.tag_dataset_with_real_response or args.enable_csv_files:
         assert sampled_responses_length
