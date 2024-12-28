@@ -880,13 +880,19 @@ def tag_dataset_with_real_response(
         prompts,
         responses,
         new_dataset_path: str):
-    assert new_dataset_path.endswith('.jsonl')
     data = []
+    record_id = 0
     for prompt, response in zip(prompts, responses):
-        record = {'conversations': [{'from': 'human', 'value': prompt}, {'from': 'model', 'value': response}]}
+        record = {'id': record_id, 'conversations': [{'from': 'human', 'value': prompt}, {'from': 'model', 'value': response}]}
         data.append(record)
-    with jsonlines.open(new_dataset_path, 'w') as writer:
-        writer.write_all(data)
+        record_id += 1
+    if new_dataset_path.endswith('.jsonl'):
+        with jsonlines.open(new_dataset_path, 'w') as writer:
+            writer.write_all(data)
+    elif new_dataset_path.endswith('.json'):
+        with open('new_dataset_path', 'w') as fp:
+            json.dump(data, fp)
+
 
 
 def sample_burstgpt_request(
@@ -1140,9 +1146,12 @@ def main():
     if args.tag_dataset_with_real_response or args.enable_csv_files:
         assert sampled_responses_length
         if args.tag_dataset_with_real_response:
-            tagged_dataset_name = args.dataset_path.replace('.jsonl', '_with_real_response.jsonl')
+            tagged_dataset_name = args.dataset_path.replace('.jsonl', '_with_real_response.json')
             tag_dataset_with_real_response(
                 sampled_prompts, sampled_responses, tagged_dataset_name)
+            tagged_dataset_name_json = args.dataset_path.replace('.jsonl', '_with_real_response.json')
+            tag_dataset_with_real_response(
+                sampled_prompts, sampled_responses, tagged_dataset_name_json)
         if args.enable_csv_files:
             csv_file_name = args.dataset_path.replace('.jsonl', '_lens.csv')
             generate_lens_files(csv_file_name, prompt_lens, sampled_responses_length)

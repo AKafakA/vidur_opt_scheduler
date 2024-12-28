@@ -14,7 +14,8 @@ DATASET_NAME="sharegpt_V3_format"
 DATASET_PATH="~/$DATASET_NAME.jsonl"
 DATASET_TYPE="sharegpt"
 
-GENERATE_NEW_DATA=false
+GENERATE_NEW_DATA=true
+DOWNLOAD_DATASET=true
 UPDATE_VIDUR_CODE=false
 UPDATE_VLLM_CODE=false
 RESTART_VLLM=false
@@ -45,7 +46,9 @@ if [ "$RUN_EXP" = "true" ]; then
   QPS="2.0"
   NUM_QUERIES="58"
   METRIC_TYPES="random"
-  parallel-ssh -t 0 --host $TARGET_HOST "wget https://huggingface.co/datasets/shibing624/sharegpt_gpt4/resolve/main/$DATASET_NAME.jsonl"
+  if [ "$DOWNLOAD_DATASET" = "true" ]; then
+    parallel-ssh -t 0 --host $TARGET_HOST "wget https://huggingface.co/datasets/shibing624/sharegpt_gpt4/resolve/main/$DATASET_NAME.jsonl"
+  fi
   for qps in $QPS; do
       for num_queries in $NUM_QUERIES; do
         for metric_type in $METRIC_TYPES; do
