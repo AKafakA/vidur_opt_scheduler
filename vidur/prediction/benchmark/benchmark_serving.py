@@ -890,7 +890,7 @@ def tag_dataset_with_real_response(
         with jsonlines.open(new_dataset_path, 'w') as writer:
             writer.write_all(data)
     elif new_dataset_path.endswith('.json'):
-        with open('new_dataset_path', 'w') as fp:
+        with open(new_dataset_path, 'w') as fp:
             json.dump(data, fp)
 
 
@@ -1146,9 +1146,10 @@ def main():
     if args.tag_dataset_with_real_response or args.enable_csv_files:
         assert sampled_responses_length
         if args.tag_dataset_with_real_response:
-            tagged_dataset_name = args.dataset_path.replace('.jsonl', '_with_real_response.json')
+            tagged_dataset_name = args.dataset_path.replace('.jsonl', '_with_real_response.jsonl')
             tag_dataset_with_real_response(
                 sampled_prompts, sampled_responses, tagged_dataset_name)
+
             tagged_dataset_name_json = args.dataset_path.replace('.jsonl', '_with_real_response.json')
             tag_dataset_with_real_response(
                 sampled_prompts, sampled_responses, tagged_dataset_name_json)
