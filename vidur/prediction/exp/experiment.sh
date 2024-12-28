@@ -47,7 +47,7 @@ if [ "$RUN_EXP" = "true" ]; then
          if [ "$metric_type" = "min_latency" ]; then
               N="6 8 10 12 24 36"
           else
-              N="6"
+              N="12"
           fi
           for n in $N; do
                   echo "Running experiment with qps: $qps, num_queries: $num_queries, n: $n, metric_type: $metric_type"
