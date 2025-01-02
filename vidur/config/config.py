@@ -210,6 +210,11 @@ class DummyRequestGeneratorConfig(BaseRequestGeneratorConfig):
         metadata={"help": "Maximum tokens for the Request Generator."},
     )
 
+    @staticmethod
+    def get_type():
+        return RequestGeneratorType.DUMMY
+
+
 
 @dataclass
 class SyntheticRequestGeneratorConfig(BaseRequestGeneratorConfig):

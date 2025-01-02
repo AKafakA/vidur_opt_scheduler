@@ -8,3 +8,4 @@ class GlobalSchedulerType(BaseIntEnum):
     LODT = 4
     # opt global scheduler name
     OPT = 5
+    MIN_MEMORY = 6
