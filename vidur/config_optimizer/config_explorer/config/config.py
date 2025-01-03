@@ -8,19 +8,19 @@ from typing import List, Optional
 @dataclass
 class LoadBalancerConfig:
     name: str
-    identifier: str
+    type: str
     target_metric: str = None
 
     def get_key(self):
-        if self.identifier == 'opt':
+        if self.type == 'opt':
             return f"{self.name}_{self.target_metric}"
         return self.name
 
     def to_config_dict(self):
         config_dict = {
-            "global_scheduler_config_type": self.identifier,
+            "global_scheduler_config_type": self.type,
         }
-        if self.identifier == 'opt':
+        if self.type == 'opt':
             config_dict["length_aware_optimal_scheduler_config_target_metric"] = self.target_metric
         return config_dict
 

@@ -24,9 +24,11 @@ class SimulatePredictReplicaScheduler:
         if copy_replica_scheduler:
             self._replica_scheduler = copy.deepcopy(replica_scheduler)
             self._target_request = copy.deepcopy(request)
+            self._target_request._num_decode_tokens = request.num_predicted_decode_tokens
         else:
             self._replica_scheduler = replica_scheduler
             self._target_request = request
+            self._target_request._num_decode_tokens = request.num_predicted_decode_tokens
         self._copy_needed = copy_replica_scheduler
         self._execution_time_predictor = execution_time_predictor
         self._target_request_batch_info = []

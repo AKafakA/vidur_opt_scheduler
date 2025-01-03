@@ -10,5 +10,5 @@ class BaseRequestLengthGenerator(ABC):
         self.config = config
 
     @abstractmethod
-    def get_next_num_tokens(self) -> Tuple[float, float]:
+    def get_next_num_tokens(self) -> Tuple[float, float, float]:
         pass

@@ -32,12 +32,18 @@ class Request(BaseEntity):
             num_prefill_tokens: int,
             num_decode_tokens: int,
             num_processed_tokens: int = 0,
+            num_predicted_decode_tokens: int = -1,
     ):
         self._id = Request.generate_id()
         self._arrived_at = arrived_at
         self._num_prefill_tokens = num_prefill_tokens
         self._num_decode_tokens = num_decode_tokens
         self._num_processed_tokens = num_processed_tokens
+
+        if num_predicted_decode_tokens == -1:
+            self.num_predicted_decode_tokens = num_decode_tokens
+        else:
+            self.num_predicted_decode_tokens = num_predicted_decode_tokens
 
         self._scheduled_at = 0
         self._execution_time = 0

@@ -87,14 +87,20 @@ class TraceRequestLengthGenerator(BaseRequestLengthGenerator):
         self.trace_df = self.trace_df.sample(frac=1, random_state=self.config.seed)
         self.next_request_idx = 0
 
-    def get_next_num_tokens(self) -> Tuple[float, float]:
+    def get_next_num_tokens(self) -> Tuple[float, float, float]:
         if self.next_request_idx >= len(self.trace_df):
             return None, None
 
         row = self.trace_df.iloc[self.next_request_idx]
         self.next_request_idx += 1
 
+        if 'num_predicted_decode_tokens' in row:
+            num_predicted_decode_tokens = int(max(1, row["num_predicted_decode_tokens"]))
+        else:
+            num_predicted_decode_tokens = -1.0
+
         return (
             row["num_prefill_tokens"],
             row["num_decode_tokens"],
+            num_predicted_decode_tokens,
         )

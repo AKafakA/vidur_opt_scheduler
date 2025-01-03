@@ -5,13 +5,19 @@ clusters:
 
 load_balancers:
   - name: round_robin
-    identifier: round_robin
+    type: round_robin
   - name: least_of_requests
-    identifier: lor
+    type: lor
   - name: random
-    identifier: random
+    type: random
   - name: min_memory
-    identifier: min_memory
+    type: min_memory
+  - name: optimal
+    type: opt
+    target_metric: "min_latency"
+  - name: optimal
+    type: opt
+    target_metric: "min_gpu_blocks"
 
 schedulers:
   - scheduler: vllm
@@ -20,13 +26,13 @@ traces:
   - name: arxiv
     trace_file: "./data/processed_traces/arxiv_summarization_stats_llama2_tokenizer_filtered_v2.csv"
     max_seq_len: 4096
-    num_requests: 16000
+    num_requests: 8000
     start_qps: 10.00
     generate_type: "synthetic"
   - name: sharegpt
     trace_file: "./data/processed_traces/sharegpt_V3_format_lens.csv"
     max_seq_len: 4096
-    num_requests: 16000
+    num_requests: 8000
     start_qps: 10.00
     generate_type: "synthetic"
   - name: code
