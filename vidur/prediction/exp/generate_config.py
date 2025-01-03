@@ -4,7 +4,7 @@ from collections import OrderedDict
 import json
 
 manifest_path = "vidur/prediction/cl_manifest.xml"
-config_output_path = "vidur/prediction/config"
+config_output_path = "vidur/config_optimizer/script"
 
 
 def generate_config(ip_address, predictor_port, backend_port):
@@ -44,7 +44,7 @@ host_config_files = os.path.join(config_output_path, "host_configs.json")
 host_files = os.path.join(config_output_path, "hosts")
 
 host_names = []
-with open(host_config_files, "w") as f, open(host_files, "w") as n:
+with open(host_config_files, "w+") as f, open(host_files, "w+") as n:
     j = 0
     configs = {}
     for node in nodes:

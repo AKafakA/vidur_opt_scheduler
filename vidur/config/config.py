@@ -215,7 +215,6 @@ class DummyRequestGeneratorConfig(BaseRequestGeneratorConfig):
         return RequestGeneratorType.DUMMY
 
 
-
 @dataclass
 class SyntheticRequestGeneratorConfig(BaseRequestGeneratorConfig):
     length_generator_config: BaseRequestLengthGeneratorConfig = field(
@@ -519,6 +518,13 @@ class LORGlobalSchedulerConfig(BaseGlobalSchedulerConfig):
     @staticmethod
     def get_type():
         return GlobalSchedulerType.LOR
+
+
+@dataclass
+class MinMemoryGlobalSchedulerConfig(BaseGlobalSchedulerConfig):
+    @staticmethod
+    def get_type():
+        return GlobalSchedulerType.MIN_MEMORY
 
 
 @dataclass
