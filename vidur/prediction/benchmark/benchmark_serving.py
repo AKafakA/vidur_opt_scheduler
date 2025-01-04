@@ -853,8 +853,12 @@ def sample_sharegpt_requests(
                 len(prompt_token_ids) > 0 and len(completion_token_ids) > 0:
             prompts.append(prompt)
             prompt_lens.append(len(prompt_token_ids))
-            if use_estimated_response_lens and "estimated_response_len" in data:
-                response_lens.append(int(data["predicted_length"]))
+            if use_estimated_response_lens:
+                if "predicted_length" in data:
+                    response_lens.append(int(data["predicted_length"]))
+                else:
+                    print(f"Warning: No predicted_length in data: {data}, use real response length instead.")
+                    response_lens.append(len(completion_token_ids))
             else:
                 response_lens.append(len(completion_token_ids))
 
