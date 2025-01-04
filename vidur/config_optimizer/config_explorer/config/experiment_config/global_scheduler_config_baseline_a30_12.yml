@@ -42,7 +42,7 @@ traces:
     start_qps: 10.00
     generate_type: "synthetic"
 
-batch_sizes: [128]
+batch_sizes: [48]
 tp_dimensions: [1]
 pp_dimensions: [1]
 

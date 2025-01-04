@@ -1155,16 +1155,13 @@ def main():
 
     if args.tag_dataset_with_real_response or args.enable_csv_files:
         assert sampled_responses_length
+        dataset_path_suffix = "." + args.dataset_path.split('.')[-1]
         if args.tag_dataset_with_real_response:
-            tagged_dataset_name = args.dataset_path.replace('.jsonl', '_with_real_response.jsonl')
-            tag_dataset_with_real_response(
-                sampled_prompts, sampled_responses, tagged_dataset_name)
-
-            tagged_dataset_name_json = args.dataset_path.replace('.jsonl', '_with_real_response.json')
+            tagged_dataset_name_json = args.dataset_path.replace(dataset_path_suffix, '_with_real_response.json')
             tag_dataset_with_real_response(
                 sampled_prompts, sampled_responses, tagged_dataset_name_json)
         if args.enable_csv_files:
-            csv_file_name = args.dataset_path.replace('.jsonl', '_lens.csv')
+            csv_file_name = args.dataset_path.replace(dataset_path_suffix, '_lens.csv')
             generate_lens_files(csv_file_name, prompt_lens, sampled_responses_length)
 
     if args.keep_all_metrics:
