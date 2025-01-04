@@ -19,7 +19,7 @@ DOWNLOAD_DATASET=true
 UPDATE_VIDUR_CODE=true
 UPDATE_VLLM_CODE=false
 RESTART_VLLM=true
-RUN_EXP=true
+RUN_EXP=false
 
 case "$1" in
     -d|--daemon)
@@ -38,13 +38,15 @@ if [ "$RESTART_VLLM" = "true" ]; then
   parallel-ssh --host $TARGET_HOST "cd vidur_opt_scheduler && rm experiment_output/logs/*"
   sh vidur/prediction/exp/reset.sh
   nohup sh vidur/prediction/exp/run_exp_vllm.sh $BATCH_CAP $MODEL $UPDATE_VLLM_CODE > /dev/null 2>&1 &
+  nohup sh vidur/prediction/exp/run_exp_predictor.sh $PREDICTOR_CONFIG_PATH $METRIC_TYPE $DISABLE_TIME_ESTIMATION $UPDATE_VIDUR_CODE $BATCH_CAP> /dev/null 2>&1 &
   sleep 60
 fi
 
 if [ "$RUN_EXP" = "true" ]; then
   QPS="8.0 10 12 24 36"
   NUM_QUERIES="10000"
-  METRIC_TYPES="random min_latency round_robin min_current_gpu_blocks min_pending_requests min_gpu_blocks"
+#  METRIC_TYPES="random min_latency round_robin min_current_gpu_blocks min_pending_requests min_gpu_blocks"
+  METRIC_TYPES="random min_latency round_robin"
   if [ "$DOWNLOAD_DATASET" = "true" ]; then
     parallel-ssh -t 0 --host $TARGET_HOST "wget https://huggingface.co/datasets/asdwb/sharegpt_length_prediction/resolve/main/$DATASET_NAME.json"
   fi
@@ -58,7 +60,6 @@ if [ "$RUN_EXP" = "true" ]; then
           fi
           for n in $N; do
                   echo "Running experiment with qps: $qps, num_queries: $num_queries, n: $n, metric_type: $metric_type"
-                  nohup sh vidur/prediction/exp/run_exp_predictor.sh $PREDICTOR_CONFIG_PATH $METRIC_TYPE $DISABLE_TIME_ESTIMATION $UPDATE_VIDUR_CODE $BATCH_CAP> /dev/null 2>&1 &
                   nohup sh vidur/prediction/exp/run_exp_global_scheduler.sh $TARGET_HOST $n $n $metric_type $HOST_CONFIG_PATH > /dev/null 2>&1 &
                   LOG_FILENAME="benchmark.log"
                   OUTPUT_DIR="${metric_type}/qps_${qps}_num_queries_${num_queries}_n_${n}"
@@ -70,14 +71,14 @@ if [ "$RUN_EXP" = "true" ]; then
   done
 
   #  test if using the estimated length
-  metric_type="min_latency min_gpu_blocks"
+#  metric_type="min_latency min_gpu_blocks"
+  metric_type="min_latency"
   N="2 6 12"
   for metric_type in $METRIC_TYPES; do
     for qps in $QPS; do
       for num_queries in $NUM_QUERIES; do
         for n in $N; do
          echo "Running experiment with qps: $qps, num_queries: $num_queries, n: $n, metric_type: $metric_type with estimated length"
-         nohup sh vidur/prediction/exp/run_exp_predictor.sh $PREDICTOR_CONFIG_PATH $METRIC_TYPE $DISABLE_TIME_ESTIMATION $UPDATE_VIDUR_CODE $BATCH_CAP> /dev/null 2>&1 &
          nohup sh vidur/prediction/exp/run_exp_global_scheduler.sh $TARGET_HOST $n $n $metric_type $HOST_CONFIG_PATH > /dev/null 2>&1 &
          LOG_FILENAME="benchmark.log"
          OUTPUT_DIR="${metric_type}*/qps_${qps}_num_queries_${num_queries}_n_${n}_estimated_length"

@@ -46,7 +46,7 @@ async def generate_benchmark(request: Request) -> Response:
     num_decode_tokens = request_dict.pop("expected_response_len")
     arrived_at = time.time() - start_time
     _ = request_dict.pop("stream", False)
-    with lock:
+    async with lock:
         global num_requests
         num_requests += 1
     request_id = num_requests
@@ -58,7 +58,7 @@ async def generate_benchmark(request: Request) -> Response:
     try:
         predict_results = await asyncio.gather(*predict_tasks)
     except Exception as e:
-        logger.error(f"Error during prediction: {e}")
+        print(f"Error during prediction: {e}")
         return JSONResponse({"error": "Prediction failed"}, status_code=500)
 
     target_metrics = [x['target_metric'] for x in predict_results]
