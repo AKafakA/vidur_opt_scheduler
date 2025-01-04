@@ -4,7 +4,7 @@ from collections import OrderedDict
 import json
 
 manifest_path = "vidur/prediction/cl_manifest.xml"
-config_output_path = "vidur/config_optimizer/script"
+config_output_path = "vidur/prediction/config"
 
 
 def generate_config(ip_address, predictor_port, backend_port):

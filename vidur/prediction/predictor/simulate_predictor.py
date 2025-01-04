@@ -70,9 +70,9 @@ class SimulatePredictor(Predictor):
                                              self._request_timeline_predictor)
             target_metric = metric
             # self._logger.info(f"Predicted metric: {metric} for request: {str(target_request.id)}")
-        elif self._config.target_metric == "min_gpu_blocks":
+        elif self._config.target_metric == "min_current_gpu_blocks":
             target_metric = self._current_gpu_blocks
-        elif self._config.target_metric == "min_requests":
+        elif self._config.target_metric == "min_pending_requests":
             target_metric = self._num_requests
         elif self._config.target_metric == "random" or self._config.target_metric == "round_robin":
             target_metric = random.randint(0, 100)

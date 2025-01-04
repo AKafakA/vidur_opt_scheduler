@@ -828,6 +828,7 @@ def sample_sharegpt_requests(
         num_requests: int,
         tokenizer,
         max_seqlen: int,
+        use_estimated_response_lens: bool = False,
 ):
     # Load the dataset.
     prompts = []
@@ -852,7 +853,10 @@ def sample_sharegpt_requests(
                 len(prompt_token_ids) > 0 and len(completion_token_ids) > 0:
             prompts.append(prompt)
             prompt_lens.append(len(prompt_token_ids))
-            response_lens.append(len(completion_token_ids))
+            if use_estimated_response_lens and "estimated_response_len" in data:
+                response_lens.append(int(data["predicted_length"]))
+            else:
+                response_lens.append(len(completion_token_ids))
 
     sampled_ids = [random.randint(0, len(prompts) - 1) for _ in range(num_requests)]
     sampled_prompts = [prompts[idx] for idx in sampled_ids]
@@ -988,6 +992,7 @@ def main():
     parser.add_argument('--enable_csv_files', type=bool, default=True)
     parser.add_argument('--keep_all_metrics', type=bool, default=True)
     parser.add_argument("--output_dir", type=str, default="benchmark_output")
+    parser.add_argument("--use_estimated_response_lens", type=bool, default=False)
 
     # parser.add_argument('--enable_migration', type=int, default=0)
     # parser.add_argument('--priority_ratio', type=float, default=0.0)
@@ -1012,7 +1017,8 @@ def main():
         np.random.seed(0xCADE)
         if args.dataset_type == "sharegpt":
             prompts, prompt_lens, response_lens = sample_sharegpt_requests(args.dataset_path, args.num_sampled_requests,
-                                                                           tokenizer, args.max_request_len)
+                                                                           tokenizer, args.max_request_len,
+                                                                           args.use_estimated_response_lens)
         elif args.dataset_type == "burstgpt":
             prompts, prompt_lens, response_lens = sample_burstgpt_request(args.dataset_path, args.num_sampled_requests,
                                                                           tokenizer, args.max_request_len)

@@ -15,7 +15,9 @@ from vidur.prediction.global_scheduler.instance import Instance
 from vidur.prediction.server_utils import serve_http
 import resource
 import logging
+import threading
 
+lock = asyncio.Lock()
 TIMEOUT_KEEP_ALIVE = 10  # seconds.
 app = FastAPI()
 instances = []
@@ -44,46 +46,25 @@ async def generate_benchmark(request: Request) -> Response:
     num_decode_tokens = request_dict.pop("expected_response_len")
     arrived_at = time.time() - start_time
     _ = request_dict.pop("stream", False)
-    global num_requests
+    with lock:
+        global num_requests
+        num_requests += 1
     request_id = num_requests
-    num_requests += 1
     predict_tasks = []
 
-    for instance in random.sample(instances, n):
+    for instance in instances:
         predict_tasks.append(instance.query_predictor(
             request_id, num_context_tokens, num_decode_tokens, arrived_at))
-
-    if n == m:
-        try:
-            predict_results = await asyncio.gather(*predict_tasks)
-        except Exception as e:
-            logger.error(f"Error during prediction: {e}")
-            return JSONResponse({"error": "Prediction failed"}, status_code=500)
-    elif n > m:
-        predict_results = []
-        unfinished_tasks = None
-        while predict_tasks and len(predict_results) < m:
-            try:
-                finished, unfinished = await asyncio.wait(predict_tasks, return_when=asyncio.FIRST_COMPLETED)
-            except Exception as e:
-                print(f"Error during prediction: {e}")
-                return JSONResponse({"error": "Prediction failed"}, status_code=500)
-            for x in finished:
-                result = x.result()
-                predict_results.append(result)
-            if unfinished:
-                unfinished_tasks = unfinished
-        if unfinished_tasks:
-            for task in unfinished_tasks:
-                task.cancel()
-            await asyncio.wait(unfinished_tasks)
-        assert len(predict_results) == m
-    else:
-        raise ValueError("The number of required predictors should be less or equal to the number of predictors")
+    try:
+        predict_results = await asyncio.gather(*predict_tasks)
+    except Exception as e:
+        logger.error(f"Error during prediction: {e}")
+        return JSONResponse({"error": "Prediction failed"}, status_code=500)
 
     target_metrics = [x['target_metric'] for x in predict_results]
 
     if metrics_type.startswith("min") or metrics_type.startswith("max"):
+        target_metrics = random.sample(target_metrics, min(n, len(target_metrics)))
         if metrics_type.startswith("min"):
             target_metric = min(target_metrics)
         else:
@@ -111,7 +92,7 @@ async def generate_benchmark(request: Request) -> Response:
         return JSONResponse({"error": "Prediction failed"}, status_code=500)
     if args.debugging_logs:
         print(f"Selected instance: {selected_instance._instance_id} for request {request_id} "
-                    f"with metrics type: {metrics_type} and predict results: {predict_results}")
+              f"with metrics type: {metrics_type} and predict results: {predict_results}")
         response['sampled_avg_gpu_blocks'] = np.mean([x['gpu_blocks'] for x in predict_results])
         response['sampled_var_gpu_blocks'] = np.var([x['gpu_blocks'] for x in predict_results])
         response['sampled_avg_n_request'] = np.mean([x['num_requests'] for x in predict_results])
