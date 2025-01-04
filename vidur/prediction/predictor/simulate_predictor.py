@@ -72,7 +72,7 @@ class SimulatePredictor(Predictor):
             # self._logger.info(f"Predicted metric: {metric} for request: {str(target_request.id)}")
         elif self._config.target_metric == "min_current_gpu_blocks":
             target_metric = self._current_gpu_blocks
-        elif self._config.target_metric == "min_pending_requests":
+        elif self._config.target_metric == "min_current_requests":
             target_metric = self._num_requests
         elif self._config.target_metric == "random" or self._config.target_metric == "round_robin":
             target_metric = random.randint(0, 100)
@@ -112,7 +112,6 @@ class SimulatePredictor(Predictor):
             execution_time_predictor=self._execution_time_predictor,
         )
 
-
         for batch in serialized_response.keys():
             batch_request_information = serialized_response[batch]
             waiting_request_length = batch_request_information["waiting"]
@@ -147,7 +146,7 @@ class SimulatePredictor(Predictor):
                         waiting_request.append(request)
                     request.source = 'waiting'
 
-                for request in itertools.chain(preempted_request,  waiting_request):
+                for request in itertools.chain(preempted_request, waiting_request):
                     replica_scheduler.add_request(request)
 
             current_gpu_blocks += batch_request_information["free_gpu_blocks"]

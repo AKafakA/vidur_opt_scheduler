@@ -49,7 +49,7 @@ async def generate_benchmark(request: Request) -> Response:
     async with lock:
         global num_requests
         num_requests += 1
-    request_id = num_requests
+        request_id = num_requests
     predict_tasks = []
 
     for instance in instances:
@@ -61,10 +61,14 @@ async def generate_benchmark(request: Request) -> Response:
         print(f"Error during prediction: {e}")
         return JSONResponse({"error": "Prediction failed"}, status_code=500)
 
-    target_metrics = [x['target_metric'] for x in predict_results]
+    if (metrics_type.startswith("min") or metrics_type.startswith("max")) and "current" not in metrics_type:
+        predict_results = random.sample(predict_results, min(n, len(predict_results)))
 
+    target_metrics = [x['target_metric'] for x in predict_results]
+    assert len(target_metrics) == len(predict_results)
     if metrics_type.startswith("min") or metrics_type.startswith("max"):
-        target_metrics = random.sample(target_metrics, min(n, len(target_metrics)))
+        # if current in metrics means all node need to be queried and select the one with min/max
+        # as just report the current value without prediction is cheap and sample no need to be limited
         if metrics_type.startswith("min"):
             target_metric = min(target_metrics)
         else:
@@ -93,11 +97,11 @@ async def generate_benchmark(request: Request) -> Response:
     if args.debugging_logs:
         print(f"Selected instance: {selected_instance._instance_id} for request {request_id} "
               f"with metrics type: {metrics_type} and predict results: {predict_results}")
-        response['sampled_avg_gpu_blocks'] = np.mean([x['gpu_blocks'] for x in predict_results])
-        response['sampled_var_gpu_blocks'] = np.var([x['gpu_blocks'] for x in predict_results])
-        response['sampled_avg_n_request'] = np.mean([x['num_requests'] for x in predict_results])
-        response['sampled_var_n_request'] = np.var([x['num_requests'] for x in predict_results])
-        response['num_preempted'] = sum([x['num_preempted'] for x in predict_results])
+    response['sampled_avg_gpu_blocks'] = np.mean([x['gpu_blocks'] for x in predict_results])
+    response['sampled_var_gpu_blocks'] = np.var([x['gpu_blocks'] for x in predict_results])
+    response['sampled_avg_n_request'] = np.mean([x['num_requests'] for x in predict_results])
+    response['sampled_var_n_request'] = np.var([x['num_requests'] for x in predict_results])
+    response['num_preempted'] = sum([x['num_preempted'] for x in predict_results])
     return JSONResponse(response)
 
 

@@ -857,7 +857,7 @@ def sample_sharegpt_requests(
                 if "predicted_length" in data:
                     response_lens.append(int(data["predicted_length"]))
                 else:
-                    print(f"Warning: No predicted_length in data: {data}, use real response length instead.")
+                    print(f"Warning: No predicted_length in data: {data.keys()}, use real response length instead.")
                     response_lens.append(len(completion_token_ids))
             else:
                 response_lens.append(len(completion_token_ids))
@@ -992,8 +992,8 @@ def main():
     parser.add_argument('--print_generation_lens_and_exit',
                         action='store_true')
     parser.add_argument('--tag_dataset_with_real_response',
-                        type=bool, default=True)
-    parser.add_argument('--enable_csv_files', type=bool, default=True)
+                        type=bool, default=False)
+    parser.add_argument('--enable_csv_files', type=bool, default=False)
     parser.add_argument('--keep_all_metrics', type=bool, default=True)
     parser.add_argument("--output_dir", type=str, default="benchmark_output")
     parser.add_argument("--use_estimated_response_lens", type=bool, default=False)
