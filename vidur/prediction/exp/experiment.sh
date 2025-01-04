@@ -14,12 +14,11 @@ DATASET_NAME="sharegpt-val-10k-predicted"
 DATASET_PATH="~/$DATASET_NAME.json"
 DATASET_TYPE="sharegpt"
 
-GENERATE_NEW_DATA=true
-DOWNLOAD_DATASET=true
+GENERATE_NEW_DATA=false
+DOWNLOAD_DATASET=false
 UPDATE_VIDUR_CODE=true
-
 UPDATE_VLLM_CODE=false
-RESTART_VLLM=true
+RESTART_VLLM=false
 RUN_EXP=true
 
 case "$1" in
@@ -58,6 +57,7 @@ if [ "$RUN_EXP" = "true" ]; then
               N="12"
           fi
           for n in $N; do
+                  parallel-ssh -t 0 --host $TARGET_HOST "pkill -f predictor"
                   nohup sh vidur/prediction/exp/run_exp_predictor.sh $PREDICTOR_CONFIG_PATH $METRIC_TYPE $DISABLE_TIME_ESTIMATION $UPDATE_VIDUR_CODE $BATCH_CAP> /dev/null 2>&1 &
                   echo "Running experiment with qps: $qps, num_queries: $num_queries, n: $n, metric_type: $metric_type"
                   nohup sh vidur/prediction/exp/run_exp_global_scheduler.sh $TARGET_HOST $n $n $metric_type $HOST_CONFIG_PATH > /dev/null 2>&1 &
