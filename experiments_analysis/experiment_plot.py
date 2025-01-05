@@ -4,8 +4,11 @@ import re
 
 import matplotlib.pyplot as plt
 import numpy as np
-
+import shutil
 import pandas as pd
+from scipy.ndimage import gaussian_filter1d
+
+experiment_name_replacement = {"min latency_2": "block"}
 
 
 def directory_name_parser(directory_name):
@@ -25,23 +28,26 @@ def extract_data_from_log_file(log_file):
         return match.groupdict()
 
 
-def plot_linear(data, metric_name, output_dir, y_dim_appendix="Per Node"):
+def plot_linear(data, metric_name, output_dir, y_dim_appendix="Per Node", sigma=-1):
     plt.figure()
     output_dir = output_dir + "/linear_plots"
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     for key, value in data.items():
+        # smooth by guassian 1d
+        if sigma > 0:
+            value = gaussian_filter1d(value, sigma)
         plt.plot(value, label=key)
 
     plt.xlabel("Request ID")
     plt.ylabel(metric_name + " " + y_dim_appendix)
     plt.title(metric_name.upper())
-    plt.legend()
+    plt.legend(fancybox=True, shadow=True)
     plt.savefig(f"{output_dir}/{metric_name}_linear.png")
 
 
 def plot_bar_chart(dataframe, index_names, output_dir, metric_name, x_dim="QPS", stack_data=False, plot_kind='bar',
-                   xt_rotation='horizontal'):
+                   xt_rotation='horizontal', legend_title='', ):
     plt.figure()
     output_dir = output_dir + "/bar_charts"
     if not os.path.exists(output_dir):
@@ -51,35 +57,51 @@ def plot_bar_chart(dataframe, index_names, output_dir, metric_name, x_dim="QPS",
     plt.ylabel(metric_name)
     plt.title(metric_name + " Per " + x_dim)
     plt.xticks(rotation=xt_rotation)
-    plt.legend(loc='upper right', bbox_to_anchor=(1.1, 1.15))
+    # plt.legend(ncol=1, fontsize=8, title=legend_title, title_fontsize='small',
+    #            loc='upper right', bbox_to_anchor=(1.3, 1.00))
+    if legend_title:
+        plt.legend(fancybox=True, shadow=True, ncol=1, fontsize=8, title=legend_title, title_fontsize='small',
+                   loc='upper right', bbox_to_anchor=(1.1, 1.015))
+    else:
+        plt.legend(ncol=3, fontsize=10, loc='best', fancybox=True, shadow=True)
+    plt.tight_layout()
     plt.savefig(f"{output_dir}/{metric_name}_bar_chart.png")
 
-
-def plot_cdf(data, output_dir, metric_name, x_dim_appendix=""):
+def plot_single_cdf(data, output_dir_per_qps, metric_name, x_dim_appendix="", y_dim_appendix=""):
     plt.figure()
+    for key, value in data.items():
+        plt.ecdf(value, label=key)
+    plt.xlabel(metric_name.lower() + x_dim_appendix)
+    plt.ylabel("CDF")
+    plt.title(metric_name + " CDF" + y_dim_appendix)
+    plt.legend(fancybox=True, shadow=True)
+    plt.savefig(f"{output_dir_per_qps}/{metric_name}_cdf.png")
+
+def plot_latency_cdf_per_qps(data, output_dir, metric_name, x_dim_appendix=""):
     output_dir = output_dir + "/cdf_plots"
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
-    for key, value in data.items():
-        plt.ecdf(value, label=key)
 
-    plt.xlabel(metric_name.lower() + x_dim_appendix)
-    plt.ylabel("CDF")
-    plt.title(metric_name + " CDF")
-    plt.legend()
-    plt.savefig(f"{output_dir}/{metric_name}_cdf.png")
+    for qps in data.keys():
+        output_dir_per_qps =  output_dir + f"/{qps}"
+        if not os.path.exists(output_dir_per_qps ):
+            os.makedirs(output_dir_per_qps)
+        plot_single_cdf(data[qps], output_dir_per_qps, metric_name, x_dim_appendix,
+                        f" under QPS {qps}")
 
 
 def plot_per_scheduler(experiments_set, output_dir):
     exp_output_dir = output_dir + "/scheduler"
-    if not os.path.exists(exp_output_dir):
-        os.makedirs(exp_output_dir)
+    shutil.rmtree(exp_output_dir)
+    os.makedirs(exp_output_dir)
     experiments_data = {}
-    qps_set = set([record["qps"] for record in experiments_set])
+    qps_set = sorted(set([record["qps"] for record in experiments_set]))
     for record in experiments_set:
-        experiments_name = f"{record['scheduler_name']}"
+        experiments_name = f"{record['scheduler_name']}".replace("_", " ")
         if experiments_name.startswith("min") or experiments_name.startswith("max"):
             experiments_name = experiments_name + f"_{record['n']}"
+        if experiments_name in experiment_name_replacement:
+            experiments_name = experiment_name_replacement[experiments_name]
         if experiments_name not in experiments_data:
             experiments_data[experiments_name] = [record]
         else:
@@ -95,7 +117,7 @@ def plot_per_scheduler(experiments_set, output_dir):
     p99_e2e = []
 
     for experiment_name, records in experiments_data.items():
-        output_dir = exp_output_dir + "/" + experiment_name
+        output_dir = exp_output_dir
         token_throughput_data = [f"{experiment_name}"]
         requests_throughput_data = [f"{experiment_name}"]
         average_ttft_data = [f"{experiment_name}"]
@@ -127,34 +149,34 @@ def plot_per_scheduler(experiments_set, output_dir):
 
     token_s_df = pd.DataFrame(token_throughput, columns=['Scheduler'] + list(qps_set))
     plot_bar_chart(token_s_df, qps_set, output_dir, "Token Throughput", "Scheduler",
-                   xt_rotation='horizontal')
+                   xt_rotation='horizontal', legend_title="QPS")
     requests_throughput_df = pd.DataFrame(requests_throughput, columns=['Scheduler'] + list(qps_set))
     plot_bar_chart(requests_throughput_df, qps_set, output_dir, "Request Throughput", "Scheduler",
-                   xt_rotation='horizontal')
+                   xt_rotation='horizontal', legend_title="QPS")
     average_ttft_df = pd.DataFrame(average_ttft, columns=['Scheduler'] + list(qps_set))
     plot_bar_chart(average_ttft_df, qps_set, output_dir, "Average TTFT", "Scheduler",
-                   xt_rotation='horizontal')
+                   xt_rotation='horizontal', legend_title="QPS")
     average_tbt_df = pd.DataFrame(average_tbt, columns=['Scheduler'] + list(qps_set))
     plot_bar_chart(average_tbt_df, qps_set, output_dir, "Average TBT", "Scheduler",
-                   xt_rotation='horizontal')
+                   xt_rotation='horizontal', legend_title="QPS")
     p99_ttft_df = pd.DataFrame(p99_ttft, columns=['Scheduler'] + list(qps_set))
     plot_bar_chart(p99_ttft_df, qps_set, output_dir, "TTFT P99", "Scheduler",
-                   xt_rotation='horizontal')
+                   xt_rotation='horizontal', legend_title="QPS")
     p99_tbt_df = pd.DataFrame(p99_tbt, columns=['Scheduler'] + list(qps_set))
     plot_bar_chart(p99_tbt_df, qps_set, output_dir, "TBT P99", "Scheduler",
-                   xt_rotation='horizontal')
+                   xt_rotation='horizontal', legend_title="QPS")
     average_e2e_df = pd.DataFrame(average_e2e, columns=['Scheduler'] + list(qps_set))
     plot_bar_chart(average_e2e_df, qps_set, output_dir, "Request Latency", "Scheduler",
-                   xt_rotation='horizontal')
+                   xt_rotation='horizontal', legend_title="QPS")
     p99_e2e_df = pd.DataFrame(p99_e2e, columns=['Scheduler'] + list(qps_set))
     plot_bar_chart(p99_e2e_df, qps_set, output_dir, "Request Latency P99", "Scheduler",
-                   xt_rotation='horizontal')
+                   xt_rotation='horizontal', legend_title="QPS")
 
 
 def plot_per_qps(experiments_set, output_dir):
     qps_output_dir = output_dir + "/qps"
-    if not os.path.exists(qps_output_dir):
-        os.makedirs(qps_output_dir)
+    shutil.rmtree(qps_output_dir)
+    os.makedirs(qps_output_dir)
     token_throughput = []
     requests_throughput = []
     average_ttft = []
@@ -172,7 +194,7 @@ def plot_per_qps(experiments_set, output_dir):
     var_free_gpu_per_node = {}
 
     index_names = set()
-    qps_set = set([record["qps"] for record in experiments_set])
+    qps_set = sorted(set([record["qps"] for record in experiments_set]))
     for qps in qps_set:
         token_s_data = [f"{qps}"]
         requests_throughput_data = [f"{qps}"]
@@ -180,12 +202,24 @@ def plot_per_qps(experiments_set, output_dir):
         average_tbt_data = [f"{qps}"]
         p99_ttft_data = [f"{qps}"]
         p99_tbt_data = [f"{qps}"]
+        ttft_cdf_per_qps = {}
+        tbt_cdfs_per_qps = {}
+        e2e_cdfs_per_qps = {}
+        ttft_cdfs[qps] = ttft_cdf_per_qps
+        tbt_cdfs[qps] = tbt_cdfs_per_qps
+        e2e_cdfs[qps] = e2e_cdfs_per_qps
         qps_experiments = [record for record in experiments_set if record["qps"] == qps]
-        for experiments in qps_experiments:
-            experiment_name = f"{experiments['scheduler_name']}"
+        map_from_name_exp = {}
+        for experiment in qps_experiments:
+            experiment_name = f"{experiment['scheduler_name']}".replace("_", " ")
             if experiment_name.startswith("min") or experiment_name.startswith("max"):
-                experiment_name = experiment_name + f"_{experiments['n']}"
+                experiment_name = experiment_name + f"_{experiment['n']}"
+            if experiment_name in experiment_name_replacement:
+                experiment_name = experiment_name_replacement[experiment_name]
             index_names.add(experiment_name)
+            map_from_name_exp[experiment_name] = experiment
+        for index_name in index_names:
+            experiments = map_from_name_exp[index_name]
             token_s_data.append(float(experiments['token_throughput']))
             requests_throughput_data.append(float(experiments['request_throughput']))
             average_ttft_data.append(np.mean(experiments['ttft']))
@@ -194,11 +228,11 @@ def plot_per_qps(experiments_set, output_dir):
             p99_tbt_data.append(np.percentile(experiments['tbt'], 99))
             p99_ttft_data.append(np.percentile(experiments['ttft'], 99))
             p99_e2e.append(np.percentile(experiments['e2e'], 99))
-            ttft_cdfs[experiment_name] = experiments['ttft']
-            tbt_cdfs[experiment_name] = experiments['tbt']
-            e2e_cdfs[experiment_name] = experiments['e2e']
-            avg_free_gpu[experiment_name] = experiments['avg_gpu_blocks']
-            var_free_gpu_per_node[experiment_name] = experiments['var_gpu_blocks']
+            ttft_cdf_per_qps[index_name] = experiments['ttft']
+            tbt_cdfs_per_qps[index_name] = experiments['tbt']
+            e2e_cdfs_per_qps[index_name] = experiments['e2e']
+            avg_free_gpu[index_name] = experiments['avg_gpu_blocks']
+            var_free_gpu_per_node[index_name] = experiments['var_gpu_blocks']
 
         token_throughput.append(token_s_data)
         requests_throughput.append(requests_throughput_data)
@@ -219,17 +253,19 @@ def plot_per_qps(experiments_set, output_dir):
     plot_bar_chart(p99_ttft_df, index_names, qps_output_dir, "TTFT P99", "QPS")
     p99_tbt_df = pd.DataFrame(p99_tbt, columns=['QPS'] + list(index_names))
     plot_bar_chart(p99_tbt_df, index_names, qps_output_dir, "TBT P99", "QPS")
-    plot_cdf(ttft_cdfs, qps_output_dir, "TTFT", " (ms)")
-    plot_cdf(tbt_cdfs, qps_output_dir, "TBT", " (ms)")
-    plot_cdf(e2e_cdfs, qps_output_dir, "Request Latency", " (ms)")
 
-    plot_linear(avg_free_gpu, "Average Free GPU Blocks", qps_output_dir)
-    plot_linear(var_free_gpu_per_node, "Free GPU Blocks Var", qps_output_dir)
+
+    plot_latency_cdf_per_qps(ttft_cdfs, qps_output_dir, "TTFT", " (ms)")
+    plot_latency_cdf_per_qps(tbt_cdfs, qps_output_dir, "TBT", " (ms)")
+    plot_latency_cdf_per_qps(e2e_cdfs, qps_output_dir, "Request Latency", " (ms)")
+
+    plot_linear(avg_free_gpu, "Average Free GPU Blocks", qps_output_dir, sigma=10)
+    plot_linear(var_free_gpu_per_node, "Free GPU Blocks Var", qps_output_dir, sigma=10)
 
 
 def main():
     parser = argparse.ArgumentParser(description='Plot the results of the experiments')
-    parser.add_argument("--experiments-dir", type=str, default="./experiments_analysis/exp_output")
+    parser.add_argument("--experiments-dir", type=str, default="./experiments_analysis/experiment_output")
     parser.add_argument("--output-dir", type=str, default="./experiments_analysis/exp_plots")
     parser.add_argument("--plot-per-qps", type=bool, default=True)
     parser.add_argument("--plot-per-scheduler", type=bool, default=True)
@@ -240,13 +276,15 @@ def main():
     experiments_set = []
     for scheduler_name in os.listdir(data_dir):
         scheduler_dir = data_dir + "/" + scheduler_name
+        if scheduler_name == 'logs':
+            continue
         for root, dirs, files in os.walk(scheduler_dir):
             for directory in dirs:
                 record = {"scheduler_name": scheduler_name}
                 experiments_set.append(record)
                 qps, n = directory_name_parser(directory)
-                record["qps"] = qps
-                record["n"] = n
+                record["qps"] = float(qps)
+                record["n"] = int(n)
                 for experiments_trace in os.listdir(scheduler_dir + "/" + directory):
                     if experiments_trace.endswith("logs.txt"):
                         metrics = extract_data_from_log_file(scheduler_dir + "/" + directory + "/" + experiments_trace)
