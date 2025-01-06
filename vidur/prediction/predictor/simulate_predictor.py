@@ -55,13 +55,11 @@ class SimulatePredictor(Predictor):
         self._request_decode_length_prediction_map = {}
         self._start_time = time.time()
         self._backend_url = f"http://localhost:{self._port}/schedule_trace"
-        self._current_gpu_blocks = 0
-        self._num_requests = 0
-        self._num_preempted = 0
 
     def predict(self, target_request: Request):
         self._request_decode_length_prediction_map[target_request.id] = target_request.num_decode_tokens
-        replica_scheduler = self.get_replica_scheduler()
+        (replica_scheduler, current_gpu_blocks, current_num_requests, current_num_running_request,
+         current_num_waiting_request, current_num_preempted) = self.get_replica_scheduler()
         metrics = {}
         # replica_scheduler.print_requests()
         if self._need_to_predict:
@@ -76,12 +74,14 @@ class SimulatePredictor(Predictor):
             target_metric = self._num_requests
         elif self._config.target_metric == "random" or self._config.target_metric == "round_robin":
             target_metric = random.randint(0, 100)
+        elif self._config.target_metric == "min_infass_load":
+            target_metric = (current_num_requests / num_request)*(-1)
         else:
             raise ValueError(f"Invalid metrics type: {self._config.target_metric}")
         metrics["target_metric"] = target_metric
-        metrics["gpu_blocks"] = self._current_gpu_blocks
-        metrics["num_requests"] = self._num_requests
-        metrics["num_preempted"] = self._num_preempted
+        metrics["gpu_blocks"] = current_gpu_blocks
+        metrics["num_requests"] = current_num_requests
+        metrics["num_preempted"] = current_num_preempted
         return metrics
 
     def __generate_requests_from_backend(self, request_info: dict):
@@ -152,7 +152,5 @@ class SimulatePredictor(Predictor):
             current_gpu_blocks += batch_request_information["free_gpu_blocks"]
             current_num_requests += len(running_request_length) + len(swap_request_length) + len(waiting_request_length)
             current_num_preempted += len(swap_request_length)
-        self._current_gpu_blocks = current_gpu_blocks
-        self._num_requests = current_num_requests
-        self._num_preempted = current_num_preempted
-        return replica_scheduler
+        return (replica_scheduler, current_gpu_blocks, current_num_requests, current_num_running_request,
+                current_num_waiting_request, current_num_preempted)
