@@ -17,7 +17,7 @@ RESTART_VLLM=$3
 BATCH_CAP=$4
 UPDATE_VIDUR_CODE=false
 UPDATE_VLLM_CODE=false
-RUN_EXP=true
+RUN_EXP=false
 
 case "$1" in
     -d|--daemon)
@@ -41,10 +41,10 @@ if [ "$RESTART_VLLM" = "true" ]; then
 fi
 
 if [ "$RUN_EXP" = "true" ]; then
-  QPS="16 20 36"
+  QPS="36"
   NUM_QUERIES="10000"
   if [ "$SCHEDULER_METRIC_TYPE" = "min_latency" ]; then
-    METRIC_TYPES="random round_robin min_latency"
+    METRIC_TYPES="round_robin min_latency"
   else
     METRIC_TYPES=$SCHEDULER_METRIC_TYPE
   fi
@@ -65,7 +65,7 @@ if [ "$RUN_EXP" = "true" ]; then
                   nohup sh vidur/prediction/exp/run_exp_global_scheduler.sh $TARGET_HOST $n $n $metric_type $HOST_CONFIG_PATH > /dev/null 2>&1 &
                   LOG_FILENAME="benchmark.log"
                   OUTPUT_DIR="${metric_type}/qps_${qps}_num_queries_${num_queries}_n_${n}"
-                  parallel-ssh -i -t 0 --host $TARGET_HOST "cd vidur_opt_scheduler && export PYTHONPATH=. && python vidur/prediction/benchmark/benchmark_serving.py --ip_ports 127.0.0.1:8200 --tokenizer $MODEL --num_sampled_requests $num_queries --dataset_type $DATASET_TYPE --dataset_path $DATASET_PATH --qps $qps --backend block --log_filename $LOG_FILENAME --output_dir $OUTPUT_DIR --tag_dataset_with_real_response $GENERATE_NEW_DATA --enable_csv_files $GENERATE_NEW_DATA"
+                  parallel-ssh -t 0 --host $TARGET_HOST "cd vidur_opt_scheduler && export PYTHONPATH=. && python vidur/prediction/benchmark/benchmark_serving.py --ip_ports 127.0.0.1:8200 --tokenizer $MODEL --num_sampled_requests $num_queries --dataset_type $DATASET_TYPE --dataset_path $DATASET_PATH --qps $qps --backend block --log_filename $LOG_FILENAME --output_dir $OUTPUT_DIR --tag_dataset_with_real_response $GENERATE_NEW_DATA --enable_csv_files $GENERATE_NEW_DATA"
                   sleep 60
               done
           done
@@ -84,7 +84,7 @@ if [ "$RUN_EXP" = "true" ]; then
                 nohup sh vidur/prediction/exp/run_exp_global_scheduler.sh $TARGET_HOST $n $n $SCHEDULER_METRIC_TYPE $HOST_CONFIG_PATH > /dev/null 2>&1 &
                 LOG_FILENAME="benchmark.log"
                 OUTPUT_DIR="${metric_type}*/qps_${qps}_num_queries_${num_queries}_n_${n}_estimated_length"
-                parallel-ssh -i -t 0 --host $TARGET_HOST "cd vidur_opt_scheduler && export PYTHONPATH=. && python vidur/prediction/benchmark/benchmark_serving.py --ip_ports 127.0.0.1:8200 --tokenizer $MODEL --num_sampled_requests $num_queries --dataset_type $DATASET_TYPE --dataset_path $DATASET_PATH --qps $qps --backend block --log_filename $LOG_FILENAME --output_dir $OUTPUT_DIR --tag_dataset_with_real_response $GENERATE_NEW_DATA --enable_csv_files $GENERATE_NEW_DATA --use_estimated_response_lens true"
+                parallel-ssh -t 0 --host $TARGET_HOST "cd vidur_opt_scheduler && export PYTHONPATH=. && python vidur/prediction/benchmark/benchmark_serving.py --ip_ports 127.0.0.1:8200 --tokenizer $MODEL --num_sampled_requests $num_queries --dataset_type $DATASET_TYPE --dataset_path $DATASET_PATH --qps $qps --backend block --log_filename $LOG_FILENAME --output_dir $OUTPUT_DIR --tag_dataset_with_real_response $GENERATE_NEW_DATA --enable_csv_files $GENERATE_NEW_DATA --use_estimated_response_lens true"
                 sleep 60
               done
           done
