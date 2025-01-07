@@ -15,6 +15,8 @@ load_balancers:
   - name: optimal
     type: opt
     target_metric: "min_latency"
+  - name: infaas
+    type: lodt
 
 schedulers:
   - scheduler: vllm

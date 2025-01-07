@@ -94,6 +94,10 @@ class BaseReplicaScheduler(ABC):
     def replica_id(self) -> int:
         return self._replica_id
 
+    @property
+    def num_free_blocks(self) -> int:
+        return self._config.num_blocks - self._num_allocated_blocks
+
 
     @property
     def memory_usage_percent(self) -> int:

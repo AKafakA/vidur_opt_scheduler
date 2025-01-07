@@ -18,6 +18,8 @@ load_balancers:
   - name: optimal
     type: opt
     target_metric: "min_gpu_blocks"
+  - name: infaas
+    type: lodt
 
 schedulers:
   - scheduler: vllm

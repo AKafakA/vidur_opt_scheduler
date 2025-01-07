@@ -69,13 +69,13 @@ class SimulatePredictor(Predictor):
             target_metric = metric
             # self._logger.info(f"Predicted metric: {metric} for request: {str(target_request.id)}")
         elif self._config.target_metric == "min_current_gpu_blocks":
-            target_metric = self._current_gpu_blocks
+            target_metric = current_gpu_blocks
         elif self._config.target_metric == "min_current_requests":
-            target_metric = self._num_requests
+            target_metric = current_num_requests
         elif self._config.target_metric == "random" or self._config.target_metric == "round_robin":
             target_metric = random.randint(0, 100)
         elif self._config.target_metric == "min_infass_load":
-            target_metric = (current_num_requests / num_request)*(-1)
+            target_metric = (current_num_requests / current_gpu_blocks)*(-1)
         else:
             raise ValueError(f"Invalid metrics type: {self._config.target_metric}")
         metrics["target_metric"] = target_metric

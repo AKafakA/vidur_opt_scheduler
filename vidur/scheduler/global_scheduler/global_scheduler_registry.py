@@ -24,6 +24,7 @@ GlobalSchedulerRegistry.register(
 )
 GlobalSchedulerRegistry.register(GlobalSchedulerType.LOR, LORGlobalScheduler)
 GlobalSchedulerRegistry.register(GlobalSchedulerType.MIN_MEMORY, MinMemoryScheduler)
+GlobalSchedulerRegistry.register(GlobalSchedulerType.LODT, LODTScheduler)
 
 GlobalSchedulerRegistry.register(GlobalSchedulerType.OPT, LengthAwareOptimalScheduler)
 
