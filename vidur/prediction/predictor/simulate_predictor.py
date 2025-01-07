@@ -101,6 +101,8 @@ class SimulatePredictor(Predictor):
         current_gpu_blocks = 0
         current_num_requests = 0
         current_num_preempted = 0
+        current_num_running_request = 0
+        current_num_waiting_request = 0
 
         replica_scheduler = ReplicaSchedulerRegistry.get(
             self._config.replica_scheduler_config.get_type(),
@@ -152,5 +154,7 @@ class SimulatePredictor(Predictor):
             current_gpu_blocks += batch_request_information["free_gpu_blocks"]
             current_num_requests += len(running_request_length) + len(swap_request_length) + len(waiting_request_length)
             current_num_preempted += len(swap_request_length)
+            current_num_running_request += len(running_request_length)
+            current_num_waiting_request += len(waiting_request_length)
         return (replica_scheduler, current_gpu_blocks, current_num_requests, current_num_running_request,
                 current_num_waiting_request, current_num_preempted)
