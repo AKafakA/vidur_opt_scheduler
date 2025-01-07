@@ -1,6 +1,8 @@
 import argparse
 import os
 import re
+from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes, inset_axes
+from mpl_toolkits.axes_grid1.inset_locator import mark_inset
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -8,7 +10,8 @@ import shutil
 import pandas as pd
 from scipy.ndimage import gaussian_filter1d
 
-experiment_name_replacement = {"min latency_2": "block"}
+experiment_name_replacement = {"min latency": "block"}
+scheduler_name_ordered = ['round robin', 'random', 'infaas', 'block*', 'block']
 
 
 def directory_name_parser(directory_name):
@@ -63,21 +66,38 @@ def plot_bar_chart(dataframe, index_names, output_dir, metric_name, x_dim="QPS",
         plt.legend(fancybox=True, shadow=True, ncol=1, fontsize=8, title=legend_title, title_fontsize='small',
                    loc='upper right', bbox_to_anchor=(1.1, 1.015))
     else:
-        plt.legend(ncol=3, fontsize=10, loc='best', fancybox=True, shadow=True)
+        plt.legend(ncol=3, fontsize=8, loc='best', fancybox=True, shadow=True)
     plt.tight_layout()
     plt.savefig(f"{output_dir}/{metric_name}_bar_chart.png")
 
-def plot_single_cdf(data, output_dir_per_qps, metric_name, x_dim_appendix="", y_dim_appendix=""):
+def plot_single_cdf(data, output_dir_per_qps, metric_name, x_dim_appendix="", y_dim_appendix="", zoom_out=False):
     plt.figure()
-    for key, value in data.items():
-        plt.ecdf(value, label=key)
-    plt.xlabel(metric_name.lower() + x_dim_appendix)
-    plt.ylabel("CDF")
-    plt.title(metric_name + " CDF" + y_dim_appendix)
-    plt.legend(fancybox=True, shadow=True)
+    if zoom_out:
+        fig, ax = plt.subplots(1, 1)
+        axins = inset_axes(plt.gca(), width="50%", height="50%", loc='center')
+        for key, value in data.items():
+            ax.ecdf(value, label=key)
+            axins.ecdf(value, label=key)
+        axins.set_xlim(0, 50000)  # Adjust limits as needed
+        axins.set_ylim(0.6, 1)  # Adjust limits as needed
+        mark_inset(ax, axins, loc1=1, loc2=3, fc="none", ec="0.5", ls= '--')
+        ax.legend(fancybox=True, shadow=True, ncol=1, fontsize=8,
+                   loc='upper right', bbox_to_anchor=(1.1, 1.015))
+        ax.set_xlabel(metric_name.lower() + x_dim_appendix)
+        ax.set_ylabel("CDF")
+        ax.set_title(metric_name + " CDF" + y_dim_appendix)
+        axins.set_xticks([])
+        axins.set_yticks([])
+    else:
+        for key, value in data.items():
+             plt.ecdf(value, label=key)
+        plt.xlabel(metric_name.lower() + x_dim_appendix)
+        plt.ylabel("CDF")
+        plt.legend(fancybox=True, shadow=True, loc='best')
+        plt.title(metric_name + " CDF" + y_dim_appendix)
     plt.savefig(f"{output_dir_per_qps}/{metric_name}_cdf.png")
 
-def plot_latency_cdf_per_qps(data, output_dir, metric_name, x_dim_appendix=""):
+def plot_latency_cdf_per_qps(data, output_dir, metric_name, x_dim_appendix="", zoom_out=False):
     output_dir = output_dir + "/cdf_plots"
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
@@ -87,7 +107,7 @@ def plot_latency_cdf_per_qps(data, output_dir, metric_name, x_dim_appendix=""):
         if not os.path.exists(output_dir_per_qps ):
             os.makedirs(output_dir_per_qps)
         plot_single_cdf(data[qps], output_dir_per_qps, metric_name, x_dim_appendix,
-                        f" under QPS {qps}")
+                        f" under QPS {qps}", zoom_out=zoom_out)
 
 
 def plot_per_scheduler(experiments_set, output_dir):
@@ -173,7 +193,7 @@ def plot_per_scheduler(experiments_set, output_dir):
                    xt_rotation='horizontal', legend_title="QPS")
 
 
-def plot_per_qps(experiments_set, output_dir):
+def plot_per_qps(experiments_set, output_dir, min_qps = 16.0):
     qps_output_dir = output_dir + "/qps"
     shutil.rmtree(qps_output_dir)
     os.makedirs(qps_output_dir)
@@ -193,8 +213,10 @@ def plot_per_qps(experiments_set, output_dir):
     avg_free_gpu = {}
     var_free_gpu_per_node = {}
 
-    index_names = set()
     qps_set = sorted(set([record["qps"] for record in experiments_set]))
+    if min_qps > 0:
+        qps_set = [qps for qps in qps_set if qps >= min_qps]
+    sorted_keys = []
     for qps in qps_set:
         token_s_data = [f"{qps}"]
         requests_throughput_data = [f"{qps}"]
@@ -212,13 +234,17 @@ def plot_per_qps(experiments_set, output_dir):
         map_from_name_exp = {}
         for experiment in qps_experiments:
             experiment_name = f"{experiment['scheduler_name']}".replace("_", " ")
-            if experiment_name.startswith("min") or experiment_name.startswith("max"):
-                experiment_name = experiment_name + f"_{experiment['n']}"
-            if experiment_name in experiment_name_replacement:
-                experiment_name = experiment_name_replacement[experiment_name]
-            index_names.add(experiment_name)
+            for key in experiment_name_replacement.keys():
+                if key in experiment_name:
+                    experiment_name = experiment_name.replace(key, experiment_name_replacement[key])
             map_from_name_exp[experiment_name] = experiment
-        for index_name in index_names:
+        if len(sorted_keys) == 0:
+            sorted_keys = sorted(map_from_name_exp.keys())
+            for key in scheduler_name_ordered:
+                if key in sorted_keys:
+                    sorted_keys.remove(key)
+            sorted_keys = sorted_keys + scheduler_name_ordered
+        for index_name in sorted_keys:
             experiments = map_from_name_exp[index_name]
             token_s_data.append(float(experiments['token_throughput']))
             requests_throughput_data.append(float(experiments['request_throughput']))
@@ -241,6 +267,8 @@ def plot_per_qps(experiments_set, output_dir):
         p99_ttft.append(p99_ttft_data)
         p99_tbt.append(p99_tbt_data)
 
+    index_names = sorted_keys
+
     token_s_df = pd.DataFrame(token_throughput, columns=['QPS'] + list(index_names))
     plot_bar_chart(token_s_df, index_names, qps_output_dir, "Token Throughput", "QPS")
     requests_throughput_df = pd.DataFrame(requests_throughput, columns=['QPS'] + list(index_names))
@@ -255,7 +283,7 @@ def plot_per_qps(experiments_set, output_dir):
     plot_bar_chart(p99_tbt_df, index_names, qps_output_dir, "TBT P99", "QPS")
 
 
-    plot_latency_cdf_per_qps(ttft_cdfs, qps_output_dir, "TTFT", " (ms)")
+    plot_latency_cdf_per_qps(ttft_cdfs, qps_output_dir, "TTFT", " (ms)", zoom_out=True)
     plot_latency_cdf_per_qps(tbt_cdfs, qps_output_dir, "TBT", " (ms)")
     plot_latency_cdf_per_qps(e2e_cdfs, qps_output_dir, "Request Latency", " (ms)")
 
