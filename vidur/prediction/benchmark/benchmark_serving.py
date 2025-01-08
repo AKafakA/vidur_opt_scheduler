@@ -82,7 +82,7 @@ class GenerationBackend(str, Enum):
 
 
 async def query_model_block(prompt, verbose, ip_ports):
-    request_id, prompt, prompt_len, expected_response_len = prompt
+    prompt, prompt_len, expected_response_len, request_id = prompt
     global server_num_requests
     global_scheduler_ip_port = ip_ports[0]
     timeout = aiohttp.ClientTimeout(total=4 * 60 * 60)
@@ -119,7 +119,7 @@ async def query_model_block(prompt, verbose, ip_ports):
 
 
 async def query_model_vllm(prompt, verbose, ip_ports):
-    request_id, prompt, prompt_len, expected_response_len = prompt
+    prompt, prompt_len, expected_response_len, request_id = prompt
 
     # Evenly dispatch request to the given api servers.
     global server_num_requests
