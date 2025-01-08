@@ -41,15 +41,16 @@ async def generate_benchmark(request: Request) -> Response:
     """
     assert len(instances) > 0
     request_dict = await request.json()
+    request_id = request_dict["request_id"]
     prompt = request_dict.pop("prompt")
     num_context_tokens = request_dict.pop("prompt_len")
     num_decode_tokens = request_dict.pop("expected_response_len")
     arrived_at = time.time() - start_time
     _ = request_dict.pop("stream", False)
-    async with lock:
-        global num_requests
-        num_requests += 1
-        request_id = num_requests
+    # async with lock:
+    #     global num_requests
+    #     num_requests += 1
+    #     request_id = num_requests
     predict_tasks = []
 
     for instance in instances:
@@ -84,7 +85,19 @@ async def generate_benchmark(request: Request) -> Response:
     elif metrics_type == "random":
         selected_index = random.randint(0, len(instances) - 1)
     elif metrics_type == "round_robin":
-        selected_index = num_requests % len(instances)
+        selected_index = int(request_id) % len(instances)
+    elif metrics_type == "request_per_seconds":
+        min_request_per_second = min(instance.total_request for instance in instances)
+        selected_index = random.choice([i for i in range(len(instances)) if instances[i].total_request
+                                        == min_request_per_second])
+    elif metrics_type == "tokens_per_seconds":
+        min_token_per_second = min(instance.total_tokens for instance in instances)
+        selected_index = random.choice([i for i in range(len(instances)) if instances[i].total_tokens
+                                        == min_token_per_second])
+    elif metrics_type == "latest_response_time":
+        min_response_time = min(instance.latest_response_time for instance in instances)
+        selected_index = random.choice([i for i in range(len(instances)) if instances[i].total_tokens
+                                        == min_response_time])
     else:
         raise ValueError(f"Invalid metrics type: {metrics_type}")
 

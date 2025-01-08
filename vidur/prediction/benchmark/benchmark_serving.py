@@ -82,13 +82,14 @@ class GenerationBackend(str, Enum):
 
 
 async def query_model_block(prompt, verbose, ip_ports):
-    prompt, prompt_len, expected_response_len = prompt
+    request_id, prompt, prompt_len, expected_response_len = prompt
     global server_num_requests
     global_scheduler_ip_port = ip_ports[0]
     timeout = aiohttp.ClientTimeout(total=4 * 60 * 60)
     global num_finished_requests
 
     request_dict = {
+        "request_id": request_id,
         "prompt": prompt,
         "expected_response_len": expected_response_len,
         "prompt_len": prompt_len,
@@ -118,7 +119,7 @@ async def query_model_block(prompt, verbose, ip_ports):
 
 
 async def query_model_vllm(prompt, verbose, ip_ports):
-    prompt, prompt_len, expected_response_len = prompt
+    request_id, prompt, prompt_len, expected_response_len = prompt
 
     # Evenly dispatch request to the given api servers.
     global server_num_requests
@@ -132,6 +133,7 @@ async def query_model_vllm(prompt, verbose, ip_ports):
         use_beam_search = False
         output_len = expected_response_len
         request_dict = {
+            "request_id": request_id,
             "prompt": prompt,
             "n": 1,
             "best_of": best_of,
@@ -1081,9 +1083,9 @@ def main():
                  output_dir = args.output_dir)
 
     if estimated_response_lens is not None:
-        prompts = list(zip(prompts, prompt_lens, estimated_response_lens))
+        prompts = list(zip(prompts, prompt_lens, estimated_response_lens, range(len(prompt_lens))))
     else:
-        prompts = list(zip(prompts, prompt_lens, response_lens))
+        prompts = list(zip(prompts, prompt_lens, response_lens, range(len(prompt_lens))))
 
     (throughput,
      actual_qps,

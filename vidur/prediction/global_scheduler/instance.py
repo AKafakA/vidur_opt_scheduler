@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import aiohttp
 
 from vidur.prediction.server_utils import post_predicting_request, get_predicting_response
@@ -16,6 +18,9 @@ class Instance:
         self._predictor_url = f"http://{ip_address}:{predictor_port}/predict"
         self._backend_url = f"http://{ip_address}:{backend_port}/generate_benchmark"
         self.ip_address = ip_address
+        self.latest_response_time = None
+        self.total_request = 0
+        self.total_tokens = 0
 
     def __str__(self):
         return (f"Instance {self._instance_id} with predictor port {self._predictor_port} "
@@ -37,8 +42,9 @@ class Instance:
                 response_dict['instance_id'] = self._instance_id
                 return response_dict
 
-
     async def query_backend(self, prompt: str, expected_response_len: int, request_id: int):
+        self.total_request += 1
+        start_time = datetime.now()
         output_len = expected_response_len
         request_dict = {
             "prompt": prompt,
@@ -54,4 +60,7 @@ class Instance:
         async with aiohttp.ClientSession(timeout=AIOHTTP_TIMEOUT) as session:
             async with session.post(self._backend_url, json=request_dict) as response:
                 response_dict = await response.json()
-                return response_dict
+        response_time = datetime.now() - start_time
+        self.latest_response_time = response_time
+        self.total_tokens += len(response_dict['per_token_latency'])
+        return response_dict
