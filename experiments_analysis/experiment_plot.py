@@ -11,7 +11,7 @@ import pandas as pd
 from scipy.ndimage import gaussian_filter1d
 
 experiment_name_replacement = {"min latency": "block"}
-scheduler_name_ordered = ['random','block*', 'block']
+scheduler_name_ordered = ['round_robin', 'random', 'infass', 'qps', 'block*', 'block']
 
 
 def directory_name_parser(directory_name):
@@ -272,12 +272,14 @@ def plot_per_qps(experiments_set, output_dir, min_qps = 16.0):
                 if key in experiment_name:
                     experiment_name = experiment_name.replace(key, experiment_name_replacement[key])
             map_from_name_exp[experiment_name] = experiment
+        ordered_key = []
         if len(sorted_keys) == 0:
             sorted_keys = sorted(map_from_name_exp.keys())
             for key in scheduler_name_ordered:
                 if key in sorted_keys:
                     sorted_keys.remove(key)
-            sorted_keys = sorted_keys + scheduler_name_ordered
+                    ordered_key.append(key)
+            sorted_keys = sorted_keys + ordered_key
         for index_name in sorted_keys:
             experiments = map_from_name_exp[index_name]
             token_s_data.append(float(experiments['token_throughput']))
