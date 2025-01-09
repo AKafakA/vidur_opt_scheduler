@@ -90,14 +90,6 @@ async def generate_benchmark(request: Request) -> Response:
         min_request_per_second = min(instance.total_request for instance in instances)
         selected_index = random.choice([i for i in range(len(instances)) if instances[i].total_request
                                         == min_request_per_second])
-    elif metrics_type == "tokens_per_seconds":
-        min_token_per_second = min(instance.total_tokens for instance in instances)
-        selected_index = random.choice([i for i in range(len(instances)) if instances[i].total_tokens
-                                        == min_token_per_second])
-    elif metrics_type == "latest_response_time":
-        min_response_time = min(instance.latest_response_time for instance in instances)
-        selected_index = random.choice([i for i in range(len(instances)) if instances[i].total_tokens
-                                        == min_response_time])
     else:
         raise ValueError(f"Invalid metrics type: {metrics_type}")
 

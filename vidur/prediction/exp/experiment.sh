@@ -41,20 +41,16 @@ if [ "$RESTART_VLLM" = "true" ]; then
 fi
 
 if [ "$RUN_EXP" = "true" ]; then
-  QPS="36"
+  QPS="10 12 16 20 24 30"
   NUM_QUERIES="10000"
-  if [ "$SCHEDULER_METRIC_TYPE" = "min_latency" ]; then
-    METRIC_TYPES="round_robin min_latency"
-  else
-    METRIC_TYPES=$SCHEDULER_METRIC_TYPE
-  fi
+  METRIC_TYPES=$SCHEDULER_METRIC_TYPE
   if [ "$DOWNLOAD_DATASET" = "true" ]; then
     parallel-ssh -t 0 --host $TARGET_HOST "wget https://huggingface.co/datasets/asdwb/sharegpt_length_prediction/resolve/main/$DATASET_NAME.json"
   fi
   for qps in $QPS; do
       for num_queries in $NUM_QUERIES; do
         for metric_type in $METRIC_TYPES; do
-         if [ "$metric_type" = "min_latency" ] || [ "$metric_type" = "min_gpu_blocks" ]
+         if [ "$metric_type" = "min_latency" ] || [ "$metric_type" = "min_scheduling_delay" ]
          then
               N="2"
           else
@@ -73,9 +69,7 @@ if [ "$RUN_EXP" = "true" ]; then
   done
 
   #  test if using the estimated length
-    if [ "$SCHEDULER_METRIC_TYPE" = "min_latency" ] || [ "$SCHEDULER_METRIC_TYPE" = "min_gpu_blocks" ]; then
-      QPS="10 12 16 20 24 36"
-      N="2"
+    if [ "$SCHEDULER_METRIC_TYPE" = "min_latency" ] || [ "$SCHEDULER_METRIC_TYPE" = "min_scheduling_delay" ]; then
       for qps in $QPS; do
         for num_queries in $NUM_QUERIES; do
           for n in $N; do

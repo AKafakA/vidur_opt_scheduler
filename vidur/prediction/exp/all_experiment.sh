@@ -1,4 +1,4 @@
-SCHEDULER_NAME="min_latency min_current_gpu_blocks min_current_requests min_gpu_blocks"
+SCHEDULER_NAME="min_scheduling_delay round_robin min_latency random request_per_seconds"
 BATCH_CAP=48
 
 for scheduler in $SCHEDULER_NAME; do

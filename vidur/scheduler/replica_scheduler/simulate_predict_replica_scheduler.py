@@ -98,7 +98,7 @@ class SimulatePredictReplicaScheduler:
 
     @property
     def schedule_at(self):
-        return min([info["schedule_time"] for info in self._target_request_batch_info])
+        return min([info["schedule_time"] + info["batch_execution_time"] for info in self._target_request_batch_info])
 
     @property
     def completed_at(self):
