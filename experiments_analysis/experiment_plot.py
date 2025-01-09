@@ -11,7 +11,7 @@ import pandas as pd
 from scipy.ndimage import gaussian_filter1d
 
 experiment_name_replacement = {"min latency": "block"}
-scheduler_name_ordered = ['round robin', 'random', 'infaas', 'block*', 'block']
+scheduler_name_ordered = ['random','block*', 'block']
 
 
 def directory_name_parser(directory_name):
@@ -137,7 +137,8 @@ def plot_per_scheduler(experiments_set, output_dir, scheduler_excluded="round_ro
     if scheduler_excluded is None:
         scheduler_excluded = ['round_robin']
     exp_output_dir = output_dir + "/scheduler"
-    shutil.rmtree(exp_output_dir)
+    if os.path.exists(exp_output_dir):
+        shutil.rmtree(exp_output_dir)
     os.makedirs(exp_output_dir)
     experiments_data = {}
     qps_set = sorted(set([record["qps"] for record in experiments_set]))
@@ -223,7 +224,8 @@ def plot_per_scheduler(experiments_set, output_dir, scheduler_excluded="round_ro
 
 def plot_per_qps(experiments_set, output_dir, min_qps = 16.0):
     qps_output_dir = output_dir + "/qps"
-    shutil.rmtree(qps_output_dir)
+    if os.path.exists(qps_output_dir):
+        shutil.rmtree(qps_output_dir)
     os.makedirs(qps_output_dir)
     token_throughput = []
     requests_throughput = []
