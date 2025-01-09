@@ -1,4 +1,4 @@
-SCHEDULER_NAME="min_scheduling_delay round_robin min_latency random request_per_seconds"
+SCHEDULER_NAME="min_scheduling_delay round_robin min_infass_load min_latency random request_per_seconds"
 BATCH_CAP=48
 
 for scheduler in $SCHEDULER_NAME; do

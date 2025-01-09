@@ -10,7 +10,7 @@ import shutil
 import pandas as pd
 from scipy.ndimage import gaussian_filter1d
 
-experiment_name_replacement = {"min latency": "block"}
+experiment_name_replacement = {"min latency": "block", "min infass load": "infaas"}
 scheduler_name_ordered = ['round_robin', 'random', 'infass', 'qps', 'block*', 'block']
 
 
