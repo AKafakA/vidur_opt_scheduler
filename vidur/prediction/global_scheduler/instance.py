@@ -57,4 +57,4 @@ class Instance:
         async with aiohttp.ClientSession(timeout=AIOHTTP_TIMEOUT) as session:
             async with session.post(self._backend_url, json=request_dict) as response:
                 response_dict = await response.json()
-        return response_dict
+                return response_dict

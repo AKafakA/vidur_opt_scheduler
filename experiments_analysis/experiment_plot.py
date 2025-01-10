@@ -10,14 +10,15 @@ import shutil
 import pandas as pd
 from scipy.ndimage import gaussian_filter1d
 
-experiment_name_replacement = {"min latency": "block", "min infass load": "infaas"}
-scheduler_name_ordered = ['round_robin', 'random', 'infass', 'qps', 'block*', 'block']
+experiment_name_replacement = {"min latency": "block", "min infass load": "infaas",
+                               "request per seconds": "qps"}
+scheduler_name_ordered =  ['round robin', 'random', 'infaas', 'qps', 'block*', 'block']
 
 
 def directory_name_parser(directory_name):
     directory_name = directory_name.split("_")
     qps = directory_name[1]
-    n = directory_name[-1]
+    n = directory_name[6]
     return qps, n
 
 
@@ -222,7 +223,7 @@ def plot_per_scheduler(experiments_set, output_dir, scheduler_excluded="round_ro
                    xt_rotation='horizontal', legend_title="QPS")
 
 
-def plot_per_qps(experiments_set, output_dir, min_qps = 16.0):
+def plot_per_qps(experiments_set, output_dir, min_qps = 30):
     qps_output_dir = output_dir + "/qps"
     if os.path.exists(qps_output_dir):
         shutil.rmtree(qps_output_dir)
@@ -312,24 +313,22 @@ def plot_per_qps(experiments_set, output_dir, min_qps = 16.0):
     requests_throughput_df = pd.DataFrame(requests_throughput, columns=['QPS'] + list(index_names))
     plot_bar_chart(requests_throughput_df, index_names, qps_output_dir, "Request Throughput", "QPS")
     average_ttft_df = pd.DataFrame(average_ttft, columns=['QPS'] + list(index_names))
-    plot_bar_chart(average_ttft_df, index_names, qps_output_dir, "Average TTFT", "QPS", zoom_out=True)
+    plot_bar_chart(average_ttft_df, index_names, qps_output_dir, "Average TTFT", "QPS", zoom_out=False)
     average_tbt_df = pd.DataFrame(average_tbt, columns=['QPS'] + list(index_names))
     plot_bar_chart(average_tbt_df, index_names, qps_output_dir, "Average TBT", "QPS")
     p99_ttft_df = pd.DataFrame(p99_ttft, columns=['QPS'] + list(index_names))
-    plot_bar_chart(p99_ttft_df, index_names, qps_output_dir, "TTFT P99", "QPS", zoom_out=True)
+    plot_bar_chart(p99_ttft_df, index_names, qps_output_dir, "TTFT P99", "QPS",  zoom_out=False)
     p99_tbt_df = pd.DataFrame(p99_tbt, columns=['QPS'] + list(index_names))
-    plot_bar_chart(p99_tbt_df, index_names, qps_output_dir, "TBT P99", "QPS", zoom_out=True)
+    plot_bar_chart(p99_tbt_df, index_names, qps_output_dir, "TBT P99", "QPS",  zoom_out=False)
 
     average_e2e_df = pd.DataFrame(average_e2e, columns=['QPS'] + list(index_names))
-    plot_bar_chart(average_e2e_df, index_names, qps_output_dir, "Average Request Latency", "QPS", zoom_out=True)
+    plot_bar_chart(average_e2e_df, index_names, qps_output_dir, "Average Request Latency", "QPS", zoom_out=False)
     p99_e2e_df = pd.DataFrame(p99_e2e, columns=['QPS'] + list(index_names))
-    plot_bar_chart(p99_e2e_df, index_names, qps_output_dir, "Request Latency P99", "QPS", zoom_out=True)
+    plot_bar_chart(p99_e2e_df, index_names, qps_output_dir, "Request Latency P99", "QPS",  zoom_out=False)
 
-    plot_latency_cdf_per_qps(ttft_cdfs, qps_output_dir, "TTFT", " (ms)", zoom_out=True)
-    plot_latency_cdf_per_qps(tbt_cdfs, qps_output_dir, "TBT", " (ms)",
-                             zoom_out=True, max_x_range_for_zoom=100000)
-    plot_latency_cdf_per_qps(e2e_cdfs, qps_output_dir, "Request Latency", " (ms)",
-                             zoom_out=True, max_x_range_for_zoom=100000)
+    plot_latency_cdf_per_qps(ttft_cdfs, qps_output_dir, "TTFT", " (ms)", zoom_out=False)
+    plot_latency_cdf_per_qps(tbt_cdfs, qps_output_dir, "TBT", " (ms)" , max_x_range_for_zoom=100000)
+    plot_latency_cdf_per_qps(e2e_cdfs, qps_output_dir, "Request Latency", " (ms)", max_x_range_for_zoom=100000)
 
     plot_linear(avg_free_gpu, "Average Free GPU Blocks", qps_output_dir, sigma=10,
                 title_appendix=f" Under QPS {qps} ")
@@ -339,7 +338,7 @@ def plot_per_qps(experiments_set, output_dir, min_qps = 16.0):
 
 def main():
     parser = argparse.ArgumentParser(description='Plot the results of the experiments')
-    parser.add_argument("--experiments-dir", type=str, default="./experiments_analysis/experiment_output")
+    parser.add_argument("--experiments-dir", type=str, default="./experiment_output")
     parser.add_argument("--output-dir", type=str, default="./experiments_analysis/exp_plots")
     parser.add_argument("--plot-per-qps", type=bool, default=True)
     parser.add_argument("--plot-per-scheduler", type=bool, default=True)
@@ -350,7 +349,7 @@ def main():
     experiments_set = []
     for scheduler_name in os.listdir(data_dir):
         scheduler_dir = data_dir + "/" + scheduler_name
-        if scheduler_name == 'logs':
+        if scheduler_name == 'logs' or scheduler_name == 'random':
             continue
         for root, dirs, files in os.walk(scheduler_dir):
             for directory in dirs:
@@ -374,8 +373,8 @@ def main():
     if args.plot_per_qps:
         plot_per_qps(experiments_set, args.output_dir)
 
-    if args.plot_per_scheduler:
-        plot_per_scheduler(experiments_set, args.output_dir)
+    # if args.plot_per_scheduler:
+    #     plot_per_scheduler(experiments_set, args.output_dir)
 
 
 if __name__ == "__main__":

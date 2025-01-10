@@ -182,5 +182,6 @@ experiments/profiling/get_profiled_data_from_trace.ipynb
 env_3
 
 *search_output/
+experiment_output/
 experiments_analysis/stats/
 experiments_analysis/tombstone/
