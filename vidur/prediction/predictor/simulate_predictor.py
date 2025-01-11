@@ -104,15 +104,18 @@ class SimulatePredictor(Predictor):
         current_num_running_request = 0
         current_num_waiting_request = 0
 
-        replica_scheduler = ReplicaSchedulerRegistry.get(
-            self._config.replica_scheduler_config.get_type(),
-            replica_config=self._config.replica_config,
-            replica_scheduler_config=self._config.replica_scheduler_config,
-            request_generator_config=self._generate_config,
-            replica=self._replica,
-            num_stages=self._replica.num_pipeline_stages,
-            execution_time_predictor=self._execution_time_predictor,
-        )
+        if self._need_to_predict:
+            replica_scheduler = ReplicaSchedulerRegistry.get(
+                self._config.replica_scheduler_config.get_type(),
+                replica_config=self._config.replica_config,
+                replica_scheduler_config=self._config.replica_scheduler_config,
+                request_generator_config=self._generate_config,
+                replica=self._replica,
+                num_stages=self._replica.num_pipeline_stages,
+                execution_time_predictor=self._execution_time_predictor,
+            )
+        else:
+            replica_scheduler = None
 
         for batch in serialized_response.keys():
             batch_request_information = serialized_response[batch]
