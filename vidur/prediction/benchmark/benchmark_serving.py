@@ -539,8 +539,8 @@ class MeasureLatency:
             if 'ttft' in output:
                 self._engine_ttft.append(output['ttft'])
                 engine_ttft = output['ttft']
-            if client_ttft > 0 and engine_ttft > 0:
-                self._global_scheduling_overhead.append(client_ttft - engine_ttft)
+            if 'scheduling_overhead' in output:
+                self._global_scheduling_overhead.append(output['scheduling_overhead'])
             record_timestamp = False
             if 'sampled_avg_gpu_blocks' in output:
                 self._avg_gpu_blocks.append(output['sampled_avg_gpu_blocks'])
