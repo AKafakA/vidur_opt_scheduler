@@ -102,7 +102,7 @@ class SimulatePredictor(Predictor):
     async def get_replica_scheduler(self):
         async with aiohttp.ClientSession(timeout=AIOHTTP_TIMEOUT) as session:
             headers = {"User-Agent": "Test Client"}
-            async with session.post(self._backend_url, headers=headers) as response:
+            async with session.get(self._backend_url, headers=headers) as response:
                 serialized_response = await response.json()
                 current_gpu_blocks = 0
                 current_num_requests = 0
