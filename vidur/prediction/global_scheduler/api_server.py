@@ -97,7 +97,7 @@ async def generate_benchmark(request: Request) -> Response:
     try:
         time_to_query = time.time()
         response = await selected_instance.query_backend(prompt, num_decode_tokens, request_id)
-        time_on_backend = time.time() - time_to_query
+        time_on_backend = (time.time() - time_to_query) * 1000
     except Exception as e:
         print(f"Error during prediction: {e}")
         return JSONResponse({"error": "Prediction failed"}, status_code=500)

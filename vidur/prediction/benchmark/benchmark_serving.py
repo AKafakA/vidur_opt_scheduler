@@ -532,8 +532,8 @@ class MeasureLatency:
                 if 'time_on_backend' in output:
                     time_on_backend = output['time_on_backend']
                 else:
-                    start_time_on_backend = lat_arr[0][0] - lat_arr[0][1]
-                    time_on_backend = lat_arr[-1][0] - start_time_on_backend
+                    start_time_on_backend = lat_arr[0][0] - lat_arr[0][1] / 1000
+                    time_on_backend = (lat_arr[-1][0] - start_time_on_backend) * 1000
                 self._global_scheduling_overhead.append(latency - time_on_backend)
             if 'per_token_latency_breakdown_dict' in output:
                 self._inference_latencies.append(
