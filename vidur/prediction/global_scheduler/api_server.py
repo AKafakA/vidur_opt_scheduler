@@ -111,8 +111,9 @@ async def generate_benchmark(request: Request) -> Response:
     response['sampled_avg_n_request'] = np.mean([x['num_requests'] for x in predict_results])
     response['sampled_var_n_request'] = np.var([x['num_requests'] for x in predict_results])
     response['num_preempted'] = sum([x['num_preempted'] for x in predict_results])
-    response['time_on_backend'] = time_for_inference + max(time_in_predictions, key=lambda x: x[0])[1]
-    response['time_on_probe'] = max(time_in_predictions, key=lambda x: x[0])[0]
+    bottleneck_host = max(time_in_predictions, key=lambda x: x[0])
+    response['time_on_backend'] = time_for_inference + bottleneck_host[1]
+    response['time_on_probe'] = bottleneck_host[0] - bottleneck_host[1]
     return JSONResponse(response)
 
 
