@@ -38,7 +38,7 @@ def convert_request(request: Dict) -> VidurRequest:
     return vidur_request
 
 
-async def serve_http(app: FastAPI, **uvicorn_kwargs: Any):
+async def serve_ahttp(app: FastAPI, **uvicorn_kwargs: Any):
     for route in app.routes:
         methods = getattr(route, "methods", None)
         path = getattr(route, "path", None)

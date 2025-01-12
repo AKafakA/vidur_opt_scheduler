@@ -74,6 +74,7 @@ async def run_server(args: Namespace,
         ssl_certfile=args.ssl_certfile,
         ssl_ca_certs=args.ssl_ca_certs,
         ssl_cert_reqs=args.ssl_cert_reqs,
+        workers=args.workers,
         **uvicorn_kwargs,
     )
 
@@ -86,6 +87,7 @@ if __name__ == "__main__":
     parser.add_argument("--port", type=int, default=8100)
     parser.add_argument("--ssl-keyfile", type=str, default=None)
     parser.add_argument("--ssl-certfile", type=str, default=None)
+    parser.add_argument("--workers", type=int, default=10)
     parser.add_argument("--ssl-ca-certs",
                         type=str,
                         default=None,

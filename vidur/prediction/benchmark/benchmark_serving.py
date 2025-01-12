@@ -32,6 +32,8 @@ from transformers import AutoTokenizer
 from typing import List
 import resource
 
+from vidur.prediction.global_scheduler.api_server import start_time
+
 resource.setrlimit(resource.RLIMIT_NOFILE, (65536, 65536))
 
 num_finished_requests = 0
@@ -504,9 +506,9 @@ class MeasureLatency:
             start = time.time()
             prompt, output = await f(*args, **kwargs)
             # Do not record latency if request failed.
+            latency = (time.time() - start) * 1000
             if 'generated_text' in output:
-                latency = time.time() - start
-                self._request_latencies.append(latency * 1000)
+                self._request_latencies.append(latency)
                 try:
                     self._per_token_latencies.append(
                         latency / output['response_len'])
@@ -527,7 +529,12 @@ class MeasureLatency:
                 self._decode_sum_latencies.append(decode_sum_latency)
                 self._all_decode_token_latencies.extend(lat_arr[1:, 1])
                 self._prefill_token_latencies.append(lat_arr[0][1])
-                client_ttft = lat_arr[0][1]
+                if 'time_on_backend' in output:
+                    time_on_backend = output['time_on_backend']
+                else:
+                    start_time_on_backend = lat_arr[0][0] - lat_arr[0][1]
+                    time_on_backend = lat_arr[-1][0] - start_time_on_backend
+                self._global_scheduling_overhead.append(latency - time_on_backend)
             if 'per_token_latency_breakdown_dict' in output:
                 self._inference_latencies.append(
                     np.mean(output['per_token_latency_breakdown_dict']['step_latency_engine']))
@@ -539,8 +546,6 @@ class MeasureLatency:
             if 'ttft' in output:
                 self._engine_ttft.append(output['ttft'])
                 engine_ttft = output['ttft']
-            if 'scheduling_overhead' in output:
-                self._global_scheduling_overhead.append(output['scheduling_overhead'])
             record_timestamp = False
             if 'sampled_avg_gpu_blocks' in output:
                 self._avg_gpu_blocks.append(output['sampled_avg_gpu_blocks'])

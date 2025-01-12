@@ -40,7 +40,6 @@ async def generate_benchmark(request: Request) -> Response:
     3) return the completion to the client with profiling
     """
     assert len(instances) > 0
-    start_time = time.time()
     request_dict = await request.json()
     request_id = request_dict["request_id"]
     prompt = request_dict.pop("prompt")
@@ -96,8 +95,9 @@ async def generate_benchmark(request: Request) -> Response:
 
     selected_instance = instances[selected_index]
     try:
-        scheduling_overhead = (start_time - time.time()) * 1000
+        time_to_query = time.time()
         response = await selected_instance.query_backend(prompt, num_decode_tokens, request_id)
+        time_on_backend = time.time() - time_to_query
     except Exception as e:
         print(f"Error during prediction: {e}")
         return JSONResponse({"error": "Prediction failed"}, status_code=500)
@@ -109,7 +109,7 @@ async def generate_benchmark(request: Request) -> Response:
     response['sampled_avg_n_request'] = np.mean([x['num_requests'] for x in predict_results])
     response['sampled_var_n_request'] = np.var([x['num_requests'] for x in predict_results])
     response['num_preempted'] = sum([x['num_preempted'] for x in predict_results])
-    response['scheduling_overhead'] = scheduling_overhead
+    response['time_on_backend'] = time_on_backend
     return JSONResponse(response)
 
 
@@ -159,6 +159,7 @@ async def run_server(args: Namespace,
         ssl_certfile=args.ssl_certfile,
         ssl_ca_certs=args.ssl_ca_certs,
         ssl_cert_reqs=args.ssl_cert_reqs,
+        workers=args.workers,
         **uvicorn_kwargs,
     )
 
@@ -169,6 +170,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--host", type=str, default=None)
     parser.add_argument("--port", type=int, default=8200)
+    parser.add_argument("--workers", type=int, default=10)
     parser.add_argument("--ssl-keyfile", type=str, default=None)
     parser.add_argument("--ssl-certfile", type=str, default=None)
     parser.add_argument("--ssl-ca-certs",
