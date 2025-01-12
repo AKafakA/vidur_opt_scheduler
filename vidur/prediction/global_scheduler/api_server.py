@@ -40,6 +40,7 @@ async def generate_benchmark(request: Request) -> Response:
     3) return the completion to the client with profiling
     """
     assert len(instances) > 0
+    request_start_time = time.time()
     request_dict = await request.json()
     request_id = request_dict["request_id"]
     prompt = request_dict.pop("prompt")
@@ -66,6 +67,7 @@ async def generate_benchmark(request: Request) -> Response:
         predict_results = random.sample(predict_results, min(n, len(predict_results)))
 
     target_metrics = [x['target_metric'] for x in predict_results]
+    time_in_predictions = [(x["time_to_predict"], x["time_to_probe"]) for x in predict_results]
     assert len(target_metrics) == len(predict_results)
     if metrics_type.startswith("min") or metrics_type.startswith("max"):
         # if current in metrics means all node need to be queried and select the one with min/max
@@ -97,7 +99,7 @@ async def generate_benchmark(request: Request) -> Response:
     try:
         time_to_query = time.time()
         response = await selected_instance.query_backend(prompt, num_decode_tokens, request_id)
-        time_on_backend = (time.time() - time_to_query) * 1000
+        time_for_inference = (time.time() - time_to_query) * 1000
     except Exception as e:
         print(f"Error during prediction: {e}")
         return JSONResponse({"error": "Prediction failed"}, status_code=500)
@@ -109,7 +111,7 @@ async def generate_benchmark(request: Request) -> Response:
     response['sampled_avg_n_request'] = np.mean([x['num_requests'] for x in predict_results])
     response['sampled_var_n_request'] = np.var([x['num_requests'] for x in predict_results])
     response['num_preempted'] = sum([x['num_preempted'] for x in predict_results])
-    response['time_on_backend'] = time_on_backend
+    response['time_on_backend'] = time_for_inference + max(time_in_predictions, key=lambda x: x[0])[1]
     return JSONResponse(response)
 
 
@@ -170,7 +172,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--host", type=str, default=None)
     parser.add_argument("--port", type=int, default=8200)
-    parser.add_argument("--workers", type=int, default=10)
+    parser.add_argument("--workers", type=int, default=1)
     parser.add_argument("--ssl-keyfile", type=str, default=None)
     parser.add_argument("--ssl-certfile", type=str, default=None)
     parser.add_argument("--ssl-ca-certs",

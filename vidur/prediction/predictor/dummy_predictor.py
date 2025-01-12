@@ -5,7 +5,7 @@ class DummyPredictor(Predictor):
     def __init__(self, config, port):
         super().__init__(config, port)
 
-    def predict(self, target_request):
+    async def predict(self, target_request):
         return {
             "target_metric": 1.0,
             "gpu_blocks": 1.0,

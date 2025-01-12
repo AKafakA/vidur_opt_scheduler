@@ -3,6 +3,7 @@ import asyncio
 import json
 import logging
 import ssl
+import time
 from argparse import Namespace
 from typing import Any, Optional
 from fastapi import FastAPI, Request
@@ -28,10 +29,13 @@ async def health() -> Response:
 async def predict(request: Request) -> Response:
     """Predict completion for the request. """
     assert predictor is not None
+    start_time = time.time()
     request_dict = await request.json()
     vidur_request = convert_request(request_dict)
-    metric = predictor.predict(vidur_request)
+    metric = await predictor.predict(vidur_request)
+    time_elapsed = (time.time() - start_time) * 1000
     logging.debug("Predicted metric: %s for request: %s", metric, str(vidur_request.id))
+    metric["time_to_predict"] = time_elapsed
     return JSONResponse(metric)
 
 
@@ -87,7 +91,7 @@ if __name__ == "__main__":
     parser.add_argument("--port", type=int, default=8100)
     parser.add_argument("--ssl-keyfile", type=str, default=None)
     parser.add_argument("--ssl-certfile", type=str, default=None)
-    parser.add_argument("--workers", type=int, default=10)
+    parser.add_argument("--workers", type=int, default=1)
     parser.add_argument("--ssl-ca-certs",
                         type=str,
                         default=None,

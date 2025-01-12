@@ -17,7 +17,7 @@ class Predictor(ABC):
         self._instance_port = port
 
     @abstractmethod
-    def predict(self, target_request: Request) -> Dict:
+    async def predict(self, target_request: Request) -> Dict:
         """Predict the completion time of the request.
         """
         pass
