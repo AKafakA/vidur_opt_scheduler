@@ -529,12 +529,15 @@ class MeasureLatency:
                 self._decode_sum_latencies.append(decode_sum_latency)
                 self._all_decode_token_latencies.extend(lat_arr[1:, 1])
                 self._prefill_token_latencies.append(lat_arr[0][1])
-                if 'time_on_backend' in output:
-                    time_on_backend = output['time_on_backend']
+                if 'time_on_probe' in output:
+                    self._global_scheduling_overhead.append(output['time_on_probe'])
                 else:
-                    start_time_on_backend = lat_arr[0][0] - lat_arr[0][1] / 1000
-                    time_on_backend = (lat_arr[-1][0] - start_time_on_backend) * 1000
-                self._global_scheduling_overhead.append(latency - time_on_backend)
+                    if 'time_on_backend' in output:
+                        time_on_backend = output['time_on_backend']
+                    else:
+                        start_time_on_backend = lat_arr[0][0] - lat_arr[0][1] / 1000
+                        time_on_backend = (lat_arr[-1][0] - start_time_on_backend) * 1000
+                    self._global_scheduling_overhead.append(latency - time_on_backend)
             if 'per_token_latency_breakdown_dict' in output:
                 self._inference_latencies.append(
                     np.mean(output['per_token_latency_breakdown_dict']['step_latency_engine']))

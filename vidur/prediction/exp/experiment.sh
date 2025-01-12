@@ -70,6 +70,10 @@ if [ "$RUN_EXP" = "true" ]; then
 
   #  test if using the estimated length
     if [ "$SCHEDULER_METRIC_TYPE" = "min_latency" ] || [ "$SCHEDULER_METRIC_TYPE" = "min_scheduling_delay" ]; then
+      sh vidur/prediction/exp/reset.sh
+      nohup sh vidur/prediction/exp/run_exp_vllm.sh $BATCH_CAP $MODEL $UPDATE_VLLM_CODE > /dev/null 2>&1 &
+      nohup sh vidur/prediction/exp/run_exp_predictor.sh $PREDICTOR_CONFIG_PATH $SCHEDULER_METRIC_TYPE $DISABLE_TIME_ESTIMATION $UPDATE_VIDUR_CODE $BATCH_CAP> /dev/null 2>&1 &
+      sleep 60
       for qps in $QPS; do
         for num_queries in $NUM_QUERIES; do
           for n in $N; do
