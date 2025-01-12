@@ -4,7 +4,7 @@ __pycache__/
 *$py.class
 .idea/
 
-experiments_analysis/experiment_output/
+tmp/experiment_output/
 
 # C extensions
 *.so

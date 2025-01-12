@@ -1,6 +1,8 @@
 import argparse
 import os
 import re
+from operator import index
+
 from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes, inset_axes
 from mpl_toolkits.axes_grid1.inset_locator import mark_inset
 
@@ -223,7 +225,7 @@ def plot_per_scheduler(experiments_set, output_dir, scheduler_excluded="round_ro
                    xt_rotation='horizontal', legend_title="QPS")
 
 
-def plot_per_qps(experiments_set, output_dir, min_qps = 30):
+def plot_per_qps(experiments_set, output_dir, min_qps = 20):
     qps_output_dir = output_dir + "/qps"
     if os.path.exists(qps_output_dir):
         shutil.rmtree(qps_output_dir)
@@ -243,6 +245,7 @@ def plot_per_qps(experiments_set, output_dir, min_qps = 30):
 
     avg_free_gpu = {}
     var_free_gpu_per_node = {}
+    num_total_preemption= {}
 
     qps_set = sorted(set([record["qps"] for record in experiments_set]))
     if min_qps > 0:
@@ -296,6 +299,8 @@ def plot_per_qps(experiments_set, output_dir, min_qps = 30):
             e2e_cdfs_per_qps[index_name] = experiments['e2e']
             avg_free_gpu[index_name] = experiments['avg_gpu_blocks']
             var_free_gpu_per_node[index_name] = experiments['var_gpu_blocks']
+            num_total_preemption[index_name] = experiments['num_preempted']
+
 
         token_throughput.append(token_s_data)
         requests_throughput.append(requests_throughput_data)
@@ -334,11 +339,13 @@ def plot_per_qps(experiments_set, output_dir, min_qps = 30):
                 title_appendix=f" Under QPS {qps} ")
     plot_linear(var_free_gpu_per_node, "Free GPU Blocks Var", qps_output_dir, sigma=10,
                 title_appendix=f" Under QPS {qps} ")
+    plot_linear(num_total_preemption, "Number of Preemption", qps_output_dir, sigma=10,
+                title_appendix=f" Under QPS {qps} ")
 
 
 def main():
     parser = argparse.ArgumentParser(description='Plot the results of the experiments')
-    parser.add_argument("--experiments-dir", type=str, default="./experiment_output")
+    parser.add_argument("--experiments-dir", type=str, default="./experiments_analysis/experiment_output")
     parser.add_argument("--output-dir", type=str, default="./experiments_analysis/exp_plots")
     parser.add_argument("--plot-per-qps", type=bool, default=True)
     parser.add_argument("--plot-per-scheduler", type=bool, default=True)
@@ -349,7 +356,7 @@ def main():
     experiments_set = []
     for scheduler_name in os.listdir(data_dir):
         scheduler_dir = data_dir + "/" + scheduler_name
-        if scheduler_name == 'logs' or scheduler_name == 'random':
+        if scheduler_name == 'logs':
             continue
         for root, dirs, files in os.walk(scheduler_dir):
             for directory in dirs:
@@ -370,6 +377,7 @@ def main():
                         record['e2e'] = b['request_latencies']
                         record['avg_gpu_blocks'] = b['avg_gpu_blocks']
                         record['var_gpu_blocks'] = b['var_gpu_blocks']
+                        record['num_preempted'] = b['num_preempted']
     if args.plot_per_qps:
         plot_per_qps(experiments_set, args.output_dir)
 
