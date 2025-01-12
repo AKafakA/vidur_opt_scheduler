@@ -105,7 +105,7 @@ if __name__ == "__main__":
     parser.add_argument("--config_path", type=str, default= "vidur/prediction/config/test_config.json")
     parser.add_argument("--predictor_type", type=str, default="simulate")
     parser.add_argument("--metric_type", type=str, default="random")
-    parser.add_argument("--disable_time_estimation", type=bool, default=True)
+    parser.add_argument("--disable_time_estimation", type=bool, default=False)
     parser.add_argument("--batch_size_cap", type=int, default=128)
     args = parser.parse_args()
     resource.setrlimit(resource.RLIMIT_NOFILE, (65536, 65536))

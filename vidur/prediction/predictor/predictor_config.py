@@ -28,7 +28,7 @@ class PredictorConfig(ABC):
         metadata={"help": "Target metric to optimize for."},
     )
     disable_batch_time_estimation: bool = field(
-        default=True,
+        default=False,
         metadata={"help": "Whether to use the tree model to estimate the batch execution time"},
     )
 
