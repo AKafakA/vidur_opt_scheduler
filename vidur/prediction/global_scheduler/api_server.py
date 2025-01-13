@@ -89,9 +89,10 @@ async def generate_benchmark(request: Request) -> Response:
     elif metrics_type == "round_robin":
         selected_index = int(request_id) % len(instances)
     elif metrics_type == "request_per_seconds":
-        min_request_per_second = min(instance.total_request for instance in instances)
-        selected_index = random.choice([i for i in range(len(instances)) if instances[i].total_request
-                                        == min_request_per_second])
+        instance_qpm = [(instance.get_current_qpm(), instance._instance_id) for instance in instances]
+        min_qpm = min(instance_qpm, key=lambda x:x[0])[0]
+        selected_instance_id = random.choice([x[1] for x in instance_qpm if x[0] == min_qpm])
+        selected_index = [i for i in range(len(instances)) if instances[i]._instance_id == selected_instance_id][0]
     else:
         raise ValueError(f"Invalid metrics type: {metrics_type}")
 

@@ -1,3 +1,4 @@
+import time
 from datetime import datetime
 
 import aiohttp
@@ -19,6 +20,8 @@ class Instance:
         self._backend_url = f"http://{ip_address}:{backend_port}/generate_benchmark"
         self.ip_address = ip_address
         self.total_request = 0
+        self.start_time = time.time()
+        self.request_timeline = []
 
     def __str__(self):
         return (f"Instance {self._instance_id} with predictor port {self._predictor_port} "
@@ -41,6 +44,7 @@ class Instance:
                 return response_dict
 
     async def query_backend(self, prompt: str, expected_response_len: int, request_id: int):
+        self.request_timeline.append(time.time() - self.start_time)
         self.total_request += 1
         output_len = expected_response_len
         request_dict = {
@@ -58,3 +62,8 @@ class Instance:
             async with session.post(self._backend_url, json=request_dict) as response:
                 response_dict = await response.json()
                 return response_dict
+
+    def get_current_qpm(self):
+        current_time = time.time()
+        return sum([1 for time_of_request in self.request_timeline
+                    if current_time - time_of_request <= 60])
