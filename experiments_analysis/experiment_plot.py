@@ -12,9 +12,9 @@ import shutil
 import pandas as pd
 from scipy.ndimage import gaussian_filter1d
 
-experiment_name_replacement = {"min latency": "block", "min infass load": "infaas",
-                               "request per seconds": "qps"}
-scheduler_name_ordered =  ['round robin', 'random', 'infaas', 'qps', 'block*', 'block']
+experiment_name_replacement = {"min latency": "Block", "min infass load": "INFaaS++",
+                               "request per seconds": "Instance-QPM"}
+scheduler_name_ordered =  ['Round Robin', 'random', 'INFaaS++', 'Instance-QPM', 'Block*', 'Block']
 
 
 def directory_name_parser(directory_name):
@@ -34,9 +34,9 @@ def extract_data_from_log_file(log_file):
         return match.groupdict()
 
 
-def plot_linear(data, metric_name, output_dir, y_dim_appendix="Per Node", sigma=-1, title_appendix=""):
+def plot_linear(data, metric_name, output_dir, qps, y_dim_appendix="Per Node", sigma=-1, adjust_legend=False):
     plt.figure()
-    output_dir = output_dir + "/linear_plots"
+    output_dir = output_dir + f"/linear_plots/{qps}"
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     for key, value in data.items():
@@ -47,13 +47,16 @@ def plot_linear(data, metric_name, output_dir, y_dim_appendix="Per Node", sigma=
 
     plt.xlabel("Request ID")
     plt.ylabel(metric_name + " " + y_dim_appendix)
-    plt.title(metric_name + title_appendix)
-    plt.legend(fancybox=True, shadow=True)
+    if adjust_legend:
+        plt.legend(fancybox=True, shadow=True, ncol=4, fontsize=8, title_fontsize='small',
+                   loc='upper right', bbox_to_anchor=(0.9, 1.1))
+    else:
+        plt.legend(fancybox=True, shadow=True)
     plt.savefig(f"{output_dir}/{metric_name}_linear.png")
 
 
 def plot_bar_chart(dataframe, index_names, output_dir, metric_name, x_dim="QPS", stack_data=False, plot_kind='bar',
-                   xt_rotation='horizontal', legend_title='', zoom_out=False):
+                   xt_rotation='horizontal', legend_title='', zoom_out=False, y_append=" (s)"):
     plt.figure()
     output_dir = output_dir + "/bar_charts"
     if not os.path.exists(output_dir):
@@ -81,8 +84,7 @@ def plot_bar_chart(dataframe, index_names, output_dir, metric_name, x_dim="QPS",
     else:
         dataframe.plot(x=x_dim, y=list(index_names), kind=plot_kind, stacked=stack_data)
         plt.xlabel(x_dim)
-        plt.ylabel(metric_name)
-        plt.title(metric_name + " Per " + x_dim)
+        plt.ylabel(metric_name + y_append)
         plt.xticks(rotation=xt_rotation)
         if legend_title:
             plt.legend(fancybox=True, shadow=True, ncol=1, fontsize=8, title=legend_title, title_fontsize='small',
@@ -90,7 +92,7 @@ def plot_bar_chart(dataframe, index_names, output_dir, metric_name, x_dim="QPS",
         else:
             plt.legend(ncol=3, fontsize=8, loc='best', fancybox=True, shadow=True)
         plt.tight_layout()
-        plt.ticklabel_format(axis='y', style='sci', scilimits=(0, 0))
+        # plt.ticklabel_format(axis='y', style='sci', scilimits=(0, 0))
     plt.savefig(f"{output_dir}/{metric_name}_bar_chart.png")
 
 def plot_single_cdf(data, output_dir_per_qps, metric_name, x_dim_appendix="", y_dim_appendix="", zoom_out=False,
@@ -119,7 +121,6 @@ def plot_single_cdf(data, output_dir_per_qps, metric_name, x_dim_appendix="", y_
         plt.xlabel(metric_name.lower() + x_dim_appendix)
         plt.ylabel("CDF")
         plt.legend(fancybox=True, shadow=True, loc='best')
-        plt.title(metric_name + " CDF" + y_dim_appendix)
         plt.ticklabel_format(axis='x', style='sci', scilimits=(0, 0))
     plt.savefig(f"{output_dir_per_qps}/{metric_name}_cdf.png")
 
@@ -184,12 +185,12 @@ def plot_per_scheduler(experiments_set, output_dir, scheduler_excluded="round_ro
                 if record["qps"] == qps:
                     token_throughput_data.append(float(record['token_throughput']))
                     requests_throughput_data.append(float(record['request_throughput']))
-                    average_ttft_data.append(np.mean(record['ttft']))
-                    average_tbt_data.append(np.mean(record['tbt']))
-                    p99_ttft_data.append(np.percentile(record['ttft'], 99))
-                    p99_tbt_data.append(np.percentile(record['tbt'], 99))
-                    average_e2e_data.append(np.mean(record['e2e']))
-                    p99_e2e_data.append(np.percentile(record['e2e'], 99))
+                    average_ttft_data.append(int(np.mean(record['ttft'])))
+                    average_tbt_data.append(int(np.mean(record['tbt'])))
+                    p99_ttft_data.append(int(np.percentile(record['ttft'], 99)))
+                    p99_tbt_data.append(int(np.percentile(record['tbt'], 99)))
+                    average_e2e_data.append(int(np.mean(record['e2e'])))
+                    p99_e2e_data.append(int(np.percentile(record['e2e'], 99)))
         token_throughput.append(token_throughput_data)
         requests_throughput.append(requests_throughput_data)
         average_ttft.append(average_ttft_data)
@@ -225,7 +226,7 @@ def plot_per_scheduler(experiments_set, output_dir, scheduler_excluded="round_ro
                    xt_rotation='horizontal', legend_title="QPS")
 
 
-def plot_per_qps(experiments_set, output_dir, min_qps = 20):
+def plot_per_qps(experiments_set, output_dir, min_qps = 24, max_qps=30):
     qps_output_dir = output_dir + "/qps"
     if os.path.exists(qps_output_dir):
         shutil.rmtree(qps_output_dir)
@@ -249,7 +250,7 @@ def plot_per_qps(experiments_set, output_dir, min_qps = 20):
 
     qps_set = sorted(set([record["qps"] for record in experiments_set]))
     if min_qps > 0:
-        qps_set = [qps for qps in qps_set if qps >= min_qps]
+        qps_set = [qps for qps in qps_set if min_qps <= qps <= max_qps]
     sorted_keys = []
     for qps in qps_set:
         token_s_data = [f"{qps}"]
@@ -285,21 +286,32 @@ def plot_per_qps(experiments_set, output_dir, min_qps = 20):
                     ordered_key.append(key)
             sorted_keys = sorted_keys + ordered_key
         for index_name in sorted_keys:
+
             experiments = map_from_name_exp[index_name]
             token_s_data.append(float(experiments['token_throughput']))
             requests_throughput_data.append(float(experiments['request_throughput']))
-            average_ttft_data.append(np.mean(experiments['ttft']))
+            average_ttft_data.append(int(np.mean(experiments['ttft'])) * 1.0 /1000)
             average_tbt_data.append(np.mean(experiments['tbt']))
             p99_tbt_data.append(np.percentile(experiments['tbt'], 99))
-            p99_ttft_data.append(np.percentile(experiments['ttft'], 99))
-            average_e2e_data.append(np.mean(experiments['e2e']))
-            p99_e2e_data.append(np.percentile(experiments['e2e'], 99))
-            ttft_cdf_per_qps[index_name] = experiments['ttft']
-            tbt_cdfs_per_qps[index_name] = experiments['tbt']
-            e2e_cdfs_per_qps[index_name] = experiments['e2e']
+            p99_ttft_data.append(int(np.percentile(experiments['ttft'], 99)) * 1.0 /1000)
+            average_e2e_data.append(int(np.mean(experiments['e2e'])* 1.0) /1000)
+            p99_e2e_data.append(int(np.percentile(experiments['e2e'], 99)) * 1.0 /1000)
+            ttft_cdf_per_qps[index_name] = experiments['ttft'] * 1.0 /1000
+            tbt_cdfs_per_qps[index_name] = experiments['tbt'] * 1.0 /1000
+            e2e_cdfs_per_qps[index_name] = experiments['e2e'] * 1.0 /1000
             avg_free_gpu[index_name] = experiments['avg_gpu_blocks']
             var_free_gpu_per_node[index_name] = experiments['var_gpu_blocks']
-            num_total_preemption[index_name] = experiments['num_preempted']
+            num_preempted_list = (experiments['num_preempted'] - experiments['num_preempted'][0]).tolist()
+            num_preempted = np.asarray([max(0, preempted) for preempted in num_preempted_list])
+            num_total_preemption[index_name] = num_preempted
+
+            print(f"when {qps}, the {num_total_preemption[index_name][-1]} For {index_name}")
+
+
+        plot_linear(avg_free_gpu, "Average Free GPU Blocks", qps_output_dir, qps=qps, sigma=10)
+        plot_linear(var_free_gpu_per_node, "Free GPU Blocks Var", qps_output_dir, qps=qps, sigma=20,
+                    adjust_legend=True)
+        plot_linear(num_total_preemption, "Number of new Preemption", qps_output_dir, qps=qps, sigma=10)
 
 
         token_throughput.append(token_s_data)
@@ -335,17 +347,10 @@ def plot_per_qps(experiments_set, output_dir, min_qps = 20):
     plot_latency_cdf_per_qps(tbt_cdfs, qps_output_dir, "TBT", " (ms)" , max_x_range_for_zoom=100000)
     plot_latency_cdf_per_qps(e2e_cdfs, qps_output_dir, "Request Latency", " (ms)", max_x_range_for_zoom=100000)
 
-    plot_linear(avg_free_gpu, "Average Free GPU Blocks", qps_output_dir, sigma=10,
-                title_appendix=f" Under QPS {qps} ")
-    plot_linear(var_free_gpu_per_node, "Free GPU Blocks Var", qps_output_dir, sigma=10,
-                title_appendix=f" Under QPS {qps} ")
-    plot_linear(num_total_preemption, "Number of Preemption", qps_output_dir, sigma=10,
-                title_appendix=f" Under QPS {qps} ")
-
 
 def main():
     parser = argparse.ArgumentParser(description='Plot the results of the experiments')
-    parser.add_argument("--experiments-dir", type=str, default="./experiments_analysis/experiment_output")
+    parser.add_argument("--experiments-dir", type=str, default="./experiment_output")
     parser.add_argument("--output-dir", type=str, default="./experiments_analysis/exp_plots")
     parser.add_argument("--plot-per-qps", type=bool, default=True)
     parser.add_argument("--plot-per-scheduler", type=bool, default=True)
