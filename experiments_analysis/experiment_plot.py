@@ -350,7 +350,7 @@ def plot_per_qps(experiments_set, output_dir, min_qps = 24, max_qps=30):
 
 def main():
     parser = argparse.ArgumentParser(description='Plot the results of the experiments')
-    parser.add_argument("--experiments-dir", type=str, default="./experiment_output")
+    parser.add_argument("--experiments-dir", type=str, default="/experiments_analysis/experiment_output")
     parser.add_argument("--output-dir", type=str, default="./experiments_analysis/exp_plots")
     parser.add_argument("--plot-per-qps", type=bool, default=True)
     parser.add_argument("--plot-per-scheduler", type=bool, default=True)
