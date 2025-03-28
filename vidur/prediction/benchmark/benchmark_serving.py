@@ -2,6 +2,7 @@
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
+import functools
 import shutil
 
 # http://www.apache.org/licenses/LICENSE-2.0
@@ -81,6 +82,7 @@ async def async_request_gen(generator, qps: float, distribution="uniform", burst
 class GenerationBackend(str, Enum):
     vLLM = "vLLM"
     block = "block"
+    llumnix = "llumnix"
 
 
 async def query_model_block(prompt, verbose, ip_ports):
@@ -120,7 +122,7 @@ async def query_model_block(prompt, verbose, ip_ports):
             sys.exit(1)
 
 
-async def query_model_vllm(prompt, verbose, ip_ports):
+async def query_model_vllm(prompt, verbose, ip_ports, with_request_id=True):
     prompt, prompt_len, expected_response_len, request_id = prompt
 
     # Evenly dispatch request to the given api servers.
@@ -135,7 +137,6 @@ async def query_model_vllm(prompt, verbose, ip_ports):
         use_beam_search = False
         output_len = expected_response_len
         request_dict = {
-            "request_id": request_id,
             "prompt": prompt,
             "n": 1,
             "best_of": best_of,
@@ -146,6 +147,9 @@ async def query_model_vllm(prompt, verbose, ip_ports):
             "ignore_eos": True,
             "stream": False,
         }
+        if with_request_id:
+            request_dict["request_id"]= request_id
+
         if verbose:
             print('Querying model')
         try:
@@ -200,7 +204,13 @@ def calculate_throughput(queries,
                          log_latencies,
                          fail_on_response_failure):
     # either should be provided
-    assert all_inference_latencies or all_waiting_latencies
+    if backend == GenerationBackend.block:
+        assert all_inference_latencies or all_waiting_latencies
+    else:
+        all_waiting_latencies = [-1] * len(all_e2e_latencies)
+        all_inference_latencies = [-1] * len(all_e2e_latencies)
+        global_scheduling_overhead = [-1] * len(all_e2e_latencies)
+
     prompts = []
     responses = []
     naive_hf_lens = []
@@ -309,7 +319,7 @@ def calculate_cdf(latencies):
 
 
 def plot_latency_cdf(req_latencies, prefill_latencies, decode_latencies, scheduling_overhead, waiting_latency,
-                     log_filename, output_dir='.'):
+                     log_filename, backend, output_dir='.'):
     fig_filename = os.path.splitext(log_filename)[0] + "_latency.png"
     fig, (ax_req, ax_prefill, ax_decode, ax_scheduling_overhead, ax_waiting_latency) = plt.subplots(1, 5,
                                                                                                     figsize=(5 * 7, 6))
@@ -349,8 +359,9 @@ def plot_latency_cdf(req_latencies, prefill_latencies, decode_latencies, schedul
     plot_single(ax_req, req_latencies)
     plot_single(ax_prefill, prefill_latencies, is_prefill=True)
     plot_single(ax_decode, decode_latencies)
-    plot_single(ax_scheduling_overhead, scheduling_overhead)
-    plot_single(ax_waiting_latency, waiting_latency)
+    if backend == GenerationBackend.block:
+        plot_single(ax_scheduling_overhead, scheduling_overhead)
+        plot_single(ax_waiting_latency, waiting_latency)
     ax_req.set_xlabel('Latency/req(ms)')
     ax_req.set_title('request cdf')
     ax_prefill.set_xlabel('Latency/token(ms)')
@@ -593,6 +604,8 @@ async def benchmark(
     elif backend == GenerationBackend.block:
         query_model = query_model_block
         assert len(ip_ports) == 1
+    elif backend == GenerationBackend.llumnix:
+        query_model = functools.partial(query_model_vllm, with_request_id=False)
     else:
         raise ValueError(f'unknown backend {backend}')
 
@@ -654,7 +667,7 @@ async def benchmark(
                                                   fail_on_response_failure)
     calculate_cdf(m._request_latencies)
     plot_latency_cdf(m._request_latencies, m._prefill_token_latencies, m._decode_token_latencies, m._waiting_latencies,
-                     m._global_scheduling_overhead, log_filename, output_dir=output_dir)
+                     m._global_scheduling_overhead, log_filename, backend=backend, output_dir=output_dir)
     save_all_decode_token_latencies_npy(m._all_token_latencies, log_filename, output_dir=output_dir)
     timestamps = [int((x - start_time) * 1000) for x in m._requested_timestamps]
     if timestamps:
