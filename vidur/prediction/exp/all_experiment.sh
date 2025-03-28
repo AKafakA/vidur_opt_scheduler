@@ -1,7 +1,7 @@
-SCHEDULER_NAME="min_scheduling_delay round_robin min_infass_load min_latency random request_per_seconds"
+SCHEDULER_NAME="min_latency"
 BATCH_CAP=48
 
 for scheduler in $SCHEDULER_NAME; do
   echo "Running experiment for scheduler: $scheduler"
-  sh vidur/prediction/exp/experiment.sh $scheduler false true $BATCH_CAP
+  sh vidur/prediction/exp/experiment.sh $scheduler true true $BATCH_CAP
 done

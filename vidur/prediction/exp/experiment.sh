@@ -17,7 +17,7 @@ RESTART_VLLM=$3
 BATCH_CAP=$4
 UPDATE_VIDUR_CODE=false
 UPDATE_VLLM_CODE=false
-RUN_EXP=false
+RUN_EXP=true
 
 case "$1" in
     -d|--daemon)
@@ -41,8 +41,8 @@ if [ "$RESTART_VLLM" = "true" ]; then
 fi
 
 if [ "$RUN_EXP" = "true" ]; then
-  QPS="10 12 16 20 24 30"
-  NUM_QUERIES="10000"
+  QPS="24 28 30"
+  NUM_QUERIES="5000"
   METRIC_TYPES=$SCHEDULER_METRIC_TYPE
   if [ "$DOWNLOAD_DATASET" = "true" ]; then
     parallel-ssh -t 0 --host $TARGET_HOST "wget https://huggingface.co/datasets/asdwb/sharegpt_length_prediction/resolve/main/$DATASET_NAME.json"
@@ -69,26 +69,26 @@ if [ "$RUN_EXP" = "true" ]; then
   done
 
   #  test if using the estimated length
-    if [ "$SCHEDULER_METRIC_TYPE" = "min_latency" ] || [ "$SCHEDULER_METRIC_TYPE" = "min_scheduling_delay" ]; then
-      sh vidur/prediction/exp/reset.sh
-      nohup sh vidur/prediction/exp/run_exp_vllm.sh $BATCH_CAP $MODEL $UPDATE_VLLM_CODE > /dev/null 2>&1 &
-      nohup sh vidur/prediction/exp/run_exp_predictor.sh $PREDICTOR_CONFIG_PATH $SCHEDULER_METRIC_TYPE $DISABLE_TIME_ESTIMATION $UPDATE_VIDUR_CODE $BATCH_CAP> /dev/null 2>&1 &
-      sleep 60
-      for qps in $QPS; do
-        for num_queries in $NUM_QUERIES; do
-          for n in $N; do
-            for metric_type in $SCHEDULER_METRIC_TYPE; do
-                echo "Running experiment with qps: $qps, num_queries: $num_queries, n: $n, metric_type: $metric_type with estimated length"
-                nohup sh vidur/prediction/exp/run_exp_global_scheduler.sh $TARGET_HOST $n $n $SCHEDULER_METRIC_TYPE $HOST_CONFIG_PATH > /dev/null 2>&1 &
-                LOG_FILENAME="benchmark.log"
-                OUTPUT_DIR="${metric_type}*/qps_${qps}_num_queries_${num_queries}_n_${n}_estimated_length"
-                parallel-ssh -t 0 --host $TARGET_HOST "cd vidur_opt_scheduler && export PYTHONPATH=. && python vidur/prediction/benchmark/benchmark_serving.py --ip_ports 127.0.0.1:8200 --tokenizer $MODEL --num_sampled_requests $num_queries --dataset_type $DATASET_TYPE --dataset_path $DATASET_PATH --qps $qps --backend block --log_filename $LOG_FILENAME --output_dir $OUTPUT_DIR --tag_dataset_with_real_response $GENERATE_NEW_DATA --enable_csv_files $GENERATE_NEW_DATA --use_estimated_response_lens true"
-                sleep 60
-              done
-          done
-        done
-      done
-    fi
+#    if [ "$SCHEDULER_METRIC_TYPE" = "min_latency" ] || [ "$SCHEDULER_METRIC_TYPE" = "min_scheduling_delay" ]; then
+#      sh vidur/prediction/exp/reset.sh
+#      nohup sh vidur/prediction/exp/run_exp_vllm.sh $BATCH_CAP $MODEL $UPDATE_VLLM_CODE > /dev/null 2>&1 &
+#      nohup sh vidur/prediction/exp/run_exp_predictor.sh $PREDICTOR_CONFIG_PATH $SCHEDULER_METRIC_TYPE $DISABLE_TIME_ESTIMATION $UPDATE_VIDUR_CODE $BATCH_CAP> /dev/null 2>&1 &
+#      sleep 60
+#      for qps in $QPS; do
+#        for num_queries in $NUM_QUERIES; do
+#          for n in $N; do
+#            for metric_type in $SCHEDULER_METRIC_TYPE; do
+#                echo "Running experiment with qps: $qps, num_queries: $num_queries, n: $n, metric_type: $metric_type with estimated length"
+#                nohup sh vidur/prediction/exp/run_exp_global_scheduler.sh $TARGET_HOST $n $n $SCHEDULER_METRIC_TYPE $HOST_CONFIG_PATH > /dev/null 2>&1 &
+#                LOG_FILENAME="benchmark.log"
+#                OUTPUT_DIR="${metric_type}*/qps_${qps}_num_queries_${num_queries}_n_${n}_estimated_length"
+#                parallel-ssh -t 0 --host $TARGET_HOST "cd vidur_opt_scheduler && export PYTHONPATH=. && python vidur/prediction/benchmark/benchmark_serving.py --ip_ports 127.0.0.1:8200 --tokenizer $MODEL --num_sampled_requests $num_queries --dataset_type $DATASET_TYPE --dataset_path $DATASET_PATH --qps $qps --backend block --log_filename $LOG_FILENAME --output_dir $OUTPUT_DIR --tag_dataset_with_real_response $GENERATE_NEW_DATA --enable_csv_files $GENERATE_NEW_DATA --use_estimated_response_lens true"
+#                sleep 60
+#              done
+#          done
+#        done
+#      done
+#    fi
 fi
 
 
