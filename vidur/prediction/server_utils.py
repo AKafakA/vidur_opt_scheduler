@@ -2,7 +2,7 @@ import asyncio
 import json
 import logging
 import signal
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any
 
 import psutil
 import requests

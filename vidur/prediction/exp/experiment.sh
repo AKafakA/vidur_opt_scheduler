@@ -4,7 +4,7 @@ HOST_CONFIG_PATH='vidur/prediction/config/host_configs.json'
 PREDICTOR_CONFIG_PATH="vidur/prediction/config/test_config.json"
 DISABLE_TIME_ESTIMATION=false
 
-TARGET_HOST='asdwb@d7525-10s10311.wisc.cloudlab.us'
+TARGET_HOST='asdwb@d7525-10s10323.wisc.cloudlab.us'
 
 #DATASET_NAME = "sharegpt_gpt4"
 DATASET_NAME="sharegpt-val-10k-predicted"
@@ -15,9 +15,11 @@ GENERATE_NEW_DATA=false
 DOWNLOAD_DATASET=$2
 RESTART_VLLM=$3
 BATCH_CAP=$4
-UPDATE_VIDUR_CODE=true
+UPDATE_VIDUR_CODE=false
 UPDATE_VLLM_CODE=false
 RUN_EXP=true
+# Current the v1 version of vllm is supported yet
+VLLM_VERSION=0
 
 case "$1" in
     -d|--daemon)
@@ -35,7 +37,7 @@ esac
 if [ "$RESTART_VLLM" = "true" ]; then
   parallel-ssh --host $TARGET_HOST "cd vidur_opt_scheduler && rm experiment_output/logs/*"
   sh vidur/prediction/exp/reset.sh
-  nohup sh vidur/prediction/exp/run_exp_vllm.sh $BATCH_CAP $MODEL $UPDATE_VLLM_CODE > /dev/null 2>&1 &
+  nohup sh vidur/prediction/exp/run_exp_vllm.sh $BATCH_CAP $MODEL $UPDATE_VLLM_CODE $VLLM_VERSION > /dev/null 2>&1 &
   nohup sh vidur/prediction/exp/run_exp_predictor.sh $PREDICTOR_CONFIG_PATH $SCHEDULER_METRIC_TYPE $DISABLE_TIME_ESTIMATION $UPDATE_VIDUR_CODE $BATCH_CAP> /dev/null 2>&1 &
   sleep 60
 fi
