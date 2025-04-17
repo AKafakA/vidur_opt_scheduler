@@ -22,4 +22,3 @@ setuptools~=59.6.0
 pyinstrument
 dacite
 jsonlines
-simpletransformers
