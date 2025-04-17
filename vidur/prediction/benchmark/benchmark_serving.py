@@ -3,6 +3,7 @@
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 import functools
+from datasets import load_dataset
 import shutil
 
 # http://www.apache.org/licenses/LICENSE-2.0
@@ -143,12 +144,11 @@ async def query_model_vllm(prompt, verbose, ip_ports, with_request_id=True):
             "use_beam_search": use_beam_search,
             "temperature": 0.0 if use_beam_search else 1.0,
             "top_k": 1,
-            "max_tokens": max(output_len, 1),
             "ignore_eos": True,
             "stream": False,
         }
         if with_request_id:
-            request_dict["request_id"]= request_id
+            request_dict["request_id"] = request_id
 
         if verbose:
             print('Querying model')
@@ -650,21 +650,21 @@ async def benchmark(
         sampled_responses_length = get_tok_id_lens(tokenizer, sampled_responses)
 
     throughput, actual_qps, msg = calculate_throughput(queries,
-                                                  dur_s,
-                                                  backend,
-                                                  tokenizer,
-                                                  mean_token_latency,
-                                                  mean_e2e_latency,
-                                                  m._request_latencies,
-                                                  m._per_token_latencies,
-                                                  m._inference_latencies,
-                                                  m._request_ids,
-                                                  m._decode_token_latencies,
-                                                  m._request_lens,
-                                                  m._waiting_latencies,
-                                                  m._global_scheduling_overhead,
-                                                  log_latencies,
-                                                  fail_on_response_failure)
+                                                       dur_s,
+                                                       backend,
+                                                       tokenizer,
+                                                       mean_token_latency,
+                                                       mean_e2e_latency,
+                                                       m._request_latencies,
+                                                       m._per_token_latencies,
+                                                       m._inference_latencies,
+                                                       m._request_ids,
+                                                       m._decode_token_latencies,
+                                                       m._request_lens,
+                                                       m._waiting_latencies,
+                                                       m._global_scheduling_overhead,
+                                                       log_latencies,
+                                                       fail_on_response_failure)
     calculate_cdf(m._request_latencies)
     plot_latency_cdf(m._request_latencies, m._prefill_token_latencies, m._decode_token_latencies, m._waiting_latencies,
                      m._global_scheduling_overhead, log_filename, backend=backend, output_dir=output_dir)
@@ -810,7 +810,39 @@ def gen_random_prompts_return_lens(tokenizer, distribution: str, len_mean, len_r
     return prompts, prompt_lens
 
 
-def sample_alpaca_requests(
+def sample_code_requests(
+        num_requests: int,
+        tokenizer,
+        max_seqlen: int,
+        use_estimated_response_lens: bool = False,
+):
+    lcb_codegen = load_dataset("livecodebench/code_generation_lite", version_tag="release_v2")
+    prompts = []
+    prompt_lens = []
+    response_lens = []
+    for data in lcb_codegen:
+        prompt = data["question_content"]
+        # no response provided, so just expand a dummy response as the starter code
+        res = data["starter_code"]
+        prompt_token_ids = tokenizer(prompt).input_ids
+        completion_token_ids = tokenizer(res).input_ids
+        if max_seqlen > len(prompt_token_ids) > 0 and len(completion_token_ids) > 0:
+            prompts.append(prompt)
+            prompt_lens.append(len(prompt_token_ids))
+            if use_estimated_response_lens:
+                if "predicted_length" in data:
+                    response_lens.append(int(data["predicted_length"]))
+                else:
+                    print(f"Warning: No predicted_length in data: {data.keys()}, use real response length instead.")
+                    response_lens.append(len(completion_token_ids))
+            else:
+                response_lens.append(len(completion_token_ids))
+                if len(prompts) > num_requests:
+                    break
+        return prompts, prompt_lens, response_lens
+
+
+def sample_arxiv_request(
         dataset_path: str,
         num_requests: int,
         tokenizer,
@@ -819,34 +851,23 @@ def sample_alpaca_requests(
     prompts = []
     prompt_lens = []
     response_lens = []
-    estimated_response_lens = []
-    assert dataset_path.endswith('.json')
     with open(dataset_path) as f:
-        dataset = json.load(f)
-    dataset = [data for data in dataset if len(data["conversations"]) >= 2 and "estimated_response_len"
-               in data["conversations"][1]]
-    for data in dataset:
-        prompt = data["conversations"][0]["value"]
-        response = data["conversations"][1]["value"]
-        target_len = int(data["conversations"][1]["estimated_response_len"])
-        prompt_token_ids = tokenizer(prompt).input_ids
-        completion_token_ids = tokenizer(response).input_ids
-        if len(prompt_token_ids) + len(completion_token_ids) < max_seqlen and \
-                len(prompt_token_ids) > 0 and len(completion_token_ids) > 0:
-            prompts.append(prompt)
-            prompt_lens.append(len(prompt_token_ids))
-            response_lens.append(len(completion_token_ids))
-            estimated_response_lens.append(target_len)
-
-    sampled_ids = [random.randint(0, len(prompts) - 1) for _ in range(num_requests)]
-    sampled_prompts = [prompts[idx] for idx in sampled_ids]
-    sampled_prompt_lens = [prompt_lens[idx] for idx in sampled_ids]
-    sampled_response_lens = [response_lens[idx] for idx in sampled_ids]
-    sampled_estimated_response_lens = [estimated_response_lens[idx] for idx in sampled_ids]
-    return sampled_prompts, sampled_prompt_lens, sampled_response_lens, sampled_estimated_response_lens
+        for id_, row in enumerate(f):
+            data = json.loads(row)
+            prompt = "Summarize this arxiv paper: " + "".join(data["article"])
+            res = " ".join(data["abstract"])
+            prompt_token_ids = tokenizer(prompt).input_ids
+            completion_token_ids = tokenizer(res).input_ids
+            if max_seqlen > len(prompt_token_ids) > 0 and len(completion_token_ids) > 0:
+                prompts.append(prompt)
+                prompt_lens.append(len(prompt_token_ids))
+                response_lens.append(len(completion_token_ids))
+            if len(prompts) > num_requests:
+                break
+    return prompts, prompt_lens, response_lens
 
 
-def sample_sharegpt_requests(
+def sample_conversation_requests(
         dataset_path: str,
         num_requests: int,
         tokenizer,
@@ -868,12 +889,17 @@ def sample_sharegpt_requests(
     dataset = [data for data in dataset if len(data["conversations"]) >= 2]
     random.shuffle(dataset)
     for data in dataset:
-        prompt = data["conversations"][0]["value"]
-        res = data["conversations"][1]["value"]
+        if "conversations" in data:
+            prompt = data["conversations"][0]["value"]
+            res = data["conversations"][1]["value"]
+        elif "conversation" in data:
+            prompt = data["conversation"][0]["content"]
+            res = data["conversation"][1]["content"]
+        else:
+            raise ValueError(f"Unknown dataset format: {data.keys()}")
         prompt_token_ids = tokenizer(prompt).input_ids
         completion_token_ids = tokenizer(res).input_ids
-        if len(prompt_token_ids) + len(completion_token_ids) < max_seqlen and \
-                len(prompt_token_ids) > 0 and len(completion_token_ids) > 0:
+        if max_seqlen > len(prompt_token_ids) > 0 and len(completion_token_ids) > 0:
             prompts.append(prompt)
             prompt_lens.append(len(prompt_token_ids))
             if use_estimated_response_lens:
@@ -914,7 +940,8 @@ def tag_dataset_with_real_response(
     data = []
     record_id = 0
     for prompt, response in zip(prompts, responses):
-        record = {'id': record_id, 'conversations': [{'from': 'human', 'value': prompt}, {'from': 'model', 'value': response}]}
+        record = {'id': record_id,
+                  'conversations': [{'from': 'human', 'value': prompt}, {'from': 'model', 'value': response}]}
         data.append(record)
         record_id += 1
     if new_dataset_path.endswith('.jsonl'):
@@ -923,57 +950,6 @@ def tag_dataset_with_real_response(
     elif new_dataset_path.endswith('.json'):
         with open(new_dataset_path, 'w') as fp:
             json.dump(data, fp)
-
-
-
-def sample_burstgpt_request(
-        dataset_path: str,
-        num_requests: int,
-        tokenizer,
-        max_seqlen: int,
-):
-    data = pd.read_csv(dataset_path)
-    request_tokens = data['Request tokens'].tolist()
-    response_tokens = data['Response tokens'].tolist()
-    num_prompts_sampled = min(num_requests, len(data))
-    sampled_ids = random.sample(range(len(request_tokens)), num_prompts_sampled)
-    random.shuffle(sampled_ids)
-    # sampled_ids = range(num_prompts_sampled)
-    prompt_lens = []
-    response_lens = []
-    for idx in sampled_ids:
-        if request_tokens[idx] + response_tokens[idx] < max_seqlen and \
-                request_tokens[idx] > 0 and response_tokens[idx] > 0:
-            prompt_lens.append(request_tokens[idx])
-            response_lens.append(response_tokens[idx])
-    prompts = [tokenizer.decode([20] * prompt_len) for prompt_len in prompt_lens]
-    return prompts, prompt_lens, response_lens
-
-
-def sample_arxiv_request(
-        dataset_path: str,
-        num_requests: int,
-        tokenizer,
-        max_seqlen: int,
-):
-    prompts = []
-    prompt_lens = []
-    response_lens = []
-    with open(dataset_path) as f:
-        for id_, row in enumerate(f):
-            data = json.loads(row)
-            prompt = " ".join(data["article_text"])
-            res = " ".join(data["abstract_text"])
-            prompt_token_ids = tokenizer(prompt).input_ids
-            completion_token_ids = tokenizer(res).input_ids
-            if len(prompt_token_ids) + len(completion_token_ids) < max_seqlen and \
-                    len(prompt_token_ids) > 0 and len(completion_token_ids) > 0:
-                prompts.append(prompt)
-                prompt_lens.append(len(prompt_token_ids))
-                response_lens.append(len(completion_token_ids))
-            if len(prompts) > num_requests:
-                break
-    return prompts, prompt_lens, response_lens
 
 
 def main():
@@ -1042,19 +1018,18 @@ def main():
     if args.dataset_type:
         random.seed(0xCADE)
         np.random.seed(0xCADE)
-        if args.dataset_type == "sharegpt":
-            prompts, prompt_lens, response_lens = sample_sharegpt_requests(args.dataset_path, args.num_sampled_requests,
-                                                                           tokenizer, args.max_request_len,
-                                                                           args.use_estimated_response_lens)
-        elif args.dataset_type == "burstgpt":
-            prompts, prompt_lens, response_lens = sample_burstgpt_request(args.dataset_path, args.num_sampled_requests,
-                                                                          tokenizer, args.max_request_len)
+        if args.dataset_type == "sharegpt" or args.dataset_type == "lmsys":
+            prompts, prompt_lens, response_lens = sample_conversation_requests(args.dataset_path,
+                                                                               args.num_sampled_requests,
+                                                                               tokenizer,
+                                                                               args.max_request_len,
+                                                                               args.use_estimated_response_lens)
         elif args.dataset_type == "arxiv":
             prompts, prompt_lens, response_lens = sample_arxiv_request(args.dataset_path, args.num_sampled_requests,
                                                                        tokenizer, args.max_request_len)
-        elif args.dataset_type == "alpaca":
-            prompts, prompt_lens, response_lens, estimated_response_lens = sample_alpaca_requests(
-                args.dataset_path, args.num_sampled_requests, tokenizer, args.max_request_len)
+        elif args.dataset_type == "code":
+            prompts, prompt_lens, response_lens = sample_code_requests(
+                args.num_sampled_requests, tokenizer, args.max_request_len)
         else:
             raise ValueError("unknown dataset type")
         num_prompts = len(prompts)
@@ -1101,12 +1076,9 @@ def main():
         print('total tokens', sorted(list(total_tokens)))
 
     plot_len_cdf(prompt_lens, response_lens, total_tokens, args.log_filename, estimated_length=estimated_response_lens,
-                 output_dir = args.output_dir)
+                 output_dir=args.output_dir)
 
-    if estimated_response_lens is not None:
-        prompts = list(zip(prompts, prompt_lens, estimated_response_lens, range(len(prompt_lens))))
-    else:
-        prompts = list(zip(prompts, prompt_lens, response_lens, range(len(prompt_lens))))
+    prompts = list(zip(prompts, prompt_lens, response_lens, range(len(prompt_lens))))
 
     (throughput,
      actual_qps,
