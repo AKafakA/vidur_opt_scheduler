@@ -1,5 +1,5 @@
 parallel-ssh -t 0 -h vidur/prediction/config/hosts "sudo apt update && sudo apt full-upgrade -y"
-parallel-ssh -t 0 -h vidur/prediction/config/hosts "sudo apt install -y python3-pip python3-venv ccache simpletransformers"
+parallel-ssh -t 0 -h vidur/prediction/config/hosts "sudo apt install -y python3-pip python3-venv ccache"
 parallel-ssh -t 0 -h vidur/prediction/config/hosts "pip3 install -U pip==25.0.1"
 parallel-ssh -t 0 -h vidur/prediction/config/hosts "wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/cuda-ubuntu2004.pin && sudo mv cuda-ubuntu2004.pin /etc/apt/preferences.d/cuda-repository-pin-600"
 parallel-ssh -t 0 -h vidur/prediction/config/hosts "wget https://developer.download.nvidia.com/compute/cuda/12.6.3/local_installers/cuda-repo-ubuntu2004-12-6-local_12.6.3-560.35.05-1_amd64.deb && sudo dpkg -i cuda-repo-ubuntu2004-12-6-local_12.6.3-560.35.05-1_amd64.deb"
