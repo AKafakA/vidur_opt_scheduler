@@ -29,25 +29,25 @@ class Instance:
 
     async def query_predictor(self, request_id: int,
                               num_context_tokens: int,
-                              num_decode_tokens: int,
+                              predicted_num_context_tokens: int,
                               arrived_at: float):
         predict_parameters = {
             "id": request_id,
             "arrival_time": arrived_at,
             "num_context_tokens": num_context_tokens,
-            "num_decode_tokens": num_decode_tokens,
+            "num_decode_tokens": predicted_num_context_tokens,
         }
+
         async with aiohttp.ClientSession(timeout=AIOHTTP_TIMEOUT) as session:
             async with session.post(self._predictor_url, json=predict_parameters) as response:
                 response_dict = await response.json()
                 response_dict['instance_id'] = self._instance_id
                 return response_dict
 
-    async def query_backend(self, prompt: str, expected_response_len: int, request_id: int):
+    async def query_backend(self, prompt: str, max_response_len: int, request_id: int):
         self.request_timeline.append(time.time() - self.start_time)
         self.total_request += 1
-
-        max_tokens = 8192
+        max_tokens = min(max(max_response_len, 1), 8192)
         request_dict = {
             "prompt": prompt,
             "n": 1,

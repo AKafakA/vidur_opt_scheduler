@@ -45,14 +45,15 @@ async def generate_benchmark(request: Request) -> Response:
     request_id = request_dict["request_id"]
     prompt = request_dict.pop("prompt")
     num_context_tokens = request_dict.pop("prompt_len")
-    num_decode_tokens = request_dict.pop("expected_response_len")
+    predicted_num_decode_tokens = request_dict.pop("predicted_response_len")
+    max_response_len = request_dict.pop("max_response_len")
     arrived_at = time.time() - start_time
     _ = request_dict.pop("stream", False)
     predict_tasks = []
 
     for instance in instances:
         predict_tasks.append(instance.query_predictor(
-            request_id, num_context_tokens, num_decode_tokens, arrived_at))
+            request_id, num_context_tokens, predicted_num_decode_tokens, arrived_at))
     try:
         predict_results = await asyncio.gather(*predict_tasks)
     except Exception as e:
@@ -101,7 +102,7 @@ async def generate_benchmark(request: Request) -> Response:
     selected_instance = instances[selected_index]
     try:
         time_to_query = time.time()
-        response = await selected_instance.query_backend(prompt, num_decode_tokens, request_id)
+        response = await selected_instance.query_backend(prompt, max_response_len, request_id)
         time_for_inference = (time.time() - time_to_query) * 1000
     except Exception as e:
         print(f"Error during prediction: {e}")

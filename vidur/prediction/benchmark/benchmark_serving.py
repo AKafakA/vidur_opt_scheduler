@@ -33,9 +33,6 @@ from enum import Enum
 from transformers import AutoTokenizer
 from typing import List
 import resource
-
-from vidur.prediction.global_scheduler.api_server import start_time
-
 resource.setrlimit(resource.RLIMIT_NOFILE, (65536, 65536))
 
 num_finished_requests = 0
@@ -47,9 +44,6 @@ def get_wait_time(qps: float, distribution: str, burstiness: float = 1.0) -> flo
     if distribution == "uniform":
         return mean_time_between_requests
     elif distribution == "gamma":
-        # variance = (coefficient_variation * mean_time_between_requests) ** 2
-        # shape = mean_time_between_requests ** 2 / variance
-        # scale = variance / mean_time_between_requests
         assert burstiness > 0, (
             f"A positive burstiness factor is expected, but given {burstiness}.")
         theta = 1.0 / (qps * burstiness)
@@ -87,7 +81,7 @@ class GenerationBackend(str, Enum):
 
 
 async def query_model_block(prompt, verbose, ip_ports):
-    prompt, prompt_len, expected_response_len, request_id = prompt
+    prompt, prompt_len, max_response_len, estimated_response_len, request_id = prompt
     global server_num_requests
     global_scheduler_ip_port = ip_ports[0]
     timeout = aiohttp.ClientTimeout(total=4 * 60 * 60)
@@ -96,7 +90,8 @@ async def query_model_block(prompt, verbose, ip_ports):
     request_dict = {
         "request_id": request_id,
         "prompt": prompt,
-        "expected_response_len": expected_response_len,
+        "max_response_len": max_response_len,
+        "predicted_response_len": estimated_response_len,
         "prompt_len": prompt_len,
     }
 
@@ -124,7 +119,7 @@ async def query_model_block(prompt, verbose, ip_ports):
 
 
 async def query_model_vllm(prompt, verbose, ip_ports, with_request_id=True):
-    prompt, prompt_len, expected_response_len, request_id = prompt
+    prompt, prompt_len, expected_response_len, _, request_id = prompt
 
     # Evenly dispatch request to the given api servers.
     global server_num_requests
@@ -143,6 +138,7 @@ async def query_model_vllm(prompt, verbose, ip_ports, with_request_id=True):
             "best_of": best_of,
             "use_beam_search": use_beam_search,
             "temperature": 0.0 if use_beam_search else 1.0,
+            "max_tokens": output_len,
             "top_k": 1,
             "ignore_eos": True,
             "stream": False,
@@ -587,7 +583,6 @@ async def benchmark(
         backend: GenerationBackend,
         tokenizer,
         prompts: List[str],
-        allow_variable_generation_length: bool,
         verbose: bool,
         log_filename: str,
         ip_ports: List[int],
@@ -622,7 +617,7 @@ async def benchmark(
         qps = float('inf')
 
     print(
-        f'Starting with backend={backend}, num_prompts={len(prompts)}, allow_variable_generation_length={allow_variable_generation_length}')
+        f'Starting with backend={backend}, num_prompts={len(prompts)}')
     print(f'traffic distribution={distribution}, qps={qps}, burstiness={burstiness}')
 
     total_requests = len(prompts)
@@ -733,7 +728,7 @@ def gen_random_response_lens(distribution: str, len_mean, len_range, num_prompts
         response_lens = []
         while len(response_lens) < num_prompts:
             sample = round(np.random.exponential(scale=len_mean))
-            if sample <= len_range and sample >= 1:
+            if len_range >= sample >= 1:
                 response_lens.append(sample)
     elif distribution == 'zipf':
         rank = np.arange(1, len_mean * 2)
@@ -774,42 +769,6 @@ def gen_random_response_lens(distribution: str, len_mean, len_range, num_prompts
     return response_lens
 
 
-def gen_random_prompts(tokenizer, len_mean, len_range, num_prompts, vocab_ids_to_exclude=[]):
-    prompts, _ = gen_random_prompts_return_lens(
-        tokenizer, len_mean, len_range, num_prompts, vocab_ids_to_exclude)
-    return prompts
-
-
-def gen_random_prompts_return_lens(tokenizer, distribution: str, len_mean, len_range, num_prompts,
-                                   vocab_ids_to_exclude=[]):
-    def gen_prompt_ids(length):
-        return [random.randint(10, tokenizer.vocab_size) for _ in range(length)]
-
-    # prompt_lens = list(
-    #     map(lambda _: random.randint(low, high), range(num_prompts)))
-    prompt_lens = gen_random_response_lens(distribution, len_mean, len_range, num_prompts)
-    prompts_as_ids = list(
-        map(lambda prompt_len: gen_prompt_ids(prompt_len), prompt_lens))
-    prompts = list(
-        map(lambda prompt_ids: tokenizer.decode(prompt_ids), prompts_as_ids))
-
-    # Because tokens do not map 1:1 to words, sometimes we get more tokens than desired.
-    # This removes the additional tokens by tokenizing the prompt and cutting off additional tokens.
-    # Confusingly, it works with a single iteration per prompt.
-    for i, (p, l) in enumerate(zip(prompts, prompt_lens)):
-        encoded = tokenizer(p)['input_ids']
-        if len(encoded) > l:
-            # I am not sure why l-1 works, but it does..
-            encoded = encoded[:l - 1]
-        decoded = tokenizer.decode(encoded)
-        encoded = tokenizer(decoded)['input_ids']
-        # assert len(
-        #     encoded) == l, f"Expected prompt to contain exactly {l} tokens, got {len(encoded)=}"
-        prompts[i] = decoded
-
-    return prompts, prompt_lens
-
-
 def get_dataset_list(dataset_path: str):
     dataset_list = []
     dataset_path_list = dataset_path.split(',')
@@ -828,47 +787,17 @@ def get_dataset_list(dataset_path: str):
     return dataset_list
 
 
-def sample_code_requests(
-        num_requests: int,
-        tokenizer,
-        max_seqlen: int,
-        use_estimated_response_lens: bool = False,
-):
-    lcb_codegen = load_dataset("livecodebench/code_generation_lite", version_tag="release_v2")
-    prompts = []
-    prompt_lens = []
-    response_lens = []
-    for data in lcb_codegen:
-        prompt = data["question_content"]
-        # no response provided, so just expand a dummy response as the starter code
-        res = data["starter_code"]
-        prompt_token_ids = tokenizer(prompt).input_ids
-        completion_token_ids = tokenizer(res).input_ids
-        if max_seqlen > len(prompt_token_ids) > 0 and len(completion_token_ids) > 0:
-            prompts.append(prompt)
-            prompt_lens.append(len(prompt_token_ids))
-            if use_estimated_response_lens:
-                if "predicted_length" in data:
-                    response_lens.append(int(data["predicted_length"]))
-                else:
-                    print(f"Warning: No predicted_length in data: {data.keys()}, use real response length instead.")
-                    response_lens.append(len(completion_token_ids))
-            else:
-                response_lens.append(len(completion_token_ids))
-                if len(prompts) > num_requests:
-                    break
-        return prompts, prompt_lens, response_lens
-
-
 def sample_arxiv_request(
         dataset_path: str,
         num_requests: int,
         tokenizer,
         max_seqlen: int,
+        use_estimated_response_lens: bool = False,
 ):
     prompts = []
     prompt_lens = []
-    response_lens = []
+    max_response_lens = []
+    estimated_response_lens = []
     # Load the dataset.
     dataset = get_dataset_list(dataset_path)
     random.shuffle(dataset)
@@ -877,13 +806,18 @@ def sample_arxiv_request(
         res = data["abstract"]
         prompt_token_ids = tokenizer(prompt).input_ids
         completion_token_ids = tokenizer(res).input_ids
-        if max_seqlen > len(prompt_token_ids) > 0 and len(completion_token_ids) > 0:
+        if (len(prompt_token_ids) > 0 and len(completion_token_ids) > 0
+                and max_seqlen >= len(prompt_token_ids) + len(completion_token_ids)):
             prompts.append(prompt)
             prompt_lens.append(len(prompt_token_ids))
-            response_lens.append(len(completion_token_ids))
+            max_response_lens.append(len(completion_token_ids))
+            if "predicted_length" in data and use_estimated_response_lens:
+                estimated_response_lens.append(int(data["predicted_length"]))
+            else:
+                estimated_response_lens.append(len(completion_token_ids))
         if len(prompts) > num_requests:
             break
-    return prompts, prompt_lens, response_lens
+    return prompts, prompt_lens, max_response_lens, estimated_response_lens
 
 
 def sample_conversation_requests(
@@ -891,12 +825,13 @@ def sample_conversation_requests(
         num_requests: int,
         tokenizer,
         max_seqlen: int,
-        use_estimated_response_lens: bool = False,
+        use_estimated_response_lens: bool = False
 ):
     # Load the dataset.
     prompts = []
     prompt_lens = []
-    response_lens = []
+    max_response_lens = []
+    estimated_response_lens = []
     dataset = get_dataset_list(dataset_path)
     dataset = [data for data in dataset if len(data["conversations"]) >= 2]
     random.shuffle(dataset)
@@ -911,24 +846,24 @@ def sample_conversation_requests(
             raise ValueError(f"Unknown dataset format: {data.keys()}")
         prompt_token_ids = tokenizer(prompt).input_ids
         completion_token_ids = tokenizer(res).input_ids
-        if max_seqlen > len(prompt_token_ids) > 0 and len(completion_token_ids) > 0:
+        if (len(prompt_token_ids) > 0 and len(completion_token_ids) > 0
+                and max_seqlen >= len(prompt_token_ids) + len(completion_token_ids)):
             prompts.append(prompt)
             prompt_lens.append(len(prompt_token_ids))
-            if use_estimated_response_lens:
-                if "predicted_length" in data:
-                    response_lens.append(int(data["predicted_length"]))
-                else:
-                    print(f"Warning: No predicted_length in data: {data.keys()}, use real response length instead.")
-                    response_lens.append(len(completion_token_ids))
+            max_response_lens.append(len(completion_token_ids))
+            if "predicted_length" in data and use_estimated_response_lens:
+                estimated_response_lens.append(int(data["predicted_length"]))
             else:
-                response_lens.append(len(completion_token_ids))
+                estimated_response_lens.append(len(completion_token_ids))
 
     sampled_ids = [random.randint(0, len(prompts) - 1) for _ in range(num_requests)]
     sampled_prompts = [prompts[idx] for idx in sampled_ids]
     sampled_prompt_lens = [prompt_lens[idx] for idx in sampled_ids]
-    sampled_response_lens = [response_lens[idx] for idx in sampled_ids]
+    sampled_response_lens = [max_response_lens[idx] for idx in sampled_ids]
+    sampled_estimated_response_lens = [estimated_response_lens[idx] for idx in sampled_ids]
+
     # print(f"max len:{max(a+b for a,b in zip(prompt_lens, response_lens))}")
-    return sampled_prompts, sampled_prompt_lens, sampled_response_lens
+    return sampled_prompts, sampled_prompt_lens, sampled_response_lens, sampled_estimated_response_lens
 
 
 def generate_lens_files(
@@ -975,12 +910,8 @@ def main():
                         choices=[e.name for e in GenerationBackend], default='vLLM')
     parser.add_argument('--log_filename', type=str, default='benchmark.log')
     parser.add_argument('--ip_ports', nargs='+', required=True, help='List of ip:port')
-    parser.add_argument('--random_prompt_lens_mean', type=int)
-    parser.add_argument('--random_prompt_lens_range', type=int)
-    parser.add_argument('--variable_prompt_lens_distribution', choices=[
-        "uniform", "exponential", "capped_exponential", "zipf"], default="uniform")
     parser.add_argument('--num_sampled_requests', type=int, default=10)
-    parser.add_argument('--max_request_len', type=int, default=4096)
+    parser.add_argument('--max_request_len', type=int, default=8192)
     parser.add_argument(
         '--distribution', choices=["uniform", "gamma", "exponential"], default="gamma")
     parser.add_argument('--qps', type=float, default=4.0)
@@ -989,16 +920,9 @@ def main():
                         help="Whether or not to write all latencies to the log file.")
     parser.add_argument('--fail_on_response_failure', action="store_true",
                         help="Whether or not to fail the benchmarking script if any request fails")
-    parser.add_argument('--variable_response_lens_mean', type=int)
-    parser.add_argument('--variable_response_lens_range', type=int)
-    parser.add_argument('--variable_response_lens_distribution', choices=[
-        "uniform", "exponential", "capped_exponential", "zipf"], default="uniform")
     group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument('--dataset_type', type=str, choices=['sharegpt', 'burstgpt', 'arxiv'])
-    group.add_argument('--gen_random_prompts', action='store_true')
+    group.add_argument('--dataset_type', type=str, choices=['sharegpt', 'arxiv', 'lmsys'], default='sharegpt')
     group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument('--allow_variable_generation_length',
-                       action='store_true')
     group.add_argument('--dataset_path', type=str)
     parser.add_argument('--print_generation_lens_and_exit',
                         action='store_true')
@@ -1009,88 +933,55 @@ def main():
     parser.add_argument("--output_dir", type=str, default="benchmark_output")
     parser.add_argument("--use_estimated_response_lens", type=bool, default=False)
 
-    # parser.add_argument('--enable_migration', type=int, default=0)
-    # parser.add_argument('--priority_ratio', type=float, default=0.0)
-
     args = parser.parse_args()
-    start_time = time.time()
 
     args.output_dir = "experiment_output/" + args.output_dir
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir)
 
-    if args.gen_random_prompts:
-        assert args.num_sampled_requests is not None
-
     backend = GenerationBackend[args.backend]
     tokenizer = AutoTokenizer.from_pretrained(args.tokenizer, trust_remote_code=args.trust_remote_code)
-    print(tokenizer)
-    estimated_response_lens = None
 
-    if args.dataset_type:
-        random.seed(0xCADE)
-        np.random.seed(0xCADE)
-        if args.dataset_type == "sharegpt" or args.dataset_type == "lmsys":
-            prompts, prompt_lens, response_lens = sample_conversation_requests(args.dataset_path,
-                                                                               args.num_sampled_requests,
-                                                                               tokenizer,
-                                                                               args.max_request_len,
-                                                                               args.use_estimated_response_lens)
-        elif args.dataset_type == "arxiv":
-            prompts, prompt_lens, response_lens = sample_arxiv_request(args.dataset_path, args.num_sampled_requests,
-                                                                       tokenizer, args.max_request_len)
-        elif args.dataset_type == "code":
-            prompts, prompt_lens, response_lens = sample_code_requests(
-                args.num_sampled_requests, tokenizer, args.max_request_len)
-        else:
-            raise ValueError("unknown dataset type")
-        num_prompts = len(prompts)
-    elif args.gen_random_prompts:
-        num_prompts = args.num_sampled_requests
-        random.seed(0xCADE)
-        np.random.seed(0xCADE)
-        prompts, prompt_lens = gen_random_prompts_return_lens(
+    random.seed(0xCADE)
+    np.random.seed(0xCADE)
+    if args.dataset_type == "sharegpt" or args.dataset_type == "lmsys":
+        prompts, prompt_lens, max_response_lens, estimated_response_lens = sample_conversation_requests(
+            args.dataset_path,
+            args.num_sampled_requests,
             tokenizer,
-            distribution=args.variable_prompt_lens_distribution,
-            len_mean=args.random_prompt_lens_mean,
-            len_range=args.random_prompt_lens_range,
-            num_prompts=num_prompts,
-            vocab_ids_to_exclude=tokenizer.all_special_ids,
-        )
+            args.max_request_len)
+    elif args.dataset_type == "arxiv":
+        prompts, prompt_lens, max_response_lens, estimated_response_lens = (
+            sample_arxiv_request(args.dataset_path, args.num_sampled_requests,
+                                 tokenizer, args.max_request_len))
     else:
-        raise ValueError("unknown prompts")
+        raise ValueError("unknown dataset type")
 
-    if args.allow_variable_generation_length:
-        response_lens = gen_random_response_lens(
-            args.variable_response_lens_distribution, args.variable_response_lens_mean,
-            args.variable_response_lens_range, num_prompts=num_prompts)
-        args.fixed_max_tokens = -1
-
-    for i, (prompt_len, gen_len) in enumerate(zip(prompt_lens, response_lens)):
+    for i, (prompt_len, gen_len) in enumerate(zip(prompt_lens, max_response_lens)):
         total = prompt_len + gen_len
         if total > args.max_request_len:
             print(f'truncating long prompt+gen_len {prompt_len=} {gen_len=}')
             gen_len = args.max_request_len - prompt_len
-        response_lens[i] = gen_len
+        max_response_lens[i] = gen_len
 
     if args.print_generation_lens_and_exit:
         print(f'{prompt_lens=}')
-        print(f'{response_lens=}')
+        print(f'{max_response_lens=}')
         print('Exiting...')
         return
 
     if args.verbose or True:
         print('prompt lens', sorted(list(prompt_lens)))
-        print('response lens', sorted(list(response_lens)))
+        print('response lens', sorted(list(max_response_lens)))
         total_tokens = []
-        for i, (prompt_len, gen_len) in enumerate(zip(prompt_lens, response_lens)):
+        for i, (prompt_len, gen_len) in enumerate(zip(prompt_lens, max_response_lens)):
             total_tokens.append(prompt_len + gen_len)
         print('total tokens', sorted(list(total_tokens)))
 
-    plot_len_cdf(prompt_lens, response_lens, total_tokens, args.log_filename, estimated_length=estimated_response_lens,
+    plot_len_cdf(prompt_lens, max_response_lens, total_tokens, args.log_filename, estimated_length=estimated_response_lens,
                  output_dir=args.output_dir)
 
-    prompts = list(zip(prompts, prompt_lens, response_lens, range(len(prompt_lens))))
+    prompts = list(zip(prompts, prompt_lens, max_response_lens, estimated_response_lens, range(len(prompt_lens))))
 
     (throughput,
      actual_qps,
@@ -1115,7 +1006,6 @@ def main():
         backend,
         tokenizer,
         prompts,
-        args.allow_variable_generation_length,
         args.verbose,
         args.log_filename,
         args.ip_ports,
