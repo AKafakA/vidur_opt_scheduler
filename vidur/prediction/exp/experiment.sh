@@ -15,7 +15,7 @@ GENERATE_NEW_DATA=true
 DOWNLOAD_DATASET=$2
 RESTART_VLLM=true
 BATCH_CAP=$4
-UPDATE_VIDUR_CODE=true
+UPDATE_VIDUR_CODE=false
 UPDATE_VLLM_CODE=false
 RUN_EXP=true
 # Current the v1 version of vllm is supported yet

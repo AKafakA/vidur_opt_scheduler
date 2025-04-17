@@ -31,10 +31,15 @@ from enum import Enum
 from transformers import AutoTokenizer
 from typing import List
 import resource
+import certifi
+import ssl
+
 resource.setrlimit(resource.RLIMIT_NOFILE, (65536, 65536))
 
 num_finished_requests = 0
 server_num_requests = {}
+
+ssl_context = ssl.create_default_context(cafile=certifi.where())
 
 
 def get_wait_time(qps: float, distribution: str, burstiness: float = 1.0) -> float:
@@ -97,8 +102,8 @@ async def query_model_block(prompt, verbose, ip_ports):
         if verbose:
             print('Querying model')
         try:
-            async with session.post(f'http://{global_scheduler_ip_port}/generate_benchmark', json=request_dict,
-                                    ssl=False) as resp:
+            async with session.post(f'https://{global_scheduler_ip_port}/generate_benchmark', json=request_dict,
+                                    ssl=ssl_context) as resp:
                 if verbose:
                     print('Done')
 
@@ -148,8 +153,8 @@ async def query_model_vllm(prompt, verbose, ip_ports, with_request_id=True):
         if verbose:
             print('Querying model')
         try:
-            async with session.post(f'http://{ip_ports[server_id]}/generate_benchmark', json=request_dict,
-                                    ssl=False) as resp:
+            async with session.post(f'https://{ip_ports[server_id]}/generate_benchmark', json=request_dict,
+                                    ssl=ssl_context) as resp:
                 if verbose:
                     print('Done')
 
@@ -978,7 +983,8 @@ def main():
             total_tokens.append(prompt_len + gen_len)
         print('total tokens', sorted(list(total_tokens)))
 
-    plot_len_cdf(prompt_lens, max_response_lens, total_tokens, args.log_filename, estimated_length=estimated_response_lens,
+    plot_len_cdf(prompt_lens, max_response_lens, total_tokens, args.log_filename,
+                 estimated_length=estimated_response_lens,
                  output_dir=args.output_dir)
 
     prompts = list(zip(prompts, prompt_lens, max_response_lens, estimated_response_lens, range(len(prompt_lens))))
