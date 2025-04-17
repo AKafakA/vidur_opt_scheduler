@@ -46,12 +46,15 @@ class Instance:
     async def query_backend(self, prompt: str, expected_response_len: int, request_id: int):
         self.request_timeline.append(time.time() - self.start_time)
         self.total_request += 1
+
+        max_tokens = 8192
         request_dict = {
             "prompt": prompt,
             "n": 1,
             "best_of": 1,
             "temperature": 0.0,
             "top_k": 1,
+            "max_tokens": max_tokens,
             "ignore_eos": True,
             "stream": False,
             "request_id": str(request_id)

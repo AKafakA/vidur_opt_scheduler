@@ -8,7 +8,7 @@ TARGET_HOST='asdwb@d7525-10s10321.wisc.cloudlab.us'
 
 #DATASET_NAME = "sharegpt_gpt4"
 DATASET_NAME="sharegpt_gpt4"
-DATASET_PATH="~/data/sharegpt_52/$DATASET_NAME.json"
+DATASET_PATH="~/data/sharegpt/$DATASET_NAME.jsonl"
 DATASET_TYPE="sharegpt"
 
 GENERATE_NEW_DATA=true
