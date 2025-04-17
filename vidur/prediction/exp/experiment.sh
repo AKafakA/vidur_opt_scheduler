@@ -4,14 +4,14 @@ HOST_CONFIG_PATH='vidur/prediction/config/host_configs.json'
 PREDICTOR_CONFIG_PATH="vidur/prediction/config/test_config.json"
 DISABLE_TIME_ESTIMATION=false
 
-TARGET_HOST='asdwb@d7525-10s10323.wisc.cloudlab.us'
+TARGET_HOST='asdwb@d7525-10s10321.wisc.cloudlab.us'
 
 #DATASET_NAME = "sharegpt_gpt4"
-DATASET_NAME="sharegpt-val-10k-predicted"
-DATASET_PATH="~/$DATASET_NAME.json"
+DATASET_NAME="sharegpt_gpt4"
+DATASET_PATH="~/data/sharegpt_52/$DATASET_NAME.json"
 DATASET_TYPE="sharegpt"
 
-GENERATE_NEW_DATA=false
+GENERATE_NEW_DATA=true
 DOWNLOAD_DATASET=$2
 RESTART_VLLM=$3
 BATCH_CAP=$4
@@ -43,8 +43,8 @@ if [ "$RESTART_VLLM" = "true" ]; then
 fi
 
 if [ "$RUN_EXP" = "true" ]; then
-  QPS="24 28 30"
-  NUM_QUERIES="5000"
+  QPS="24"
+  NUM_QUERIES="50"
   METRIC_TYPES=$SCHEDULER_METRIC_TYPE
   if [ "$DOWNLOAD_DATASET" = "true" ]; then
     parallel-ssh -t 0 --host $TARGET_HOST "wget https://huggingface.co/datasets/asdwb/sharegpt_length_prediction/resolve/main/$DATASET_NAME.json"
@@ -63,7 +63,7 @@ if [ "$RUN_EXP" = "true" ]; then
                   nohup sh vidur/prediction/exp/run_exp_global_scheduler.sh $TARGET_HOST $n $n $metric_type $HOST_CONFIG_PATH > /dev/null 2>&1 &
                   LOG_FILENAME="benchmark.log"
                   OUTPUT_DIR="${metric_type}/qps_${qps}_num_queries_${num_queries}_n_${n}"
-                  parallel-ssh -t 0 --host $TARGET_HOST "cd vidur_opt_scheduler && export PYTHONPATH=. && export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib/python3.10/dist-packages/nvidia/cudnn/lib:/usr/local/lib/python3.10/dist-packages/nvidia/nccl/lib:/usr/local/lib/python3.10/dist-packages/cusparselt/lib && python vidur/prediction/benchmark/benchmark_serving.py --ip_ports 127.0.0.1:8200 --tokenizer $MODEL --num_sampled_requests $num_queries --dataset_type $DATASET_TYPE --dataset_path $DATASET_PATH --qps $qps --backend block --log_filename $LOG_FILENAME --output_dir $OUTPUT_DIR --tag_dataset_with_real_response $GENERATE_NEW_DATA --enable_csv_files $GENERATE_NEW_DATA"
+                  parallel-ssh -t 0 --host $TARGET_HOST "cd vidur_opt_scheduler && export PYTHONPATH=. && export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib/python3.10/dist-packages/nvidia/cudnn/lib:/usr/local/lib/python3.10/dist-packages/nvidia/nccl/lib:/usr/local/lib/python3.10/dist-packages/cusparselt/lib && python vidur/prediction/benchmark/benchmark_serving.py --ip_ports 127.0.0.1:8200 --tokenizer $MODEL --num_sampled_requests $num_queries --dataset_type $DATASET_TYPE --dataset_path $DATASET_PATH --qps $qps --backend block --log_filename $LOG_FILENAME --output_dir $OUTPUT_DIR --tag_dataset_with_real_response $GENERATE_NEW_DATA --enable_csv_files false"
                   sleep 60
               done
           done

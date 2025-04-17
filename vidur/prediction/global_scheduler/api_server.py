@@ -48,10 +48,6 @@ async def generate_benchmark(request: Request) -> Response:
     num_decode_tokens = request_dict.pop("expected_response_len")
     arrived_at = time.time() - start_time
     _ = request_dict.pop("stream", False)
-    # async with lock:
-    #     global num_requests
-    #     num_requests += 1
-    #     request_id = num_requests
     predict_tasks = []
 
     for instance in instances:
@@ -62,6 +58,12 @@ async def generate_benchmark(request: Request) -> Response:
     except Exception as e:
         print(f"Error during prediction: {e}")
         return JSONResponse({"error": "Prediction failed"}, status_code=500)
+
+    single_metric = {'sampled_avg_gpu_blocks': np.mean([x['gpu_blocks'] for x in predict_results]),
+                     'sampled_var_gpu_blocks': np.var([x['gpu_blocks'] for x in predict_results]),
+                     'sampled_avg_n_request': np.mean([x['num_requests'] for x in predict_results]),
+                     'sampled_var_n_request': np.var([x['num_requests'] for x in predict_results]),
+                     'num_preempted': sum([x['num_preempted'] for x in predict_results])}
 
     if (metrics_type.startswith("min") or metrics_type.startswith("max")) and "current" not in metrics_type:
         predict_results = random.sample(predict_results, min(n, len(predict_results)))
@@ -90,7 +92,7 @@ async def generate_benchmark(request: Request) -> Response:
         selected_index = int(request_id) % len(instances)
     elif metrics_type == "request_per_seconds":
         instance_qpm = [(instance.get_current_qpm(), instance._instance_id) for instance in instances]
-        min_qpm = min(instance_qpm, key=lambda x:x[0])[0]
+        min_qpm = min(instance_qpm, key=lambda x: x[0])[0]
         selected_instance_id = random.choice([x[1] for x in instance_qpm if x[0] == min_qpm])
         selected_index = [i for i in range(len(instances)) if instances[i]._instance_id == selected_instance_id][0]
     else:
@@ -107,11 +109,8 @@ async def generate_benchmark(request: Request) -> Response:
     if args.debugging_logs:
         print(f"Selected instance: {selected_instance._instance_id} for request {request_id} "
               f"with metrics type: {metrics_type} and predict results: {predict_results}")
-    response['sampled_avg_gpu_blocks'] = np.mean([x['gpu_blocks'] for x in predict_results])
-    response['sampled_var_gpu_blocks'] = np.var([x['gpu_blocks'] for x in predict_results])
-    response['sampled_avg_n_request'] = np.mean([x['num_requests'] for x in predict_results])
-    response['sampled_var_n_request'] = np.var([x['num_requests'] for x in predict_results])
-    response['num_preempted'] = sum([x['num_preempted'] for x in predict_results])
+    for key, value in single_metric.items():
+        response[key] = value
     bottleneck_host = max(time_in_predictions, key=lambda x: x[0])
     response['time_on_backend'] = time_for_inference + bottleneck_host[1]
     response['time_on_probe'] = bottleneck_host[0] - bottleneck_host[1]
