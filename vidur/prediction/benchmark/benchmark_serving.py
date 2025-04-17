@@ -3,8 +3,6 @@
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
 import functools
-from datasets import load_dataset
-import shutil
 
 # http://www.apache.org/licenses/LICENSE-2.0
 
@@ -95,11 +93,12 @@ async def query_model_block(prompt, verbose, ip_ports):
         "prompt_len": prompt_len,
     }
 
-    async with aiohttp.ClientSession(timeout=timeout) as session:
+    async with aiohttp.ClientSession(timeout=timeout, trust_env=True) as session:
         if verbose:
             print('Querying model')
         try:
-            async with session.post(f'http://{global_scheduler_ip_port}/generate_benchmark', json=request_dict) as resp:
+            async with session.post(f'http://{global_scheduler_ip_port}/generate_benchmark', json=request_dict,
+                                    ssl=False) as resp:
                 if verbose:
                     print('Done')
 
@@ -119,7 +118,7 @@ async def query_model_block(prompt, verbose, ip_ports):
 
 
 async def query_model_vllm(prompt, verbose, ip_ports, with_request_id=True):
-    prompt, prompt_len, expected_response_len, _, request_id = prompt
+    prompt, prompt_len, max_response_len, _, request_id = prompt
 
     # Evenly dispatch request to the given api servers.
     global server_num_requests
@@ -128,10 +127,10 @@ async def query_model_vllm(prompt, verbose, ip_ports, with_request_id=True):
     timeout = aiohttp.ClientTimeout(total=4 * 60 * 60)
     global num_finished_requests
 
-    async with aiohttp.ClientSession(timeout=timeout) as session:
+    async with aiohttp.ClientSession(timeout=timeout, trust_env=True) as session:
         best_of = 1
         use_beam_search = False
-        output_len = expected_response_len
+        output_len = max_response_len
         request_dict = {
             "prompt": prompt,
             "n": 1,
@@ -149,7 +148,8 @@ async def query_model_vllm(prompt, verbose, ip_ports, with_request_id=True):
         if verbose:
             print('Querying model')
         try:
-            async with session.post(f'http://{ip_ports[server_id]}/generate_benchmark', json=request_dict) as resp:
+            async with session.post(f'http://{ip_ports[server_id]}/generate_benchmark', json=request_dict,
+                                    ssl=False) as resp:
                 if verbose:
                     print('Done')
 
@@ -1062,15 +1062,6 @@ def main():
             generate_lens_files(csv_file_name, prompt_lens, sampled_responses_length)
 
     if args.keep_all_metrics:
-        # print(f"Throughput: {throughput} req/s")
-        # print(f"Average prefill token latency: {np.mean(prefill_token_latencies)} ms")
-        # print(f"Average decode token latency: {np.mean(decode_token_latencies)} ms")
-        # print(f"Average inference latency: {np.mean(inference_latencies)} ms")
-        # print(f"Average request latency: {np.mean(request_latencies)} ms")
-        # print(f"Average waiting latency: {np.mean(waiting_latency)} ms")
-        # print(f"Average scheduling overhead: {np.mean(scheduling_overhead)} ms")
-        # print(f"Average instance number: {avg_instance_num}")
-        # print(f"Total time: {time.time() - start_time} s")
         data = {
             "Throughput": np.float32(throughput),
             "prefill_token_latencies": np.array(prefill_token_latencies),
