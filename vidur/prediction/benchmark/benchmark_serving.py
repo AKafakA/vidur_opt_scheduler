@@ -810,6 +810,24 @@ def gen_random_prompts_return_lens(tokenizer, distribution: str, len_mean, len_r
     return prompts, prompt_lens
 
 
+def get_dataset_list(dataset_path: str):
+    dataset_list = []
+    dataset_path_list = dataset_path.split(',')
+    for path in dataset_path_list:
+        if path.endswith('.jsonl'):
+            with open(path) as f:
+                for line in f:
+                    dataset_list.append(json.loads(line))
+        elif path.endswith('.json'):
+            with open(path) as f:
+                dataset_list.extend(json.load(f))
+        elif path.endswith('.parquet'):
+            dataset_list.extend(pd.read_parquet(dataset_path).to_dict(orient='records'))
+        else:
+            raise ValueError(f"Unknown dataset format: {path}")
+    return dataset_list
+
+
 def sample_code_requests(
         num_requests: int,
         tokenizer,
@@ -851,19 +869,20 @@ def sample_arxiv_request(
     prompts = []
     prompt_lens = []
     response_lens = []
-    with open(dataset_path) as f:
-        for id_, row in enumerate(f):
-            data = json.loads(row)
-            prompt = "Summarize this arxiv paper: " + "".join(data["article"])
-            res = " ".join(data["abstract"])
-            prompt_token_ids = tokenizer(prompt).input_ids
-            completion_token_ids = tokenizer(res).input_ids
-            if max_seqlen > len(prompt_token_ids) > 0 and len(completion_token_ids) > 0:
-                prompts.append(prompt)
-                prompt_lens.append(len(prompt_token_ids))
-                response_lens.append(len(completion_token_ids))
-            if len(prompts) > num_requests:
-                break
+    # Load the dataset.
+    dataset = get_dataset_list(dataset_path)
+    random.shuffle(dataset)
+    for data in dataset:
+        prompt = data["article"]
+        res = data["abstract"]
+        prompt_token_ids = tokenizer(prompt).input_ids
+        completion_token_ids = tokenizer(res).input_ids
+        if max_seqlen > len(prompt_token_ids) > 0 and len(completion_token_ids) > 0:
+            prompts.append(prompt)
+            prompt_lens.append(len(prompt_token_ids))
+            response_lens.append(len(completion_token_ids))
+        if len(prompts) > num_requests:
+            break
     return prompts, prompt_lens, response_lens
 
 
@@ -878,14 +897,7 @@ def sample_conversation_requests(
     prompts = []
     prompt_lens = []
     response_lens = []
-    dataset = []
-    if dataset_path.endswith('.jsonl'):
-        with open(dataset_path) as f:
-            for line in f:
-                dataset.append(json.loads(line))
-    elif dataset_path.endswith('.json'):
-        with open(dataset_path) as f:
-            dataset = json.load(f)
+    dataset = get_dataset_list(dataset_path)
     dataset = [data for data in dataset if len(data["conversations"]) >= 2]
     random.shuffle(dataset)
     for data in dataset:
