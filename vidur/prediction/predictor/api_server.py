@@ -55,7 +55,8 @@ async def init_app(
     config_path = args.config_path
     config_dict = json.load(open(config_path))
     config: PredictorConfig = PredictorConfig.create_from_dict(config_dict)
-    config.target_metric = args.metric_type
+    if args.metric_type:
+        config.target_metric = args.metric_type
     config.replica_scheduler_config.batch_size_cap = args.batch_size_cap
     config.disable_batch_time_estimation = args.disable_time_estimation
     predictor = (instance_predictor if instance_predictor is not None else
@@ -110,7 +111,7 @@ if __name__ == "__main__":
     parser.add_argument("--instance-port", type=int, default=8000)
     parser.add_argument("--config_path", type=str, default= "vidur/prediction/config/test_config.json")
     parser.add_argument("--predictor_type", type=str, default="simulate")
-    parser.add_argument("--metric_type", type=str, default="random")
+    parser.add_argument("--metric_type", type=str, default="")
     parser.add_argument("--disable_time_estimation", type=bool, default=False)
     parser.add_argument("--batch_size_cap", type=int, default=128)
     args = parser.parse_args()
