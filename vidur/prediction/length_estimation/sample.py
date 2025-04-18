@@ -6,10 +6,9 @@ import utils
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--data-path", type=str, default="data/sharegpt_v3_full.json")
+    parser.add_argument("--data-path", type=str, default="data/sharegpt_with_real_response.json")
     parser.add_argument("--num-samples", type=int, default=50000)
-    parser.add_argument("--train-size", type=int, default=40000)
-    parser.add_argument("--val-size", type=int, default=10000)
+    parser.add_argument("--train-ratio", type=float, default=0.8)
     parser.add_argument("--output-dir", type=str, default="./data/")
     args = parser.parse_args()
     return args
@@ -27,16 +26,15 @@ if __name__ == '__main__':
     data_mask = np.random.choice(len(data), N, replace=False)
     data = [data[i] for i in data_mask]
     data = data[:N]
-    train_size = args.train_size
+    train_size = int(args.train_ratio * N)
     data_train = data[:train_size]
-
-    val_size = args.val_size
     data_train = utils.jsort(data_train, key="id", integer=True)
-    data_val = data[train_size: train_size + val_size]
+    data_val = data[train_size:]
     data_val = utils.jsort(data_val, key="id", integer=True)
+    val_size = len(data_val)
 
-    train_data_path = args.data_path.replace("full", "train-{}-k".format(train_size // 1000))
-    val_data_path = args.data_path.replace("full", "val-{}-k".format(val_size // 1000))
+    train_data_path = args.data_path.replace("with_real_response", "-train-{}-k".format(train_size // 1000))
+    val_data_path = args.data_path.replace("fwith_real_response", "-val-{}-k".format(val_size // 1000))
     # save to json
     utils.jdump(data_train, train_data_path)
     utils.jdump(data_val, val_data_path)

@@ -777,19 +777,24 @@ def gen_random_response_lens(distribution: str, len_mean, len_range, num_prompts
 
 def get_dataset_list(dataset_path: str):
     dataset_list = []
-    dataset_path_list = dataset_path.split(';')
-    for path in dataset_path_list:
-        if path.endswith('.jsonl'):
-            with open(path) as f:
-                for line in f:
-                    dataset_list.append(json.loads(line))
-        elif path.endswith('.json'):
+    real_res = [file for file in os.listdir(dataset_path) if file.endswith('with_real_response.json')]
+    if len(real_res) > 0:
+        for file in real_res:
+            path = os.path.join(dataset_path, file)
             with open(path) as f:
                 dataset_list.extend(json.load(f))
-        elif path.endswith('.parquet'):
-            dataset_list.extend(pd.read_parquet(dataset_path).to_dict(orient='records'))
-        else:
-            raise ValueError(f"Unknown dataset format: {path}")
+    else:
+        for file in os.listdir(dataset_path):
+            path = os.path.join(dataset_path, file)
+            if path.endswith('.jsonl'):
+                with open(path) as f:
+                    for line in f:
+                        dataset_list.append(json.loads(line))
+            elif path.endswith('.json'):
+                with open(path) as f:
+                    dataset_list.extend(json.load(f))
+            elif path.endswith('.parquet'):
+                dataset_list.extend(pd.read_parquet(path).to_dict(orient='records'))
     return dataset_list
 
 
@@ -814,8 +819,8 @@ def sample_requests(
         dataset = [
             data for data in dataset
             if (
-                ("conversations" in data and len(data["conversations"]) >= 2) or
-                ("conversation" in data and len(data["conversation"]) >= 2)
+                    ("conversations" in data and len(data["conversations"]) >= 2) or
+                    ("conversation" in data and len(data["conversation"]) >= 2)
             )
         ]
 
@@ -834,6 +839,7 @@ def sample_requests(
         elif task == 'arxiv':
             prompt = "Summarize this paper: " + data["article"]
             res = data["abstract"]
+            print(f"response: {res}")
         else:
             raise ValueError(f"Unknown task: {task}")
 
@@ -884,7 +890,6 @@ def sample_conversation_requests(
                            task='chat')
 
 
-
 def generate_lens_files(
         length_output_file,
         prompt_lens,
@@ -896,7 +901,7 @@ def generate_lens_files(
         writer.writerow(['num_prefill_tokens', 'num_decode_tokens', 'num_total_tokens', 'pd_ratio'])
         for prompt_len, response_len in zip(prompt_lens, response_lens):
             writer.writerow([prompt_len, response_len, prompt_len + response_len, (response_len * 1.0) / prompt_len])
-    print(f"Dataset with real response lens saved to {length_output_file}")
+    print(f"CSV files for length information saved to {length_output_file}")
 
 
 def tag_dataset_with_real_response(
@@ -905,17 +910,24 @@ def tag_dataset_with_real_response(
         new_dataset_path: str):
     data = []
     record_id = 0
+    filtered_count = 0
     for prompt, response in zip(prompts, responses):
-        record = {'id': record_id,
-                  'conversations': [{'from': 'human', 'value': prompt}, {'from': 'model', 'value': response}]}
-        data.append(record)
-        record_id += 1
+        response = response.replace(' ', '')
+        if response:
+            record = {'id': record_id,
+                      'conversations': [{'from': 'human', 'value': prompt}, {'from': 'model', 'value': response}]}
+            data.append(record)
+            record_id += 1
+        else:
+            filtered_count += 1
     if new_dataset_path.endswith('.jsonl'):
         with jsonlines.open(new_dataset_path, 'w') as writer:
             writer.write_all(data)
     elif new_dataset_path.endswith('.json'):
         with open(new_dataset_path, 'w') as fp:
             json.dump(data, fp)
+    print(f"Dataset with real responses saved to {new_dataset_path} and tagged with {len(data)} records and "
+          f" filtered out {filtered_count} empty requests.")
 
 
 def main():
@@ -957,6 +969,12 @@ def main():
     args.output_dir = "experiment_output/" + args.output_dir
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir)
+
+    if args.tag_dataset_with_real_response or args.enable_csv_files:
+        for file in os.listdir(args.dataset_path):
+            if file.endswith('with_real_response.json') or file.endswith('_lens.csv'):
+                print(f"File {file} already exists in {args.dataset_path}. Remove it before running the script.")
+                os.remove(os.path.join(args.dataset_path, file))
 
     backend = GenerationBackend[args.backend]
     tokenizer = AutoTokenizer.from_pretrained(args.tokenizer, trust_remote_code=args.trust_remote_code)
@@ -1072,14 +1090,15 @@ def main():
 
     if args.tag_dataset_with_real_response or args.enable_csv_files:
         assert sampled_responses_length
-        dataset_path_suffix = "." + args.dataset_path.split('.')[-1]
+        # dataset_path is the path to the dataset directory
         if args.tag_dataset_with_real_response:
-            tagged_dataset_name_json = args.dataset_path.replace(dataset_path_suffix,
-                                                                 f'{args.num_sampled_requests}_with_real_response.json')
+            tagged_dataset_path = os.path.join(args.dataset_path,
+                                               f'{args.dataset_type}_{args.num_sampled_requests}_with_real_response.json')
             tag_dataset_with_real_response(
-                sampled_prompts, sampled_responses, tagged_dataset_name_json)
+                sampled_prompts, sampled_responses, tagged_dataset_path)
         if args.enable_csv_files:
-            csv_file_name = args.dataset_path.replace(dataset_path_suffix, '_lens.csv')
+            csv_file_name = os.path.join(args.dataset_path,
+                                         f'{args.dataset_type}_{args.num_sampled_requests}_lens.csv')
             generate_lens_files(csv_file_name, prompt_lens, sampled_responses_length)
 
     if args.keep_all_metrics:
