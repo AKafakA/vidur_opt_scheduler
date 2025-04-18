@@ -11,7 +11,6 @@ TARGET_HOST='asdwb@d7525-10s10321.wisc.cloudlab.us'
 #DATASET_PATH="~/data/sharegpt/$DATASET_NAME.jsonl"
 #DATASET_TYPE="sharegpt"
 
-GENERATE_NEW_DATA=true
 NUM_DATA=$2
 RESTART_VLLM=$3
 BATCH_CAP=$4
@@ -22,6 +21,7 @@ RUN_EXP=true
 DATASET_NAME=$5
 DATASET_PATH=$6
 DATASET_TYPE=$7
+GENERATE_NEW_DATA=$8
 
 # Current the v1 version of vllm is supported yet
 VLLM_VERSION=0
@@ -63,13 +63,17 @@ if [ "$RUN_EXP" = "true" ]; then
           else
               N="12"
           fi
+          KEEP_ALL_METRICS="true"
+          if [ "$GENERATE_NEW_DATA" = "true" ]; then
+              KEEP_ALL_METRICS="false"
+          fi
           for n in $N; do
                   echo "Running experiment with qps: $qps, num_queries: $num_queries, n: $n, metric_type: $metric_type"
                   nohup sh vidur/prediction/exp/run_exp_global_scheduler.sh $TARGET_HOST $n $n $metric_type $HOST_CONFIG_PATH > /dev/null 2>&1 &
                   LOG_FILENAME="benchmark.log"
-                  OUTPUT_DIR="${metric_type}/qps_${qps}_num_queries_${num_queries}_n_${n}"
+                  OUTPUT_DIR="${DATASET_TYPE}/${metric_type}/qps_${qps}_num_queries_${num_queries}_n_${n}"
                   sleep 10
-                  parallel-ssh -i -t 0 --host $TARGET_HOST "cd vidur_opt_scheduler && export PYTHONPATH=. && export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib/python3.10/dist-packages/nvidia/cudnn/lib:/usr/local/lib/python3.10/dist-packages/nvidia/nccl/lib:/usr/local/lib/python3.10/dist-packages/cusparselt/lib && python vidur/prediction/benchmark/benchmark_serving.py --ip_ports 127.0.0.1:8200 --tokenizer $MODEL --num_sampled_requests $num_queries --dataset_type $DATASET_TYPE --dataset_path $DATASET_PATH --qps $qps --backend block --log_filename $LOG_FILENAME --output_dir $OUTPUT_DIR --tag_dataset_with_real_response $GENERATE_NEW_DATA --enable_csv_files false"
+                  parallel-ssh -i -t 0 --host $TARGET_HOST "cd vidur_opt_scheduler && export PYTHONPATH=. && export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib/python3.10/dist-packages/nvidia/cudnn/lib:/usr/local/lib/python3.10/dist-packages/nvidia/nccl/lib:/usr/local/lib/python3.10/dist-packages/cusparselt/lib && python vidur/prediction/benchmark/benchmark_serving.py --ip_ports 127.0.0.1:8200 --tokenizer $MODEL --num_sampled_requests $num_queries --dataset_type $DATASET_TYPE --dataset_path $DATASET_PATH --qps $qps --backend block --log_filename $LOG_FILENAME --output_dir $OUTPUT_DIR --tag_dataset_with_real_response $GENERATE_NEW_DATA --enable_csv_files false --keep_all_metrics $KEEP_ALL_METRICS --use_estimated_response_lens false"
                   sleep 60
               done
           done

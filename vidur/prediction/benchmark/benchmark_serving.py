@@ -1014,10 +1014,6 @@ def main():
             total_tokens.append(prompt_len + gen_len)
         print('total tokens', sorted(list(total_tokens)))
 
-    plot_len_cdf(prompt_lens, max_response_lens, total_tokens, args.log_filename,
-                 estimated_length=estimated_response_lens,
-                 output_dir=args.output_dir)
-
     prompts = list(zip(prompts, prompt_lens, max_response_lens, estimated_response_lens, range(len(prompt_lens))))
 
     (throughput,
@@ -1056,34 +1052,6 @@ def main():
     )
     )
 
-    file_name = os.path.splitext(args.log_filename)[0] + "_latency_info.json"
-    results = []
-    import datetime
-    current_time = datetime.datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
-    file_name = args.output_dir + '/' + os.path.splitext(args.log_filename)[0] + "_latency_info.json"
-    try:
-        with open(file_name, 'r') as f:
-            results = json.load(f)
-    except json.decoder.JSONDecodeError:
-        pass
-    except FileNotFoundError:
-        os.mknod(file_name)
-    with open(file_name, 'w') as f:
-        results.append({"qps": args.qps,
-                        "burstiness": args.burstiness,
-                        "request_ids": request_ids,
-                        "request_lens": request_lens,
-                        "request_latencies": request_latencies,
-                        "prefill_token_latencies": prefill_token_latencies,
-                        "decode_token_latencies": decode_token_latencies,
-                        "decode_sum_latencies": decode_sum_latencies,
-                        "all_decode_token_latencies": all_decode_token_latencies,
-                        "inference_latencies": inference_latencies,
-                        "scheduling_overhead": scheduling_overhead,
-                        "throughput": throughput,
-                        "instance_num": avg_instance_num})
-        json.dump(results, f)
-
     with open(args.output_dir + '/' + os.path.splitext(args.log_filename)[0] + "_logs.txt", 'w') as f:
         f.write(messages)
 
@@ -1101,6 +1069,9 @@ def main():
             generate_lens_files(csv_file_name, prompt_lens, sampled_responses_length)
 
     if args.keep_all_metrics:
+        plot_len_cdf(prompt_lens, max_response_lens, total_tokens, args.log_filename,
+                     estimated_length=estimated_response_lens,
+                     output_dir=args.output_dir)
         data = {
             "Throughput": np.float32(throughput),
             "prefill_token_latencies": np.array(prefill_token_latencies),
@@ -1119,6 +1090,31 @@ def main():
             "request_timestamps_in_ms": np.array(request_timestamps),
         }
         np.savez(args.output_dir + '/' + os.path.splitext(args.log_filename)[0] + f"_all_metrics.npz", **data)
+
+        results = []
+        file_name = args.output_dir + '/' + os.path.splitext(args.log_filename)[0] + "_latency_info.json"
+        try:
+            with open(file_name, 'r') as f:
+                results = json.load(f)
+        except json.decoder.JSONDecodeError:
+            pass
+        except FileNotFoundError:
+            os.mknod(file_name)
+        with open(file_name, 'w') as f:
+            results.append({"qps": args.qps,
+                            "burstiness": args.burstiness,
+                            "request_ids": request_ids,
+                            "request_lens": request_lens,
+                            "request_latencies": request_latencies,
+                            "prefill_token_latencies": prefill_token_latencies,
+                            "decode_token_latencies": decode_token_latencies,
+                            "decode_sum_latencies": decode_sum_latencies,
+                            "all_decode_token_latencies": all_decode_token_latencies,
+                            "inference_latencies": inference_latencies,
+                            "scheduling_overhead": scheduling_overhead,
+                            "throughput": throughput,
+                            "instance_num": avg_instance_num})
+            json.dump(results, f)
 
 
 if __name__ == '__main__':

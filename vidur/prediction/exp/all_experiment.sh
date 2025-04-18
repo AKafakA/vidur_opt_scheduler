@@ -21,9 +21,10 @@ for dataset_name in $DATASET_NAMES; do
     DATASET_TYPE="sharegpt"
     N="100000"
   fi
+
   for scheduler in $SCHEDULER_NAME; do
     echo "Running experiment for scheduler: $scheduler with dataset: $dataset_name"
 
-    sh vidur/prediction/exp/experiment.sh $scheduler $N true $BATCH_CAP $dataset_name $DATASET_PATH $DATASET_TYPE
+    sh vidur/prediction/exp/experiment.sh $scheduler $N true $BATCH_CAP $dataset_name $DATASET_PATH $DATASET_TYPE true
   done
 done
