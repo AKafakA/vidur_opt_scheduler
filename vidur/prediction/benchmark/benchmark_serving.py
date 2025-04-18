@@ -912,8 +912,7 @@ def tag_dataset_with_real_response(
     record_id = 0
     filtered_count = 0
     for prompt, response in zip(prompts, responses):
-        response = response.replace(' ', '')
-        if response:
+        if response.replace(' ', ''):
             record = {'id': record_id,
                       'conversations': [{'from': 'human', 'value': prompt}, {'from': 'model', 'value': response}]}
             data.append(record)
