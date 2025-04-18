@@ -7,17 +7,22 @@ DISABLE_TIME_ESTIMATION=false
 TARGET_HOST='asdwb@d7525-10s10321.wisc.cloudlab.us'
 
 #DATASET_NAME = "sharegpt_gpt4"
-DATASET_NAME="sharegpt_gpt4"
-DATASET_PATH="~/data/sharegpt/$DATASET_NAME.jsonl"
-DATASET_TYPE="sharegpt"
+#DATASET_NAME="lmsys"
+#DATASET_PATH="~/data/sharegpt/$DATASET_NAME.jsonl"
+#DATASET_TYPE="sharegpt"
 
 GENERATE_NEW_DATA=true
-DOWNLOAD_DATASET=$2
-RESTART_VLLM=true
+NUM_DATA=$2
+RESTART_VLLM=$3
 BATCH_CAP=$4
 UPDATE_VIDUR_CODE=false
 UPDATE_VLLM_CODE=false
 RUN_EXP=true
+
+DATASET_NAME=$5
+DATASET_PATH=$6
+DATASET_TYPE=$7
+
 # Current the v1 version of vllm is supported yet
 VLLM_VERSION=0
 
@@ -44,7 +49,7 @@ fi
 
 if [ "$RUN_EXP" = "true" ]; then
   QPS="24"
-  NUM_QUERIES="50"
+  NUM_QUERIES=$NUM_DATA
   METRIC_TYPES=$SCHEDULER_METRIC_TYPE
   if [ "$DOWNLOAD_DATASET" = "true" ]; then
     parallel-ssh -t 0 --host $TARGET_HOST "wget https://huggingface.co/datasets/asdwb/sharegpt_length_prediction/resolve/main/$DATASET_NAME.json"

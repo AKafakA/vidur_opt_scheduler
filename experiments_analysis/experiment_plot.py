@@ -14,7 +14,7 @@ from scipy.ndimage import gaussian_filter1d
 
 experiment_name_replacement = {"min latency": "Block", "min infass load": "INFaaS++",
                                "request per seconds": "Instance-QPM"}
-scheduler_name_ordered =  ['Round Robin', 'random', 'INFaaS++', 'Instance-QPM', 'Block*', 'Block']
+scheduler_name_ordered = ['Round Robin', 'random', 'INFaaS++', 'Instance-QPM', 'Block*', 'Block']
 
 
 def directory_name_parser(directory_name):
@@ -69,9 +69,9 @@ def plot_bar_chart(dataframe, index_names, output_dir, metric_name, x_dim="QPS",
         max_value = sorted(dataframe[4:5].values.tolist()[0][1:])[-2]
         axins.set_xlim(2.5, 4.5)  # Adjust limits as needed
         axins.set_ylim(0, max_value)  # Adjust limits as needed
-        mark_inset(ax, axins, loc1=1, loc2=3, fc="none", ec="0.5", ls= '--')
+        mark_inset(ax, axins, loc1=1, loc2=3, fc="none", ec="0.5", ls='--')
         ax.legend(fancybox=True, shadow=True, ncol=1, fontsize=8,
-                   loc='upper right', bbox_to_anchor=(1.1, 1.015))
+                  loc='upper right', bbox_to_anchor=(1.1, 1.015))
         axins.get_legend().remove()
         axins.get_xaxis().set_visible(False)
         ax.set_xlabel(x_dim)
@@ -95,6 +95,7 @@ def plot_bar_chart(dataframe, index_names, output_dir, metric_name, x_dim="QPS",
         # plt.ticklabel_format(axis='y', style='sci', scilimits=(0, 0))
     plt.savefig(f"{output_dir}/{metric_name}_bar_chart.png")
 
+
 def plot_single_cdf(data, output_dir_per_qps, metric_name, x_dim_appendix="", y_dim_appendix="", zoom_out=False,
                     max_x_range_for_zoom=50000):
     plt.figure()
@@ -106,9 +107,9 @@ def plot_single_cdf(data, output_dir_per_qps, metric_name, x_dim_appendix="", y_
             axins.ecdf(value, label=key)
         axins.set_xlim(0, max_x_range_for_zoom)  # Adjust limits as needed
         axins.set_ylim(0.6, 1)  # Adjust limits as needed
-        mark_inset(ax, axins, loc1=1, loc2=3, fc="none", ec="0.5", ls= '--')
+        mark_inset(ax, axins, loc1=1, loc2=3, fc="none", ec="0.5", ls='--')
         ax.legend(fancybox=True, shadow=True, ncol=1, fontsize=8,
-                   loc='upper right', bbox_to_anchor=(1.1, 1.015))
+                  loc='upper right', bbox_to_anchor=(1.1, 1.015))
         ax.set_xlabel(metric_name.lower() + x_dim_appendix)
         ax.set_ylabel("CDF")
         ax.set_title(metric_name + " CDF" + y_dim_appendix)
@@ -117,24 +118,26 @@ def plot_single_cdf(data, output_dir_per_qps, metric_name, x_dim_appendix="", y_
         ax.ticklabel_format(axis='x', style='sci', scilimits=(0, 0))
     else:
         for key, value in data.items():
-             plt.ecdf(value, label=key)
+            plt.ecdf(value, label=key)
         plt.xlabel(metric_name.lower() + x_dim_appendix)
         plt.ylabel("CDF")
         plt.legend(fancybox=True, shadow=True, loc='best')
         plt.ticklabel_format(axis='x', style='sci', scilimits=(0, 0))
     plt.savefig(f"{output_dir_per_qps}/{metric_name}_cdf.png")
 
-def plot_latency_cdf_per_qps(data, output_dir, metric_name, x_dim_appendix="", zoom_out=False, max_x_range_for_zoom=50000):
+
+def plot_latency_cdf_per_qps(data, output_dir, metric_name, x_dim_appendix="", zoom_out=False,
+                             max_x_range_for_zoom=50000):
     output_dir = output_dir + "/cdf_plots"
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
     for qps in data.keys():
-        output_dir_per_qps =  output_dir + f"/{qps}"
-        if not os.path.exists(output_dir_per_qps ):
+        output_dir_per_qps = output_dir + f"/{qps}"
+        if not os.path.exists(output_dir_per_qps):
             os.makedirs(output_dir_per_qps)
         plot_single_cdf(data[qps], output_dir_per_qps, metric_name, x_dim_appendix,
-                        f" under QPS {qps}", zoom_out=zoom_out,max_x_range_for_zoom=max_x_range_for_zoom)
+                        f" under QPS {qps}", zoom_out=zoom_out, max_x_range_for_zoom=max_x_range_for_zoom)
 
 
 def plot_per_scheduler(experiments_set, output_dir, scheduler_excluded="round_robin"):
@@ -226,7 +229,7 @@ def plot_per_scheduler(experiments_set, output_dir, scheduler_excluded="round_ro
                    xt_rotation='horizontal', legend_title="QPS")
 
 
-def plot_per_qps(experiments_set, output_dir, min_qps = 24, max_qps=30):
+def plot_per_qps(experiments_set, output_dir, min_qps=24, max_qps=30):
     qps_output_dir = output_dir + "/qps"
     if os.path.exists(qps_output_dir):
         shutil.rmtree(qps_output_dir)
@@ -246,7 +249,7 @@ def plot_per_qps(experiments_set, output_dir, min_qps = 24, max_qps=30):
 
     avg_free_gpu = {}
     var_free_gpu_per_node = {}
-    num_total_preemption= {}
+    num_total_preemption = {}
 
     qps_set = sorted(set([record["qps"] for record in experiments_set]))
     if min_qps > 0:
@@ -286,19 +289,18 @@ def plot_per_qps(experiments_set, output_dir, min_qps = 24, max_qps=30):
                     ordered_key.append(key)
             sorted_keys = sorted_keys + ordered_key
         for index_name in sorted_keys:
-
             experiments = map_from_name_exp[index_name]
             token_s_data.append(float(experiments['token_throughput']))
             requests_throughput_data.append(float(experiments['request_throughput']))
-            average_ttft_data.append(int(np.mean(experiments['ttft'])) * 1.0 /1000)
+            average_ttft_data.append(int(np.mean(experiments['ttft'])) * 1.0 / 1000)
             average_tbt_data.append(np.mean(experiments['tbt']))
             p99_tbt_data.append(np.percentile(experiments['tbt'], 99))
-            p99_ttft_data.append(int(np.percentile(experiments['ttft'], 99)) * 1.0 /1000)
-            average_e2e_data.append(int(np.mean(experiments['e2e'])* 1.0) /1000)
-            p99_e2e_data.append(int(np.percentile(experiments['e2e'], 99)) * 1.0 /1000)
-            ttft_cdf_per_qps[index_name] = experiments['ttft'] * 1.0 /1000
-            tbt_cdfs_per_qps[index_name] = experiments['tbt'] * 1.0 /1000
-            e2e_cdfs_per_qps[index_name] = experiments['e2e'] * 1.0 /1000
+            p99_ttft_data.append(int(np.percentile(experiments['ttft'], 99)) * 1.0 / 1000)
+            average_e2e_data.append(int(np.mean(experiments['e2e']) * 1.0) / 1000)
+            p99_e2e_data.append(int(np.percentile(experiments['e2e'], 99)) * 1.0 / 1000)
+            ttft_cdf_per_qps[index_name] = experiments['ttft'] * 1.0 / 1000
+            tbt_cdfs_per_qps[index_name] = experiments['tbt'] * 1.0 / 1000
+            e2e_cdfs_per_qps[index_name] = experiments['e2e'] * 1.0 / 1000
             avg_free_gpu[index_name] = experiments['avg_gpu_blocks']
             var_free_gpu_per_node[index_name] = experiments['var_gpu_blocks']
             num_preempted_list = (experiments['num_preempted'] - experiments['num_preempted'][0]).tolist()
@@ -307,12 +309,10 @@ def plot_per_qps(experiments_set, output_dir, min_qps = 24, max_qps=30):
 
             print(f"when {qps}, the {num_total_preemption[index_name][-1]} For {index_name}")
 
-
         plot_linear(avg_free_gpu, "Average Free GPU Blocks", qps_output_dir, qps=qps, sigma=10)
         plot_linear(var_free_gpu_per_node, "Free GPU Blocks Var", qps_output_dir, qps=qps, sigma=20,
                     adjust_legend=True)
         plot_linear(num_total_preemption, "Number of new Preemption", qps_output_dir, qps=qps, sigma=10)
-
 
         token_throughput.append(token_s_data)
         requests_throughput.append(requests_throughput_data)
@@ -334,17 +334,17 @@ def plot_per_qps(experiments_set, output_dir, min_qps = 24, max_qps=30):
     average_tbt_df = pd.DataFrame(average_tbt, columns=['QPS'] + list(index_names))
     plot_bar_chart(average_tbt_df, index_names, qps_output_dir, "Average TBT", "QPS")
     p99_ttft_df = pd.DataFrame(p99_ttft, columns=['QPS'] + list(index_names))
-    plot_bar_chart(p99_ttft_df, index_names, qps_output_dir, "TTFT P99", "QPS",  zoom_out=False)
+    plot_bar_chart(p99_ttft_df, index_names, qps_output_dir, "TTFT P99", "QPS", zoom_out=False)
     p99_tbt_df = pd.DataFrame(p99_tbt, columns=['QPS'] + list(index_names))
-    plot_bar_chart(p99_tbt_df, index_names, qps_output_dir, "TBT P99", "QPS",  zoom_out=False)
+    plot_bar_chart(p99_tbt_df, index_names, qps_output_dir, "TBT P99", "QPS", zoom_out=False)
 
     average_e2e_df = pd.DataFrame(average_e2e, columns=['QPS'] + list(index_names))
     plot_bar_chart(average_e2e_df, index_names, qps_output_dir, "Average Request Latency", "QPS", zoom_out=False)
     p99_e2e_df = pd.DataFrame(p99_e2e, columns=['QPS'] + list(index_names))
-    plot_bar_chart(p99_e2e_df, index_names, qps_output_dir, "Request Latency P99", "QPS",  zoom_out=False)
+    plot_bar_chart(p99_e2e_df, index_names, qps_output_dir, "Request Latency P99", "QPS", zoom_out=False)
 
     plot_latency_cdf_per_qps(ttft_cdfs, qps_output_dir, "TTFT", " (ms)", zoom_out=False)
-    plot_latency_cdf_per_qps(tbt_cdfs, qps_output_dir, "TBT", " (ms)" , max_x_range_for_zoom=100000)
+    plot_latency_cdf_per_qps(tbt_cdfs, qps_output_dir, "TBT", " (ms)", max_x_range_for_zoom=100000)
     plot_latency_cdf_per_qps(e2e_cdfs, qps_output_dir, "Request Latency", " (ms)", max_x_range_for_zoom=100000)
 
 

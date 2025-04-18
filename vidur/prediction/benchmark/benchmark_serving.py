@@ -12,7 +12,6 @@ import functools
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-#!/usr/bin/env python3
 import aiohttp
 import argparse
 import asyncio
@@ -36,7 +35,6 @@ resource.setrlimit(resource.RLIMIT_NOFILE, (65536, 65536))
 
 num_finished_requests = 0
 server_num_requests = {}
-
 
 
 def get_wait_time(qps: float, distribution: str, burstiness: float = 1.0) -> float:
@@ -99,7 +97,7 @@ async def query_model_block(prompt, verbose, ip_ports):
         if verbose:
             print('Querying model')
         try:
-            async with session.post(f'https://{global_scheduler_ip_port}/generate_benchmark', json=request_dict,
+            async with session.post(f'http://{global_scheduler_ip_port}/generate_benchmark', json=request_dict,
                                     ssl=False) as resp:
                 if verbose:
                     print('Done')
@@ -150,7 +148,7 @@ async def query_model_vllm(prompt, verbose, ip_ports, with_request_id=True):
         if verbose:
             print('Querying model')
         try:
-            async with session.post(f'https://{ip_ports[server_id]}/generate_benchmark', json=request_dict,
+            async with session.post(f'http://{ip_ports[server_id]}/generate_benchmark', json=request_dict,
                                     ssl=False) as resp:
                 if verbose:
                     print('Done')
@@ -249,7 +247,6 @@ def calculate_throughput(queries,
         print(f'naive_hf_lens {list(sorted(naive_hf_lens))}')
     print(f'prompt_lens {list(sorted(prompt_lens))}')
     print(f'response_lens {list(sorted(response_lens))}')
-    print(f'expected_response_lens {list(sorted(expected_response_lens))}')
     if ray_gen_lens:
         print(f'ray_gen_lens {list(sorted(ray_gen_lens))}')
 
@@ -266,9 +263,16 @@ def calculate_throughput(queries,
     elif not all_inference_latencies and all_waiting_latencies and len(all_waiting_latencies) == len(all_e2e_latencies):
         all_inference_latencies = [all_e2e_latencies[i] - all_waiting_latencies[i] for i in
                                    range(len(all_e2e_latencies))]
-    mean_waiting_latency = np.mean(all_waiting_latencies)
-    mean_inference_latency = np.mean(all_inference_latencies)
-    mean_global_scheduling_overhead = np.mean(global_scheduling_overhead)
+
+    def calculate_mean(latencies):
+        if latencies:
+            return np.mean(latencies)
+        else:
+            return -1
+
+    mean_waiting_latency = calculate_mean(all_waiting_latencies)
+    mean_inference_latency = calculate_mean(all_inference_latencies)
+    mean_global_scheduling_overhead = calculate_mean(global_scheduling_overhead)
 
     if naive_hf_lens:
         # Manually count naive hf tok len
@@ -773,7 +777,7 @@ def gen_random_response_lens(distribution: str, len_mean, len_range, num_prompts
 
 def get_dataset_list(dataset_path: str):
     dataset_list = []
-    dataset_path_list = dataset_path.split(',')
+    dataset_path_list = dataset_path.split(';')
     for path in dataset_path_list:
         if path.endswith('.jsonl'):
             with open(path) as f:
@@ -789,6 +793,75 @@ def get_dataset_list(dataset_path: str):
     return dataset_list
 
 
+def sample_requests(
+        dataset_path: str,
+        num_requests: int,
+        tokenizer,
+        max_seqlen: int,
+        use_estimated_response_lens: bool,
+        task: str = 'chat',
+):
+    prompts = []
+    prompt_lens = []
+    max_response_lens = []
+    estimated_response_lens = []
+
+    # Load the dataset.
+    dataset = get_dataset_list(dataset_path)
+
+    # Filter dataset for conversation mode
+    if task == 'chat':
+        dataset = [
+            data for data in dataset
+            if (
+                ("conversations" in data and len(data["conversations"]) >= 2) or
+                ("conversation" in data and len(data["conversation"]) >= 2)
+            )
+        ]
+
+    random.shuffle(dataset)
+
+    for data in dataset:
+        if task == 'chat':
+            if "conversations" in data:
+                prompt = data["conversations"][0]["value"]
+                res = data["conversations"][1]["value"]
+            elif "conversation" in data:
+                prompt = data["conversation"][0]["content"]
+                res = data["conversation"][1]["content"]
+            else:
+                raise ValueError(f"Unknown dataset format: {data.keys()}")
+        elif task == 'arxiv':
+            prompt = "Summarize this paper: " + data["article"]
+            res = data["abstract"]
+        else:
+            raise ValueError(f"Unknown task: {task}")
+
+        prompt_token_ids = tokenizer(prompt).input_ids
+        completion_token_ids = tokenizer(res).input_ids
+
+        if (len(prompt_token_ids) > 0 and len(completion_token_ids) > 0
+                and max_seqlen >= len(prompt_token_ids) + len(completion_token_ids)):
+            prompts.append(prompt)
+            prompt_lens.append(len(prompt_token_ids))
+            max_response_lens.append(len(completion_token_ids))
+            estimated_response_lens.append(
+                int(data.get("predicted_length", len(completion_token_ids)))
+                if use_estimated_response_lens else len(completion_token_ids)
+            )
+
+        if len(prompts) > num_requests:
+            break
+
+    sampled_ids = random.sample(range(len(prompts)), min(num_requests, len(prompts)))
+    sampled_prompts = [prompts[idx] for idx in sampled_ids]
+    sampled_prompt_lens = [prompt_lens[idx] for idx in sampled_ids]
+    sampled_response_lens = [max_response_lens[idx] for idx in sampled_ids]
+    sampled_estimated_response_lens = [estimated_response_lens[idx] for idx in sampled_ids]
+
+    return sampled_prompts, sampled_prompt_lens, sampled_response_lens, sampled_estimated_response_lens
+
+
 def sample_arxiv_request(
         dataset_path: str,
         num_requests: int,
@@ -796,30 +869,8 @@ def sample_arxiv_request(
         max_seqlen: int,
         use_estimated_response_lens: bool = False,
 ):
-    prompts = []
-    prompt_lens = []
-    max_response_lens = []
-    estimated_response_lens = []
-    # Load the dataset.
-    dataset = get_dataset_list(dataset_path)
-    random.shuffle(dataset)
-    for data in dataset:
-        prompt = data["article"]
-        res = data["abstract"]
-        prompt_token_ids = tokenizer(prompt).input_ids
-        completion_token_ids = tokenizer(res).input_ids
-        if (len(prompt_token_ids) > 0 and len(completion_token_ids) > 0
-                and max_seqlen >= len(prompt_token_ids) + len(completion_token_ids)):
-            prompts.append(prompt)
-            prompt_lens.append(len(prompt_token_ids))
-            max_response_lens.append(len(completion_token_ids))
-            if "predicted_length" in data and use_estimated_response_lens:
-                estimated_response_lens.append(int(data["predicted_length"]))
-            else:
-                estimated_response_lens.append(len(completion_token_ids))
-        if len(prompts) > num_requests:
-            break
-    return prompts, prompt_lens, max_response_lens, estimated_response_lens
+    return sample_requests(dataset_path, num_requests, tokenizer, max_seqlen, use_estimated_response_lens,
+                           task='arxiv')
 
 
 def sample_conversation_requests(
@@ -829,43 +880,9 @@ def sample_conversation_requests(
         max_seqlen: int,
         use_estimated_response_lens: bool = False
 ):
-    # Load the dataset.
-    prompts = []
-    prompt_lens = []
-    max_response_lens = []
-    estimated_response_lens = []
-    dataset = get_dataset_list(dataset_path)
-    dataset = [data for data in dataset if len(data["conversations"]) >= 2]
-    random.shuffle(dataset)
-    for data in dataset:
-        if "conversations" in data:
-            prompt = data["conversations"][0]["value"]
-            res = data["conversations"][1]["value"]
-        elif "conversation" in data:
-            prompt = data["conversation"][0]["content"]
-            res = data["conversation"][1]["content"]
-        else:
-            raise ValueError(f"Unknown dataset format: {data.keys()}")
-        prompt_token_ids = tokenizer(prompt).input_ids
-        completion_token_ids = tokenizer(res).input_ids
-        if (len(prompt_token_ids) > 0 and len(completion_token_ids) > 0
-                and max_seqlen >= len(prompt_token_ids) + len(completion_token_ids)):
-            prompts.append(prompt)
-            prompt_lens.append(len(prompt_token_ids))
-            max_response_lens.append(len(completion_token_ids))
-            if "predicted_length" in data and use_estimated_response_lens:
-                estimated_response_lens.append(int(data["predicted_length"]))
-            else:
-                estimated_response_lens.append(len(completion_token_ids))
+    return sample_requests(dataset_path, num_requests, tokenizer, max_seqlen, use_estimated_response_lens,
+                           task='chat')
 
-    sampled_ids = [random.randint(0, len(prompts) - 1) for _ in range(num_requests)]
-    sampled_prompts = [prompts[idx] for idx in sampled_ids]
-    sampled_prompt_lens = [prompt_lens[idx] for idx in sampled_ids]
-    sampled_response_lens = [max_response_lens[idx] for idx in sampled_ids]
-    sampled_estimated_response_lens = [estimated_response_lens[idx] for idx in sampled_ids]
-
-    # print(f"max len:{max(a+b for a,b in zip(prompt_lens, response_lens))}")
-    return sampled_prompts, sampled_prompt_lens, sampled_response_lens, sampled_estimated_response_lens
 
 
 def generate_lens_files(
@@ -1057,7 +1074,8 @@ def main():
         assert sampled_responses_length
         dataset_path_suffix = "." + args.dataset_path.split('.')[-1]
         if args.tag_dataset_with_real_response:
-            tagged_dataset_name_json = args.dataset_path.replace(dataset_path_suffix, '_with_real_response.json')
+            tagged_dataset_name_json = args.dataset_path.replace(dataset_path_suffix,
+                                                                 f'{args.num_sampled_requests}_with_real_response.json')
             tag_dataset_with_real_response(
                 sampled_prompts, sampled_responses, tagged_dataset_name_json)
         if args.enable_csv_files:
