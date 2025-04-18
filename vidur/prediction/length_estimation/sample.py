@@ -9,7 +9,6 @@ def parse_args():
     parser.add_argument("--data-path", type=str, default="data/sharegpt_with_real_response.json")
     parser.add_argument("--num-samples", type=int, default=50000)
     parser.add_argument("--train-ratio", type=float, default=0.8)
-    parser.add_argument("--output-dir", type=str, default="./data/")
     args = parser.parse_args()
     return args
 
