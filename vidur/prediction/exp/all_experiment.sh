@@ -8,7 +8,7 @@ for dataset_name in $DATASET_NAMES; do
   if [ "$dataset_name" = "sharegpt" ]; then
     DATASET_PATH="~/data/sharegpt"
     DATASET_TYPE="sharegpt"
-    N="50"
+    N="50000"
   elif [ "$dataset_name" = "lmsys" ]; then
     DATASET_PATH="~/data/lmsys"
     DATASET_TYPE="lmsys"

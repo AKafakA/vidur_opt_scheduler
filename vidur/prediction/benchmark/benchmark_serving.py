@@ -959,7 +959,7 @@ def main():
     parser.add_argument('--tag_dataset_with_real_response',
                         type=bool, default=False)
     parser.add_argument('--enable_csv_files', type=bool, default=False)
-    parser.add_argument('--keep_all_metrics', type=bool, default=True)
+    parser.add_argument('--keep_all_metrics', type=bool, default=False)
     parser.add_argument("--output_dir", type=str, default="benchmark_output")
     parser.add_argument("--use_estimated_response_lens", type=bool, default=False)
 
