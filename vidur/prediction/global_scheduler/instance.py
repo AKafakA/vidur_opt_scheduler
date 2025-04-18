@@ -39,7 +39,7 @@ class Instance:
         }
 
         async with aiohttp.ClientSession(timeout=AIOHTTP_TIMEOUT) as session:
-            async with session.post(self._predictor_url, json=predict_parameters) as response:
+            async with session.post(self._predictor_url, json=predict_parameters, ssl=False) as response:
                 response_dict = await response.json()
                 response_dict['instance_id'] = self._instance_id
                 return response_dict
@@ -60,7 +60,7 @@ class Instance:
             "request_id": str(request_id)
         }
         async with aiohttp.ClientSession(timeout=AIOHTTP_TIMEOUT) as session:
-            async with session.post(self._backend_url, json=request_dict) as response:
+            async with session.post(self._backend_url, json=request_dict, ssl=False) as response:
                 response_dict = await response.json()
                 return response_dict
 

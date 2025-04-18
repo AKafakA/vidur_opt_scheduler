@@ -2,12 +2,13 @@ SCHEDULER_NAME="random"
 BATCH_CAP=48
 
 DATASET_NAMES="sharegpt lmsys arxiv new_sharegpt"
+DATASET_NAMES="sharegpt"
 
 for dataset_name in $DATASET_NAMES; do
   if [ "$dataset_name" = "sharegpt" ]; then
     DATASET_PATH="~/data/sharegpt"
     DATASET_TYPE="sharegpt"
-    N="50000"
+    N="50"
   elif [ "$dataset_name" = "lmsys" ]; then
     DATASET_PATH="~/data/lmsys"
     DATASET_TYPE="lmsys"
@@ -25,6 +26,6 @@ for dataset_name in $DATASET_NAMES; do
   for scheduler in $SCHEDULER_NAME; do
     echo "Running experiment for scheduler: $scheduler with dataset: $dataset_name"
 
-    sh vidur/prediction/exp/experiment.sh $scheduler $N true $BATCH_CAP $dataset_name $DATASET_PATH $DATASET_TYPE true
+    sh vidur/prediction/exp/experiment.sh $scheduler $N true $BATCH_CAP $dataset_name $DATASET_PATH $DATASET_TYPE true false
   done
 done

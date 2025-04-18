@@ -22,6 +22,7 @@ DATASET_NAME=$5
 DATASET_PATH=$6
 DATASET_TYPE=$7
 GENERATE_NEW_DATA=$8
+KEEP_ALL_METRICS=$9
 
 # Current the v1 version of vllm is supported yet
 VLLM_VERSION=0
@@ -48,7 +49,7 @@ if [ "$RESTART_VLLM" = "true" ]; then
 fi
 
 if [ "$RUN_EXP" = "true" ]; then
-  QPS="24"
+  QPS="10"
   NUM_QUERIES=$NUM_DATA
   METRIC_TYPES=$SCHEDULER_METRIC_TYPE
   if [ "$DOWNLOAD_DATASET" = "true" ]; then
@@ -62,10 +63,6 @@ if [ "$RUN_EXP" = "true" ]; then
               N="2"
           else
               N="12"
-          fi
-          KEEP_ALL_METRICS="true"
-          if [ "$GENERATE_NEW_DATA" = "true" ]; then
-              KEEP_ALL_METRICS="false"
           fi
           for n in $N; do
                   echo "Running experiment with qps: $qps, num_queries: $num_queries, n: $n, metric_type: $metric_type"
