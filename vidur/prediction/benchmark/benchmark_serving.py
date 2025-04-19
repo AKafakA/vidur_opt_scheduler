@@ -1039,8 +1039,12 @@ def main():
         assert sampled_responses_length
         # dataset_path is the path to the dataset directory
         if args.tag_dataset_with_real_response:
+            generated_dataset_files = [file for file in os.listdir(args.dataset_path)
+                                       if file.endswith('with_real_response.json')]
             tagged_dataset_path = os.path.join(args.dataset_path,
-                                               f'{args.dataset_type}_{args.num_sampled_requests}_with_real_response.json')
+                                               f'{args.dataset_type}_{args.num_sampled_requests}_'
+                                               f'{len(generated_dataset_files) + 1}'
+                                               f'_with_real_response.json')
             tag_dataset_with_real_response(
                 sampled_prompts, sampled_responses, tagged_dataset_path)
         if args.enable_csv_files:
