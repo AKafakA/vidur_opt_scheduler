@@ -789,6 +789,8 @@ def get_dataset_list(dataset_path: str, start_idx: int = 0, num_samples: int = 1
         elif path.endswith('.parquet'):
             dataset_list.extend(pd.read_parquet(path).to_dict(orient='records'))
     end_idx = min(len(dataset_list), start_idx + num_samples)
+    if start_idx >= len(dataset_list):
+        raise ValueError(f"start_idx {start_idx} is out of range for dataset with {len(dataset_list)} samples.")
     return dataset_list[start_idx:end_idx]
 
 
