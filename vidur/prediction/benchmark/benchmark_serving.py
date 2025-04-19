@@ -777,8 +777,7 @@ def gen_random_response_lens(distribution: str, len_mean, len_range, num_prompts
 
 def get_dataset_list(dataset_path: str, start_idx: int = 0, num_samples: int = 10):
     dataset_list = []
-    real_res = [file for file in os.listdir(dataset_path) if not file.endswith('with_real_response.json')]
-    for file in real_res:
+    for file in os.listdir(dataset_path):
         path = os.path.join(dataset_path, file)
         if path.endswith('.jsonl'):
             with open(path) as f:
@@ -879,11 +878,12 @@ def generate_lens_files(
 
 
 def tag_dataset_with_real_response(
+        start_id: int,
         prompts,
         responses,
         new_dataset_path: str):
     data = []
-    record_id = 0
+    record_id = start_id
     filtered_count = 0
     for prompt, response in zip(prompts, responses):
         if response.replace(' ', ''):
@@ -1038,18 +1038,28 @@ def main():
     if args.tag_dataset_with_real_response or args.enable_csv_files:
         assert sampled_responses_length
         # dataset_path is the path to the dataset directory
+        generated_dataset_path = args.dataset_path + "/" + "generate"
+        if not os.path.exists(generated_dataset_path):
+            os.makedirs(generated_dataset_path)
+
         if args.tag_dataset_with_real_response:
-            generated_dataset_files = [file for file in os.listdir(args.dataset_path)
+            generated_dataset_files = [file for file in os.listdir(generated_dataset_path)
                                        if file.endswith('with_real_response.json')]
-            tagged_dataset_path = os.path.join(args.dataset_path,
+            tagged_dataset_path = os.path.join(generated_dataset_path,
                                                f'{args.dataset_type}_{args.num_sampled_requests}_'
                                                f'{len(generated_dataset_files) + 1}'
                                                f'_with_real_response.json')
             tag_dataset_with_real_response(
-                sampled_prompts, sampled_responses, tagged_dataset_path)
+                args.data_start_index, sampled_prompts, sampled_responses, tagged_dataset_path)
         if args.enable_csv_files:
-            csv_file_name = os.path.join(args.dataset_path,
-                                         f'{args.dataset_type}_{args.num_sampled_requests}_lens.csv')
+            # csv_file_name = os.path.join(args.dataset_path,
+            #                              f'{args.dataset_type}_{args.num_sampled_requests}_lens.csv')
+            generated_csv_files = [file for file in os.listdir(generated_dataset_path)
+                                    if file.endswith('lens.csv')]
+            csv_file_name = os.path.join(generated_dataset_path,
+                                         f'{args.dataset_type}_{args.num_sampled_requests}_'
+                                         f'{len(generated_csv_files) + 1}'
+                                         f'_lens.csv')
             generate_lens_files(csv_file_name, prompt_lens, sampled_responses_length)
 
     if args.keep_all_metrics:
