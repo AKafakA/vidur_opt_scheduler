@@ -648,7 +648,7 @@ async def benchmark(
             if 'generated_text' in output:
                 sampled_prompts.append(prompt)
                 sampled_responses.append(output['generated_text'])
-        sampled_responses_length = get_tok_id_lens(tokenizer, sampled_responses)
+                sampled_responses_length = get_tok_id_lens(tokenizer, sampled_responses)
 
     throughput, actual_qps, msg = calculate_throughput(queries,
                                                        dur_s,
@@ -775,27 +775,22 @@ def gen_random_response_lens(distribution: str, len_mean, len_range, num_prompts
     return response_lens
 
 
-def get_dataset_list(dataset_path: str):
+def get_dataset_list(dataset_path: str, start_idx: int = 0, num_samples: int = 10):
     dataset_list = []
-    real_res = [file for file in os.listdir(dataset_path) if file.endswith('with_real_response.json')]
-    if len(real_res) > 0:
-        for file in real_res:
-            path = os.path.join(dataset_path, file)
+    real_res = [file for file in os.listdir(dataset_path) if not file.endswith('with_real_response.json')]
+    for file in real_res:
+        path = os.path.join(dataset_path, file)
+        if path.endswith('.jsonl'):
+            with open(path) as f:
+                for line in f:
+                    dataset_list.append(json.loads(line))
+        elif path.endswith('.json'):
             with open(path) as f:
                 dataset_list.extend(json.load(f))
-    else:
-        for file in os.listdir(dataset_path):
-            path = os.path.join(dataset_path, file)
-            if path.endswith('.jsonl'):
-                with open(path) as f:
-                    for line in f:
-                        dataset_list.append(json.loads(line))
-            elif path.endswith('.json'):
-                with open(path) as f:
-                    dataset_list.extend(json.load(f))
-            elif path.endswith('.parquet'):
-                dataset_list.extend(pd.read_parquet(path).to_dict(orient='records'))
-    return dataset_list
+        elif path.endswith('.parquet'):
+            dataset_list.extend(pd.read_parquet(path).to_dict(orient='records'))
+    end_idx = min(len(dataset_list), start_idx + num_samples)
+    return dataset_list[start_idx:end_idx]
 
 
 def sample_requests(
@@ -804,7 +799,8 @@ def sample_requests(
         tokenizer,
         max_seqlen: int,
         use_estimated_response_lens: bool,
-        task: str = 'chat',
+        start_idx: int,
+        task: str = 'chat'
 ):
     prompts = []
     prompt_lens = []
@@ -812,7 +808,7 @@ def sample_requests(
     estimated_response_lens = []
 
     # Load the dataset.
-    dataset = get_dataset_list(dataset_path)
+    dataset = get_dataset_list(dataset_path, start_idx, num_requests)
 
     # Filter dataset for conversation mode
     if task == 'chat':
@@ -868,28 +864,6 @@ def sample_requests(
     return sampled_prompts, sampled_prompt_lens, sampled_response_lens, sampled_estimated_response_lens
 
 
-def sample_arxiv_request(
-        dataset_path: str,
-        num_requests: int,
-        tokenizer,
-        max_seqlen: int,
-        use_estimated_response_lens: bool = False,
-):
-    return sample_requests(dataset_path, num_requests, tokenizer, max_seqlen, use_estimated_response_lens,
-                           task='arxiv')
-
-
-def sample_conversation_requests(
-        dataset_path: str,
-        num_requests: int,
-        tokenizer,
-        max_seqlen: int,
-        use_estimated_response_lens: bool = False
-):
-    return sample_requests(dataset_path, num_requests, tokenizer, max_seqlen, use_estimated_response_lens,
-                           task='chat')
-
-
 def generate_lens_files(
         length_output_file,
         prompt_lens,
@@ -941,6 +915,8 @@ def main():
     parser.add_argument('--log_filename', type=str, default='benchmark.log')
     parser.add_argument('--ip_ports', nargs='+', required=True, help='List of ip:port')
     parser.add_argument('--num_sampled_requests', type=int, default=10)
+    parser.add_argument('--data_start_index', type=int, default=0,
+                        help="Start index of the dataset to sample from.")
     parser.add_argument('--max_request_len', type=int, default=8192)
     parser.add_argument(
         '--distribution', choices=["uniform", "gamma", "exponential"], default="gamma")
@@ -948,7 +924,7 @@ def main():
     parser.add_argument('--burstiness', type=float, default=1.0)
     parser.add_argument('--log_latencies', action="store_true",
                         help="Whether or not to write all latencies to the log file.")
-    parser.add_argument('--fail_on_response_failure', action="store_true",
+    parser.add_argument('--fail_on_response_failure', type=bool, default=False,
                         help="Whether or not to fail the benchmarking script if any request fails")
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument('--dataset_type', type=str, choices=['sharegpt', 'arxiv', 'lmsys'], default='sharegpt')
@@ -969,27 +945,31 @@ def main():
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir)
 
-    if args.tag_dataset_with_real_response or args.enable_csv_files:
-        for file in os.listdir(args.dataset_path):
-            if file.endswith('with_real_response.json') or file.endswith('_lens.csv'):
-                print(f"File {file} already exists in {args.dataset_path}. Remove it before running the script.")
-                os.remove(os.path.join(args.dataset_path, file))
-
     backend = GenerationBackend[args.backend]
     tokenizer = AutoTokenizer.from_pretrained(args.tokenizer, trust_remote_code=args.trust_remote_code)
 
     random.seed(0xCADE)
     np.random.seed(0xCADE)
     if args.dataset_type == "sharegpt" or args.dataset_type == "lmsys":
-        prompts, prompt_lens, max_response_lens, estimated_response_lens = sample_conversation_requests(
+        prompts, prompt_lens, max_response_lens, estimated_response_lens = sample_requests(
             args.dataset_path,
             args.num_sampled_requests,
             tokenizer,
-            args.max_request_len)
+            args.max_request_len,
+            args.use_estimated_response_lens,
+            args.data_start_index,
+            task='chat'
+        )
     elif args.dataset_type == "arxiv":
-        prompts, prompt_lens, max_response_lens, estimated_response_lens = (
-            sample_arxiv_request(args.dataset_path, args.num_sampled_requests,
-                                 tokenizer, args.max_request_len))
+        prompts, prompt_lens, max_response_lens, estimated_response_lens = sample_requests(
+            args.dataset_path,
+            args.num_sampled_requests,
+            tokenizer,
+            args.max_request_len,
+            args.use_estimated_response_lens,
+            args.data_start_index,
+            task='arxiv'
+        )
     else:
         raise ValueError("unknown dataset type")
 
