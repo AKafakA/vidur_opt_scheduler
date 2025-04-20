@@ -22,8 +22,8 @@ if __name__ == '__main__':
     data = []
     for file in os.listdir(data_path):
         if file.endswith(".json"):
-            data_path = os.path.join(data_path, file)
-            data += utils.jload(data_path)
+            file_data_path = os.path.join(data_path, file)
+            data += utils.jload(file_data_path)
     print(f"data size: {len(data)}")
     # random sample 40k
     N = args.num_samples
