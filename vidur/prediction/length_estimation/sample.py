@@ -27,15 +27,14 @@ if __name__ == '__main__':
     print(f"data size: {len(data)}")
     # random sample 40k
     N = args.num_samples
-    if N < len(data):
+    if N > len(data):
         N = len(data)
     data_mask = np.random.choice(len(data), N, replace=False)
-    data = [data[i] for i in data_mask]
-    data = data[:N]
+    sampled_data = [data[i] for i in data_mask]
     train_size = int(args.train_ratio * N)
-    data_train = data[:train_size]
+    data_train = sampled_data[:train_size]
     data_train = utils.jsort(data_train, key="id", integer=True)
-    data_val = data[train_size:]
+    data_val = sampled_data[train_size:]
     data_val = utils.jsort(data_val, key="id", integer=True)
     val_size = len(data_val)
 
