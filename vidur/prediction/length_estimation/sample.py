@@ -39,8 +39,8 @@ if __name__ == '__main__':
     data_val = utils.jsort(data_val, key="id", integer=True)
     val_size = len(data_val)
 
-    train_data_path = args.data_path.replace("with_real_response", "-train-{}-k".format(train_size // 1000))
-    val_data_path = args.data_path.replace("fwith_real_response", "-val-{}-k".format(val_size // 1000))
+    train_data_path = os.path.join(args.data_path, f"train-{train_size // 1000}k.json")
+    val_data_path = os.path.join(args.data_path, f"val-{val_size // 1000}k.json")
     # save to json
     utils.jdump(data_train, train_data_path)
     utils.jdump(data_val, val_data_path)
