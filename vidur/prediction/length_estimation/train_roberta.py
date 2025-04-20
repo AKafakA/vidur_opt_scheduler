@@ -14,9 +14,10 @@ def parse_args():
     parser.add_argument("--tokenizer", type=str, default="meta-llama/Llama-2-7b-hf")
     parser.add_argument("--train-data-path", type=str, default="data/sharegpt-train-40k.json")
     parser.add_argument("--val-data-path", type=str, default="data/sharegpt-val-10k.json")
-    parser.add_argument("--output-dir", type=str, default="./ckpts/roberta-length-prediction")
+    parser.add_argument("--output-dir", type=str, default="data/roberta-length-prediction/sharegpt/")
     parser.add_argument("--epochs", type=int, default=200)
     parser.add_argument("--num-eval-examples", type=int, default=1000)
+    parser.add_argument("--batch_size", type=int, default=64)
     args = parser.parse_args()
     return args
 
@@ -25,7 +26,7 @@ if __name__ == "__main__":
     args = parse_args()
     train_data = utils.jload(args.train_data_path)
     val_data = utils.jload(args.val_data_path)
-    tokenizer_model = AutoTokenizer.from_pretrained(args.tokenizer, local_files_only=True)
+    tokenizer_model = AutoTokenizer.from_pretrained(args.tokenizer)
 
     train_data, _ = utils.generate_regression_dataframe(tokenizer_model, train_data)
     num_eval_examples = args.num_eval_examples
@@ -33,7 +34,7 @@ if __name__ == "__main__":
 
     model_args = ClassificationArgs()
     model_args.num_train_epochs = args.epochs
-    model_args.train_batch_size = 64
+    model_args.train_batch_size = args.batch_size
     model_args.regression = True
     model_args.overwrite_output_dir = True
     model_args.save_steps = -1
