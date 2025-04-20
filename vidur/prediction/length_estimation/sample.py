@@ -1,4 +1,5 @@
 import argparse
+import os
 
 import numpy as np
 import utils
@@ -6,7 +7,7 @@ import utils
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--data-path", type=str, default="data/sharegpt_with_real_response.json")
+    parser.add_argument("--data-path", type=str, default="data/sharegpt/generate")
     parser.add_argument("--num-samples", type=int, default=50000)
     parser.add_argument("--train-ratio", type=float, default=0.8)
     args = parser.parse_args()
@@ -18,10 +19,16 @@ if __name__ == '__main__':
     utils.set_seed(seed)
     args = parse_args()
     data_path = args.data_path
-    data = utils.jload(data_path)
-
+    data = []
+    for file in os.listdir(data_path):
+        if file.endswith(".json"):
+            data_path = os.path.join(data_path, file)
+            data += utils.jload(data_path)
+    print(f"data size: {len(data)}")
     # random sample 40k
     N = args.num_samples
+    if N < len(data):
+        N = len(data)
     data_mask = np.random.choice(len(data), N, replace=False)
     data = [data[i] for i in data_mask]
     data = data[:N]
@@ -37,3 +44,6 @@ if __name__ == '__main__':
     # save to json
     utils.jdump(data_train, train_data_path)
     utils.jdump(data_val, val_data_path)
+
+    print(f"train data size: {len(data_train)}")
+    print(f"val data size: {len(data_val)}")
