@@ -1,5 +1,6 @@
 import argparse
 import os
+import random
 
 import numpy as np
 import utils
@@ -10,6 +11,7 @@ def parse_args():
     parser.add_argument("--data-path", type=str, default="data/sharegpt/generate")
     parser.add_argument("--num-samples", type=int, default=50000)
     parser.add_argument("--train-ratio", type=float, default=0.8)
+    parser.add_argument("--shuffle", type=bool, default=False)
     args = parser.parse_args()
     return args
 
@@ -25,7 +27,8 @@ if __name__ == '__main__':
             file_data_path = os.path.join(data_path, file)
             data += utils.jload(file_data_path)
     print(f"data size: {len(data)}")
-    # random sample 40k
+    if args.shuffle:
+        random.shuffle(data)
     N = args.num_samples
     if N > len(data):
         N = len(data)
