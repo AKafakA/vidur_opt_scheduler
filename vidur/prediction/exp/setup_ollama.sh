@@ -9,6 +9,7 @@ parallel-ssh -t 0 -h vidur/prediction/config/hosts "sudo apt install ubuntu-driv
 parallel-ssh -t 0 -h vidur/prediction/config/hosts "sudo ubuntu-drivers install"
 parallel-ssh -t 0 -h vidur/prediction/config/hosts "sudo apt install cmake -y"
 parallel-ssh -t 0 -h vidur/prediction/config/hosts "wget https://go.dev/dl/go1.24.1.linux-amd64.tar.gz && sudo tar -C /usr/local -xzf go1.24.1.linux-amd64.tar.gz"
-parallel-ssh -t 0 -h vidur/prediction/config/hosts "export PATH=$PATH:/usr/local/go/bin && export GO111MODULE=\"on\" && cd ollama && cmake -B build && cmake --build build && go run . serve"
+parallel-ssh -t 0 -h vidur/prediction/config/hosts "pkill -f ollama"
+#parallel-ssh -t 0 -h vidur/prediction/config/hosts "export PATH=$PATH:/usr/local/go/bin && export GO111MODULE=\"on\" && cd ollama && cmake -B build && cmake --build build && go run . serve"
 #parallel-ssh -t 0 -h vidur/prediction/config/hosts "ollama pull llama2:7b"
 #parallel-ssh -t 0 -h vidur/prediction/config/hosts "ollama run llama2:7b"

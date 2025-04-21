@@ -108,7 +108,7 @@ def generate_regression_dataframe(tokenizer_model, raw_data, num_sampled=-1):
         len_to_predict = len(tokenizer_model.tokenize(raw_data[i]["conversations"][1]["value"]))
         new_data.append(len_to_predict)
         regression_dataset.append(new_data)
-    if num_sampled > 0:
+    if 0 < num_sampled < len(regression_dataset):
         regression_dataset = random.sample(regression_dataset, num_sampled)
     regression_df = pd.DataFrame(regression_dataset)
     regression_df.columns = ["text", "labels"]
