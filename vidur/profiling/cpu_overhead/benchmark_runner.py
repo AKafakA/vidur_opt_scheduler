@@ -30,24 +30,14 @@ class BenchmarkRunner:
 
         self._config_name = f"{model_name}_{batch_size}_{tensor_parallel_degree}"
 
-        self._llm_engine = LLMEngine.from_engine_args(
-            replica_id=0,
-            # model config
-            model=model_name,
-            tokenizer=model_name,
+        self._llm_engine = LLMEngine.from_cli_args(
+            model_name=model_name,
             tensor_parallel_size=tensor_parallel_degree,
-            dtype="float16",
-            load_format="dummy",
-            # scheduler config
-            scheduler_type="vllm",
-            max_num_seqs=batch_size,
-            write_metrics=True,
-            output_dir=output_dir,
-            enable_op_level_metrics=False,
-            enable_cpu_op_level_metrics=True,
-            keep_individual_batch_metrics=False,
-            trust_remote_code=True,
+            pipeline_parallel_size=1,
+            batch_size=batch_size,
+            output_dir=output_dir
         )
+
 
     def _get_input_params(self) -> SamplingParams:
         sampling_params = SamplingParams(
