@@ -3,12 +3,7 @@ HOST_CONFIG_PATH='vidur/prediction/config/host_configs.json'
 PREDICTOR_CONFIG_PATH="vidur/prediction/config/test_config.json"
 DISABLE_TIME_ESTIMATION=false
 
-TARGET_HOST='asdwb@d7525-10s10321.wisc.cloudlab.us'
-
-#DATASET_NAME = "sharegpt_gpt4"
-#DATASET_NAME="lmsys"
-#DATASET_PATH="~/data/sharegpt/$DATASET_NAME.jsonl"
-#DATASET_TYPE="sharegpt"
+TARGET_HOST='asdwb@d7525-10s10331.wisc.cloudlab.us'
 
 NUM_DATA=$2
 RESTART_VLLM=$3
@@ -53,9 +48,6 @@ if [ "$RUN_EXP" = "true" ]; then
   QPS="10"
   NUM_QUERIES=$NUM_DATA
   METRIC_TYPES=$SCHEDULER_METRIC_TYPE
-  if [ "$DOWNLOAD_DATASET" = "true" ]; then
-    parallel-ssh -t 0 --host $TARGET_HOST "wget https://huggingface.co/datasets/asdwb/sharegpt_length_prediction/resolve/main/$DATASET_NAME.json"
-  fi
   for qps in $QPS; do
       for num_queries in $NUM_QUERIES; do
         for metric_type in $METRIC_TYPES; do

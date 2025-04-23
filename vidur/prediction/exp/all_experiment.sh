@@ -1,6 +1,7 @@
 SCHEDULER_NAME="random"
 BATCH_CAP=48
-MODEL="meta-llama/Llama-2-7b-hf Qwen/Qwen-7B"
+#MODEL="meta-llama/Llama-2-7b-hf Qwen/Qwen-7B"
+MODEL="Qwen/Qwen-7B"
 DATASET_NAMES="sharegpt lmsys"
 N=50
 START_INDEX=0
@@ -16,7 +17,7 @@ for model in $MODEL; do
     fi
 
     for scheduler in $SCHEDULER_NAME; do
-      echo "Running experiment for scheduler: $scheduler with dataset: $dataset_name"
+      echo "Running experiment for scheduler: $scheduler with dataset: $dataset_name and model: $model"
       sh vidur/prediction/exp/experiment.sh $scheduler $N true $BATCH_CAP $dataset_name $DATASET_PATH $DATASET_TYPE true false $START_INDEX $model
     done
   done
