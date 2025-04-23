@@ -47,7 +47,7 @@ class Instance:
     async def query_backend(self, prompt: str, max_response_len: int, request_id: int):
         self.request_timeline.append(time.time() - self.start_time)
         self.total_request += 1
-        max_tokens = min(max(max_response_len, 1), 8192)
+        max_tokens = max_response_len
         request_dict = {
             "prompt": prompt,
             "n": 1,

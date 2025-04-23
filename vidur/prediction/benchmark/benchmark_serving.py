@@ -82,7 +82,7 @@ async def query_model_block(prompt, verbose, ip_ports):
     prompt, prompt_len, max_response_len, estimated_response_len, request_id = prompt
     global server_num_requests
     global_scheduler_ip_port = ip_ports[0]
-    timeout = aiohttp.ClientTimeout(total=4 * 60 * 60)
+    timeout = aiohttp.ClientTimeout(total=10 * 60 * 60)
     global num_finished_requests
 
     request_dict = {
@@ -588,7 +588,7 @@ def get_token_ids(input_str, tokenizer):
 async def benchmark(
         backend: GenerationBackend,
         tokenizer,
-        prompts: List[str],
+        prompts: List,
         verbose: bool,
         log_filename: str,
         ip_ports: List[int],
