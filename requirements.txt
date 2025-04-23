@@ -8,10 +8,10 @@ plotly_express
 matplotlib~=3.9.0
 seaborn
 fasteners==0.18
-ray~=2.38.0
+ray==2.43.0
 PyYAML~=6.0.1
 tqdm~=4.67.0
-torch~=2.5.1
+torch==2.6.0
 uvicorn~=0.32.1
 fastapi~=0.115.5
 psutil~=5.9.8
