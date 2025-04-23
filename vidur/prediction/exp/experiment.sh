@@ -1,5 +1,4 @@
 SCHEDULER_METRIC_TYPE=$1
-MODEL="meta-llama/Llama-2-7b-hf"
 HOST_CONFIG_PATH='vidur/prediction/config/host_configs.json'
 PREDICTOR_CONFIG_PATH="vidur/prediction/config/test_config.json"
 DISABLE_TIME_ESTIMATION=false
@@ -24,6 +23,7 @@ DATASET_TYPE=$7
 GENERATE_NEW_DATA=$8
 KEEP_ALL_METRICS=$9
 START_INDEX=${10}
+MODEL=${11}
 
 # Current the v1 version of vllm is supported yet
 VLLM_VERSION=0

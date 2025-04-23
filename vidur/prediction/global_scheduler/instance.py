@@ -53,6 +53,7 @@ class Instance:
             "n": 1,
             "best_of": 1,
             "temperature": 0.0,
+            "use_beam_search": False,
             "top_k": 1,
             "max_tokens": max_tokens,
             "ignore_eos": True,
