@@ -70,7 +70,13 @@ class ModelConfig:
         return self.num_q_heads // parallel_config.tensor_parallel_size
 
     def get_num_kv_heads(self, parallel_config: ParallelConfig):
-        return self.num_kv_heads // parallel_config.tensor_parallel_size
+        if parallel_config.tensor_parallel_size > self.num_kv_heads:
+            print(
+                f"Warning: tensor_parallel_size {parallel_config.tensor_parallel_size} is greater than num_kv_heads "
+                f"{self.num_kv_heads}. "
+                f"Setting tensor_parallel_size to num_kv_heads."
+            )
+        return max(self.num_kv_heads // parallel_config.tensor_parallel_size, 1)
 
     def get_head_size(self):
         return self.embedding_dim // self.num_q_heads
