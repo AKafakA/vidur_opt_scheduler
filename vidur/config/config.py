@@ -434,12 +434,17 @@ class MetricsConfig:
         default="cache",
         metadata={"help": "Cache directory."},
     )
+    create_output_dir: bool = field(
+        default=True,
+        metadata={"help": "Whether to create output directory."},
+    )
 
     def __post_init__(self):
-        self.output_dir = (
-            f"{self.output_dir}/{datetime.now().strftime('%Y-%m-%d_%H-%M-%S-%f')}"
-        )
-        os.makedirs(self.output_dir, exist_ok=True)
+        if self.create_output_dir:
+            self.output_dir = (
+                f"{self.output_dir}/{datetime.now().strftime('%Y-%m-%d_%H-%M-%S-%f')}"
+            )
+            os.makedirs(self.output_dir, exist_ok=True)
 
 
 @dataclass

@@ -30,7 +30,10 @@ class SimulatePredictor(Predictor):
         self._logger = logging.getLogger(__name__)
         self._config = config
         self._generate_config = DummyRequestGeneratorConfig()
-        self._metrics_config = MetricsConfig()
+        self._metrics_config = MetricsConfig(
+            write_metrics=False,
+            create_output_dir=False
+        )
         self._simulation_config = SimulationRequestTimelinePredictorConfig()
         self._replica = Replica(config.replica_config, self._generate_config)
         self._execution_time_predictor = ExecutionTimePredictorRegistry.get(
