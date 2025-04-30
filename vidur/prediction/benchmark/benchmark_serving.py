@@ -226,8 +226,6 @@ def calculate_throughput(queries,
             cf_gen_lens.append(response['num_output_tokens_cf'])
         if 'response_len' in response:
             expected_response_lens.append(response['response_len'])
-    prompt_ids = [p for p in tokenizer.batch_encode_plus(prompts)['input_ids']]
-    response_ids = [r for r in tokenizer.batch_encode_plus(responses)['input_ids']]
 
     # print(f'check_len actual {list(sorted(len(response) for response in response_ids))}')
     # print(f'check_len expect {list(sorted(expected_response_lens))}')
