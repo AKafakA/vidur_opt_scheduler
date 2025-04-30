@@ -10,7 +10,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--data-path", type=str, default="data/sharegpt/generate")
     parser.add_argument("--num-samples", type=int, default=50000)
-    parser.add_argument("--train-ratio", type=float, default=0.8)
+    parser.add_argument("--val-samples", type=int, default=10000)
     parser.add_argument("--shuffle", type=bool, default=False)
     args = parser.parse_args()
     return args
@@ -34,7 +34,11 @@ if __name__ == '__main__':
         N = len(data)
     data_mask = np.random.choice(len(data), N, replace=False)
     sampled_data = [data[i] for i in data_mask]
-    train_size = int(args.train_ratio * N)
+    print(f"sampled data size: {len(sampled_data)}")
+    val_size = args.val_samples
+    if val_size > len(sampled_data):
+        raise ValueError("val size is larger than sampled data size")
+    train_size = len(sampled_data) - val_size
     data_train = sampled_data[:train_size]
     data_train = utils.jsort(data_train, key="id", integer=True)
     data_val = sampled_data[train_size:]

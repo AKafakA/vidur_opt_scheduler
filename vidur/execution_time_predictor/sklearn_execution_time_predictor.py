@@ -340,12 +340,12 @@ class SklearnExecutionTimePredictor(BaseExecutionTimePredictor):
         df: pd.DataFrame,
         feature_cols: List[str],
         target_col: str,
-        fill_missing_value_approach: str = "bfill",
+        fill_missing_value_approach: str = "linear",
     ) -> BaseEstimator:
         if len(df) == 0:
             raise Exception(f"Training data for model {model_name} is empty")
 
-        # In case of empty values, we need to fill the values
+        # In case of empty values during profiling, we need to fill the values
         if fill_missing_value_approach == "ffill":
             df = df.ffill()
         elif fill_missing_value_approach == "bfill":
@@ -354,6 +354,9 @@ class SklearnExecutionTimePredictor(BaseExecutionTimePredictor):
             df = df.infer_objects(copy=False).interpolate(method="linear")
         elif fill_missing_value_approach == 'polynomial':
             df = df.infer_objects(copy=False).interpolate(method="polynomial", order=2)
+        # In case, interpolation fails, we can use bfill
+        if df.isnull().values.any():
+            df = df.bfill()
         model_hash = self._get_model_hash(model_name, df)
 
         cached_model = self._load_model_from_cache(model_name, model_hash)

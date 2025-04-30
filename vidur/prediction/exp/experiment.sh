@@ -1,9 +1,6 @@
 SCHEDULER_METRIC_TYPE=$1
-HOST_CONFIG_PATH='vidur/prediction/config/host_configs.json'
-PREDICTOR_CONFIG_PATH="vidur/prediction/config/test_config.json"
 DISABLE_TIME_ESTIMATION=false
 
-TARGET_HOST='asdwb@d7525-10s10331.wisc.cloudlab.us'
 
 NUM_DATA=$2
 RESTART_VLLM=$3
@@ -19,6 +16,11 @@ GENERATE_NEW_DATA=$8
 KEEP_ALL_METRICS=$9
 START_INDEX=${10}
 MODEL=${11}
+MODEL_TYPE=${12}
+MAX_MODEL_LENGTH=${13}
+TARGET_HOST=${14}
+HOST_CONFIG_PATH='vidur/prediction/config/host_configs.json'
+PREDICTOR_CONFIG_PATH="vidur/prediction/config/${MODEL_TYPE}_config.json"
 
 # Current the v1 version of vllm is supported yet
 VLLM_VERSION=0
@@ -39,7 +41,7 @@ esac
 if [ "$RESTART_VLLM" = "true" ]; then
   parallel-ssh --host $TARGET_HOST "cd vidur_opt_scheduler && rm experiment_output/logs/*"
   sh vidur/prediction/exp/reset.sh
-  nohup sh vidur/prediction/exp/run_exp_vllm.sh $BATCH_CAP $MODEL $UPDATE_VLLM_CODE $VLLM_VERSION > /dev/null 2>&1 &
+  nohup sh vidur/prediction/exp/run_exp_vllm.sh $BATCH_CAP $MODEL $UPDATE_VLLM_CODE $VLLM_VERSION $MAX_MODEL_LENGTH > /dev/null 2>&1 &
   nohup sh vidur/prediction/exp/run_exp_predictor.sh $PREDICTOR_CONFIG_PATH $SCHEDULER_METRIC_TYPE $DISABLE_TIME_ESTIMATION $UPDATE_VIDUR_CODE $BATCH_CAP> /dev/null 2>&1 &
   sleep 60
 fi

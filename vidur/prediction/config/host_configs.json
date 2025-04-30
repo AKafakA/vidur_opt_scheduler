@@ -1,0 +1,7 @@
+{
+    "d7525-10s10325.wisc.cloudlab.us": {
+        "backend_port": 8000,
+        "ip_address": "128.105.146.34",
+        "predictor_port": 8100
+    }
+}
