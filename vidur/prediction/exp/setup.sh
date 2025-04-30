@@ -9,4 +9,4 @@ parallel-ssh -t 0 -h vidur/prediction/config/hosts "echo 'export PATH=$PATH:/usr
 parallel-ssh -t 0 -h vidur/prediction/config/hosts "sudo nvidia-smi -mig 0"
 parallel-ssh -t 0 -h vidur/prediction/config/hosts "git clone https://github.com/AKafakA/vllm.git && cd vllm && sudo VLLM_USE_PRECOMPILED=1 pip install --editable ."
 parallel-ssh -t 0 -h vidur/prediction/config/hosts "git clone https://github.com/AKafakA/vidur_opt_scheduler.git && cd vidur_opt_scheduler && git checkout exp && pip install -r requirements.txt"
-parallel-ssh -t 0 -h vidur/prediction/config/hosts "pip install torch==2.6 && pip install flashinfer-python -i https://flashinfer.ai/whl/cu126/torch2.6"
+parallel-ssh -t 0 -h vidur/prediction/config/hosts "pip install flashinfer-python"

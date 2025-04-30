@@ -7,7 +7,7 @@ RESTART_VLLM=$3
 BATCH_CAP=$4
 UPDATE_VIDUR_CODE=false
 UPDATE_VLLM_CODE=false
-RUN_EXP=true
+RUN_EXP=false
 
 DATASET_NAME=$5
 DATASET_PATH=$6
@@ -47,7 +47,7 @@ if [ "$RESTART_VLLM" = "true" ]; then
 fi
 
 if [ "$RUN_EXP" = "true" ]; then
-  QPS="10"
+  QPS="1"
   NUM_QUERIES=$NUM_DATA
   METRIC_TYPES=$SCHEDULER_METRIC_TYPE
   for qps in $QPS; do

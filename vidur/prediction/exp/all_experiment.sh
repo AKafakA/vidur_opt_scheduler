@@ -1,9 +1,9 @@
 SCHEDULER_NAME="random"
 BATCH_CAP=48
-MODEL="Qwen/Qwen-7B"
+MODEL="meta-llama/Llama-2-7b-hf"
 MAX_MODEL_LENGTH=4096
 DATASET_NAMES="sharegpt"
-N=50
+N=10
 START_INDEX=0
 TARGET_HOST='asdwb@d7525-10s10325.wisc.cloudlab.us'
 
