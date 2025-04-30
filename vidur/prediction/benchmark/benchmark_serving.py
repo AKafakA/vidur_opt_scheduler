@@ -200,11 +200,11 @@ def calculate_throughput(queries,
                          log_latencies,
                          fail_on_response_failure):
     # either should be provided
-    if backend == GenerationBackend.block:
-        assert all_inference_latencies or all_waiting_latencies
-    else:
+    if not all_waiting_latencies:
         all_waiting_latencies = [-1] * len(all_e2e_latencies)
+    if not all_inference_latencies:
         all_inference_latencies = [-1] * len(all_e2e_latencies)
+    if not global_scheduling_overhead:
         global_scheduling_overhead = [-1] * len(all_e2e_latencies)
 
     prompts = []
