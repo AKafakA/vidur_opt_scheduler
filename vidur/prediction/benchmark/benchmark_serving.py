@@ -129,14 +129,12 @@ async def query_model_vllm(prompt, verbose, ip_ports, with_request_id=True):
 
     async with aiohttp.ClientSession(timeout=timeout, trust_env=True) as session:
         best_of = 1
-        use_beam_search = False
         output_len = max_response_len
         request_dict = {
             "prompt": prompt,
             "n": 1,
             "best_of": best_of,
-            "use_beam_search": use_beam_search,
-            "temperature": 0.0 if use_beam_search else 1.0,
+            "temperature": 0.0,
             "max_tokens": output_len,
             "top_k": 1,
             "ignore_eos": True,
