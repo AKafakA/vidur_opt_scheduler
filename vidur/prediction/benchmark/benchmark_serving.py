@@ -78,7 +78,25 @@ class GenerationBackend(str, Enum):
     llumnix = "llumnix"
 
 
-async def query_model_block(prompt, verbose, ip_ports):
+def write_single_res(
+        request_id: int,
+        output_file: str,
+        prompt: str,
+        response: str):
+    data = {
+        'id': request_id,
+        'conversations': [{'from': 'human', 'value': prompt}, {'from': 'model', 'value': response}]
+    }
+    if output_file.endswith('.jsonl'):
+        with jsonlines.open(output_file, 'a+') as writer:
+            writer.write({'prompt': prompt, 'response': response})
+    elif output_file.endswith('.json'):
+        with open(output_file, 'a+') as writer:
+            json.dump(data, writer)
+            writer.write('\n')
+
+
+async def query_model_block(prompt, verbose, ip_ports, write_to_file=''):
     prompt, prompt_len, max_response_len, estimated_response_len, request_id = prompt
     global server_num_requests
     global_scheduler_ip_port = ip_ports[0]
@@ -111,13 +129,15 @@ async def query_model_block(prompt, verbose, ip_ports):
                 else:
                     output['response_len'] = 0
                 print("num_finised_requests: {}".format(num_finished_requests))
+                if write_to_file and 'generated_text' in output:
+                    write_single_res(request_id, write_to_file, prompt, output['generated_text'])
                 return prompt, output
         except aiohttp.ClientError as e:
             print(f"Connect to {global_scheduler_ip_port} failed with: {str(e)}")
             sys.exit(1)
 
 
-async def query_model_vllm(prompt, verbose, ip_ports, with_request_id=True):
+async def query_model_vllm(prompt, verbose, ip_ports, write_to_file='', with_request_id=True):
     prompt, prompt_len, max_response_len, _, request_id = prompt
 
     # Evenly dispatch request to the given api servers.
@@ -163,6 +183,8 @@ async def query_model_vllm(prompt, verbose, ip_ports, with_request_id=True):
                     print(json.dumps(output['generated_text']))
                 num_finished_requests += 1
                 print("num_finised_requests: {}".format(num_finished_requests))
+                if write_to_file and 'generated_text' in output:
+                    write_single_res(request_id, write_to_file, prompt, output['generated_text'])
                 return (prompt, output)
         except aiohttp.ClientError as e:
             print(f"Connect to {ip_ports[server_id]} failed with: {str(e)}")
@@ -594,7 +616,8 @@ async def benchmark(
         log_latencies: bool,
         fail_on_response_failure: bool,
         output_gen_lens: bool = False,
-        output_dir: str = '.'
+        output_dir: str = '.',
+        write_to_file: str = '',
 ):
     if backend == GenerationBackend.vLLM:
         query_model = query_model_vllm
@@ -630,7 +653,7 @@ async def benchmark(
     start_time = time.time()
     tasks = []
     async for prompt in async_prompts:
-        tasks.append(asyncio.create_task(query_model(prompt, verbose, ip_ports)))
+        tasks.append(asyncio.create_task(query_model(prompt, verbose, ip_ports, write_to_file)))
     queries = await asyncio.gather(*tasks)
     dur_s = time.time() - start_time
     mean_token_latency = np.mean(m._per_token_latencies)
@@ -932,6 +955,7 @@ def main():
                         action='store_true')
     parser.add_argument('--tag_dataset_with_real_response',
                         type=bool, default=False)
+    parser.add_argument('--tag_dataset_during_serving', type=bool, default=False)
     parser.add_argument('--enable_csv_files', type=bool, default=False)
     parser.add_argument('--keep_all_metrics', type=bool, default=False)
     parser.add_argument("--output_dir", type=str, default="benchmark_output")
@@ -994,6 +1018,21 @@ def main():
 
     prompts = list(zip(prompts, prompt_lens, max_response_lens, estimated_response_lens, range(len(prompt_lens))))
 
+    if args.tag_dataset_with_real_response or args.enable_csv_files:
+        # dataset_path is the path to the dataset directory
+        generated_dataset_path = args.dataset_path + "/" + "generate"
+        if not os.path.exists(generated_dataset_path):
+            os.makedirs(generated_dataset_path)
+
+    generated_dataset_path = ''
+    tagged_dataset_path = ''
+    if args.tag_dataset_with_real_response and args.tag_dataset_during_serving:
+        generated_dataset_files = [file for file in os.listdir(generated_dataset_path)
+                                   if file.endswith('with_real_response.json')]
+        tagged_dataset_path = os.path.join(generated_dataset_path,
+                                           f'{args.dataset_type}_{args.num_sampled_requests}_'
+                                           f'{len(generated_dataset_files) + 1}'
+                                           f'_with_real_response.json')
     (throughput,
      actual_qps,
      prefill_token_latencies,
@@ -1026,34 +1065,24 @@ def main():
         args.log_latencies,
         args.fail_on_response_failure,
         args.tag_dataset_with_real_response or args.enable_csv_files,
-        args.output_dir
+        args.output_dirl,
+        tagged_dataset_path
     )
     )
 
     with open(args.output_dir + '/' + os.path.splitext(args.log_filename)[0] + "_logs.txt", 'w') as f:
         f.write(messages)
 
-    if args.tag_dataset_with_real_response or args.enable_csv_files:
-        assert sampled_responses_length
-        # dataset_path is the path to the dataset directory
-        generated_dataset_path = args.dataset_path + "/" + "generate"
-        if not os.path.exists(generated_dataset_path):
-            os.makedirs(generated_dataset_path)
-
-        if args.tag_dataset_with_real_response:
-            generated_dataset_files = [file for file in os.listdir(generated_dataset_path)
-                                       if file.endswith('with_real_response.json')]
-            tagged_dataset_path = os.path.join(generated_dataset_path,
-                                               f'{args.dataset_type}_{args.num_sampled_requests}_'
-                                               f'{len(generated_dataset_files) + 1}'
-                                               f'_with_real_response.json')
+    if generated_dataset_path:
+        if tagged_dataset_path and not args.tag_dataset_during_serving:
             tag_dataset_with_real_response(
                 args.data_start_index, sampled_prompts, sampled_responses, tagged_dataset_path)
+
         if args.enable_csv_files:
             # csv_file_name = os.path.join(args.dataset_path,
             #                              f'{args.dataset_type}_{args.num_sampled_requests}_lens.csv')
             generated_csv_files = [file for file in os.listdir(generated_dataset_path)
-                                    if file.endswith('lens.csv')]
+                                   if file.endswith('lens.csv')]
             csv_file_name = os.path.join(generated_dataset_path,
                                          f'{args.dataset_type}_{args.num_sampled_requests}_'
                                          f'{len(generated_csv_files) + 1}'
