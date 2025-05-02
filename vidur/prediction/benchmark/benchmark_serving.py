@@ -87,9 +87,10 @@ def write_single_res(
         'id': request_id,
         'conversations': [{'from': 'human', 'value': prompt}, {'from': 'model', 'value': response}]
     }
+    print(f"Writing {request_id} to {output_file}")
     if output_file.endswith('.jsonl'):
         with jsonlines.open(output_file, 'a+') as writer:
-            writer.write({'prompt': prompt, 'response': response})
+            writer.write(data)
     elif output_file.endswith('.json'):
         with open(output_file, 'a+') as writer:
             json.dump(data, writer)
@@ -129,7 +130,7 @@ async def query_model_block(prompt, verbose, ip_ports, write_to_file=''):
                 else:
                     output['response_len'] = 0
                 print("num_finised_requests: {}".format(num_finished_requests))
-                if write_to_file and 'generated_text' in output:
+                if len(write_to_file) > 0 and 'generated_text' in output:
                     write_single_res(request_id, write_to_file, prompt, output['generated_text'])
                 return prompt, output
         except aiohttp.ClientError as e:
