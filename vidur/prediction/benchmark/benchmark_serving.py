@@ -1019,14 +1019,15 @@ def main():
 
     prompts = list(zip(prompts, prompt_lens, max_response_lens, estimated_response_lens, range(len(prompt_lens))))
 
+    generated_dataset_path = ''
+    tagged_dataset_path = ''
+
     if args.tag_dataset_with_real_response or args.enable_csv_files:
         # dataset_path is the path to the dataset directory
         generated_dataset_path = args.dataset_path + "/" + "generate"
         if not os.path.exists(generated_dataset_path):
             os.makedirs(generated_dataset_path)
 
-    generated_dataset_path = ''
-    tagged_dataset_path = ''
     if args.tag_dataset_with_real_response and args.tag_dataset_during_serving:
         generated_dataset_files = [file for file in os.listdir(generated_dataset_path)
                                    if file.endswith('with_real_response.json')]
