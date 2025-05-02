@@ -87,7 +87,6 @@ def write_single_res(
         'id': request_id,
         'conversations': [{'from': 'human', 'value': prompt}, {'from': 'model', 'value': response}]
     }
-    print(f"Writing {request_id} to {output_file}")
     if output_file.endswith('.jsonl'):
         with jsonlines.open(output_file, 'a+') as writer:
             writer.write(data)
