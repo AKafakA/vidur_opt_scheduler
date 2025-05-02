@@ -1065,7 +1065,7 @@ def main():
         args.log_latencies,
         args.fail_on_response_failure,
         args.tag_dataset_with_real_response or args.enable_csv_files,
-        args.output_dirl,
+        args.output_dir,
         tagged_dataset_path
     )
     )
