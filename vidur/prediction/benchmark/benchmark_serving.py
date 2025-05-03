@@ -1028,12 +1028,14 @@ def main():
             os.makedirs(generated_dataset_path)
 
     if args.tag_dataset_with_real_response and args.tag_dataset_during_serving:
+        suffix = 'jsonl' if args.tag_dataset_during_serving else 'json'
         generated_dataset_files = [file for file in os.listdir(generated_dataset_path)
-                                   if file.endswith('with_real_response.json')]
+                                   if file.endswith('with_real_response.' + suffix)]
         tagged_dataset_path = os.path.join(generated_dataset_path,
                                            f'{args.dataset_type}_{args.num_sampled_requests}_'
                                            f'{len(generated_dataset_files) + 1}'
-                                           f'_with_real_response.json')
+                                           f'_with_real_response' + '.' + suffix)
+
     (throughput,
      actual_qps,
      prefill_token_latencies,

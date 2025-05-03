@@ -88,7 +88,12 @@ def jload(f, mode="r"):
     if file_name.endswith("json"):
         jdict = json.load(f)
     else:
-        jdict = [json.loads(line) for line in f]
+        # for other formats, we assume they are jsonl
+        jdict = []
+        for line in f:
+            line = line.strip()
+            if line:
+                jdict.append(json.loads(line))
     f.close()
     return jdict
 

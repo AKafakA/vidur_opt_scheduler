@@ -8,7 +8,7 @@ import utils
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--data-path", type=str, default="data/sharegpt/generate")
+    parser.add_argument("--data-path", type=str, default="data/sharegpt/generate/qwen")
     parser.add_argument("--num-samples", type=int, default=50000)
     parser.add_argument("--val-samples", type=int, default=10000)
     parser.add_argument("--shuffle", type=bool, default=False)
@@ -23,7 +23,7 @@ if __name__ == '__main__':
     data_path = args.data_path
     data = []
     for file in os.listdir(data_path):
-        if file.endswith(".json"):
+        if file.endswith(".json") or file.endswith(".jsonl"):
             file_data_path = os.path.join(data_path, file)
             data += utils.jload(file_data_path)
     print(f"data size: {len(data)}")
