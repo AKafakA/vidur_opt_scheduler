@@ -11,6 +11,7 @@ from vidur.entities import Replica, Request
 from vidur.execution_time_predictor import ExecutionTimePredictorRegistry
 from vidur.prediction.predictor.predictor import Predictor
 from vidur.scheduler.replica_scheduler.replica_scheduler_registry import ReplicaSchedulerRegistry
+from vidur.types import ReplicaSchedulerType
 from vidur.types.optimal_global_scheduler_target_metric import TargetMetric
 
 logging.basicConfig(level=logging.INFO,
@@ -43,6 +44,7 @@ class SimulatePredictor(Predictor):
             replica_scheduler_config=config.replica_scheduler_config,
             metrics_config=self._metrics_config,
         )
+        self._enable_chunked_prefill = config.replica_scheduler_config.get_type() == ReplicaSchedulerType.SARATHI
         self._request_queue = []
         if config.target_metric.upper() in TargetMetric.__members__.keys():
             self._target_metric = TargetMetric.from_str(config.target_metric)
@@ -92,13 +94,38 @@ class SimulatePredictor(Predictor):
         metrics["time_to_probe"] = time_to_probe
         return metrics
 
-    def __generate_requests_from_backend(self, request_info: dict):
+    def __generate_requests_from_backend(self, request_info: dict, source: str) -> Request:
         request_id = int(request_info["request_id"])
         arrival_time = request_info["arrival_time"]
         context_length = request_info["seq_prompts_length"]
-        processed_length = request_info["seq_total_output_length"]
+        total_length = request_info["seq_total_output_length"]
+        prefilled_length = request_info["seq_computed_length"]
+        is_prefill = request_info["is_prefill"]
         total_decode_length = self._request_decode_length_prediction_map[request_id]
-        request = Request(arrival_time, context_length, total_decode_length, processed_length)
+        if self._enable_chunked_prefill:
+            if is_prefill:
+                # total length = sequence.prompts_length + sequence.decoded_length
+                # with chunked prefilled, running consisted ongoing prefilling request, decoding request w/o preemption
+                # if it is prefilling and not preempted, the total length = sequence.prompts_length
+                # else if preempted, the total length = prompts_length + decoded_length before preemption
+                # and the decoded tokens can also be recomputed concurrently as prompted request
+                context_length = total_length
+                processed_length = prefilled_length
+                is_prefill_complete = False
+            else:
+                # if it is decoded, context length = sequence.prompts_length and processed length = decoded_length
+                is_prefill_complete = True
+                processed_length = total_length
+            request = Request(arrival_time, context_length, total_decode_length, processed_length)
+            if source == 'running':
+                request._is_prefill_complete = is_prefill_complete
+        else:
+            # if not chunked prefill, the ongoing request is always prefilled and preempted will be appended to waiting
+            # queue
+            request = Request(arrival_time, context_length, total_decode_length, total_length)
+            if source == 'running':
+                request._is_prefill_complete = True
+        request.source = source
         request.set_id(request_id)
         return request
 
@@ -133,16 +160,13 @@ class SimulatePredictor(Predictor):
                     swap_request_length = batch_request_information["swap"]
                     if self._need_to_predict:
                         for requests_info in running_request_length:
-                            request = self.__generate_requests_from_backend(requests_info)
+                            request = self.__generate_requests_from_backend(requests_info, 'running')
                             if request.num_processed_tokens == request.total_tokens:
                                 continue
-                            # print(f"request id {request.id} and processed {request._num_processed_tokens} and total {request.total_tokens}")
                             num_required_blocks = ceil(
                                 request.num_processed_tokens / self._config.replica_scheduler_config.block_size
                             )
                             replica_scheduler.allocate(request.id, num_required_blocks)
-                            request._is_prefill_complete = True
-                            request.source = 'running'
                             request.loading_tokens = request.num_processed_tokens
                             replica_scheduler.add_preempted_request(request)
 
@@ -150,7 +174,7 @@ class SimulatePredictor(Predictor):
                         waiting_request = []
 
                         for requests_info in itertools.chain(waiting_request_length, swap_request_length):
-                            request = self.__generate_requests_from_backend(requests_info)
+                            request = self.__generate_requests_from_backend(requests_info, 'waiting')
                             if request.num_processed_tokens == request.total_tokens:
                                 continue
                             if request.num_processed_tokens > 0:
@@ -158,7 +182,6 @@ class SimulatePredictor(Predictor):
                                 preempted_request.append(request)
                             else:
                                 waiting_request.append(request)
-                            request.source = 'waiting'
 
                         for request in itertools.chain(preempted_request, waiting_request):
                             replica_scheduler.add_request(request)

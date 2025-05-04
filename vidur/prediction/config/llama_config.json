@@ -8,8 +8,9 @@
 		"network_device": "a30_single_gpu"
 	},
 	"replica_scheduler_config": {
-		"max_tokens_in_batch": 8192,
-		"batch_size_cap": 128
+		"max_tokens_in_batch": 4096,
+		"batch_size_cap": 48,
+		"chunk_size": 512
 	},
 	"target_metric": "random",
 	"disable_batch_time_estimation": false

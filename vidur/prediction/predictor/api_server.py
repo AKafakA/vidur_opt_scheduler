@@ -54,7 +54,7 @@ async def init_app(
     global predictor
     config_path = args.config_path
     config_dict = json.load(open(config_path))
-    config: PredictorConfig = PredictorConfig.create_from_dict(config_dict)
+    config: PredictorConfig = PredictorConfig.create_from_dict(config_dict, args.enable_chunked_prefill)
     if args.metric_type:
         config.target_metric = args.metric_type
     config.replica_scheduler_config.batch_size_cap = args.batch_size_cap
@@ -109,11 +109,12 @@ if __name__ == "__main__":
         default=None,
         help="FastAPI root_path when app is behind a path based routing proxy")
     parser.add_argument("--instance-port", type=int, default=8000)
-    parser.add_argument("--config_path", type=str, default= "vidur/prediction/config/test_config.json")
+    parser.add_argument("--config_path", type=str, default="vidur/prediction/config/llama_config.json")
     parser.add_argument("--predictor_type", type=str, default="simulate")
     parser.add_argument("--metric_type", type=str, default="")
     parser.add_argument("--disable_time_estimation", type=bool, default=False)
-    parser.add_argument("--batch_size_cap", type=int, default=128)
+    parser.add_argument("--batch_size_cap", type=int, default=48)
+    parser.add_argument("--enable_chunked_prefill", action="store_true")
     args = parser.parse_args()
     resource.setrlimit(resource.RLIMIT_NOFILE, (65536, 65536))
     asyncio.run(run_server(args))
