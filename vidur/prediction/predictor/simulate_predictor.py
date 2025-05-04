@@ -96,9 +96,9 @@ class SimulatePredictor(Predictor):
         request_id = int(request_info["request_id"])
         arrival_time = request_info["arrival_time"]
         context_length = request_info["seq_prompts_length"]
-        generated_length = request_info["seq_total_output_length"]
-        decode_length = self._request_decode_length_prediction_map[request_id]
-        request = Request(arrival_time, context_length, decode_length, generated_length)
+        processed_length = request_info["seq_total_output_length"]
+        total_decode_length = self._request_decode_length_prediction_map[request_id]
+        request = Request(arrival_time, context_length, total_decode_length, processed_length)
         request.set_id(request_id)
         return request
 

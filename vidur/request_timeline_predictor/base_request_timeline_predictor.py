@@ -29,15 +29,23 @@ class BaseRequestTimelinePredictor:
     def predict_min_batch_size(self, replica_scheduler, request):
         raise NotImplementedError("predict method is not implemented")
 
+    def predict_average_latency(self, replica_scheduler, request):
+        raise NotImplementedError("predict method is not implemented")
+
+    def predict_request_scheduling_delay(self, replica_scheduler, request):
+        raise NotImplementedError("predict method is not implemented")
+
 
 def get_target_metric_value(target_metric: TargetMetric,
                             replica_scheduler: BaseReplicaScheduler,
                             request: Request,
                             request_timeline_predictor: BaseRequestTimelinePredictor):
     if target_metric == TargetMetric.MIN_LATENCY:
+        return request_timeline_predictor.predict_average_latency(replica_scheduler, request)
+    elif target_metric == TargetMetric.MIN_NEW_REQUEST_LATENCY:
         return request_timeline_predictor.predict_request_makespan(replica_scheduler, request)
     elif target_metric == TargetMetric.MIN_SCHEDULING_DELAY:
-        return request_timeline_predictor.predict_scheduling_delay(replica_scheduler, request)
+        return request_timeline_predictor.predict_request_scheduling_delay(replica_scheduler, request)
     elif target_metric == TargetMetric.MIN_DECODING_DELAY:
         return request_timeline_predictor.predict_average_decoding_latency(replica_scheduler, request)
     elif target_metric == TargetMetric.MAX_AVG_BATCH_SIZE:

@@ -203,6 +203,12 @@ class Request(BaseEntity):
         return self._completed
 
     @property
+    def end_to_end_time(self) -> float:
+        if self._completed_at == 0:
+            raise ValueError("Request has not been completed yet")
+        return self._completed_at - self._arrived_at
+
+    @property
     def num_restarts(self) -> int:
         return self._num_restarts
 

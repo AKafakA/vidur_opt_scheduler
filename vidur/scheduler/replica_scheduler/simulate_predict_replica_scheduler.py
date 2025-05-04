@@ -13,6 +13,7 @@ class SimulatePredictReplicaScheduler:
     Rely on actual replica scheduler to simulate the batch scheduling
     and use the execution time predictor to predict the execution time of each batch
     """
+
     def __init__(self, replica_scheduler: BaseReplicaScheduler,
                  request: Request,
                  execution_time_predictor: BaseExecutionTimePredictor,
@@ -31,12 +32,13 @@ class SimulatePredictReplicaScheduler:
             self._target_request._num_decode_tokens = request.num_predicted_decode_tokens
         self._copy_needed = copy_replica_scheduler
         self._execution_time_predictor = execution_time_predictor
-        self._target_request_batch_info = []
+        self._all_request_batch_info = []
         self._scheduled_batch_heap = []
         self._scheduled_batch_id = 0
         self._estimate_execution_time = use_estimated_execution_time
         self._default_execution_time = 0.05
         self._start_time = start_time
+        self._requests = {}
 
     def simulate(self):
         assert self._target_request is not None
@@ -51,18 +53,18 @@ class SimulatePredictReplicaScheduler:
         # is limited by the number of stages
         for new_batch in new_batches:
             self.__push_batch(new_batch, self._start_time)
-
-
-        while not self._target_request.completed and self._scheduled_batch_heap:
+        while self._scheduled_batch_heap:
             (batch_id, batch_execution_time, schedule_time, batch, num_allocated_blocks) = self.__pop_batch()
-            if self._target_request.id in batch.request_ids:
-                self._target_request_batch_info.append({
-                    "batch_id": batch_id,
-                    "batch_execution_time": batch_execution_time,
-                    "schedule_time": schedule_time,
-                    "batch_size": batch.size,
-                    "num_allocated_blocks": num_allocated_blocks
-                })
+            for request in batch.requests:
+                self._requests[request.id] = request
+            self._all_request_batch_info.append({
+                "batch_id": batch_id,
+                "batch_execution_time": batch_execution_time,
+                "schedule_time": schedule_time,
+                "batch_size": batch.size,
+                "num_allocated_blocks": num_allocated_blocks
+            })
+
 
     def __push_batch(self, batch: Batch, schedule_time: int):
         batch_execution_time = []
@@ -97,43 +99,46 @@ class SimulatePredictReplicaScheduler:
             return self._default_execution_time
 
     @property
-    def schedule_at(self):
-        return min([info["schedule_time"] + info["batch_execution_time"] for info in self._target_request_batch_info])
+    def target_request_scheduled_at(self):
+        return self._target_request.scheduled_at
 
     @property
-    def completed_at(self):
-        last_batch = sorted(self._target_request_batch_info, key=lambda x: x["schedule_time"])[-1]
-        return last_batch["schedule_time"] + sum(last_batch["batch_execution_time"])
+    def target_request_completed_at(self):
+        return self._target_request.completed_at
 
     @property
-    def average_decode_time(self):
-        return (sum([sum(info["batch_execution_time"]) for info in self._target_request_batch_info]) /
-                len(self._target_request_batch_info))
+    def average_execution_time(self):
+        return (sum([sum(info["batch_execution_time"]) for info in self._all_request_batch_info]) /
+                len(self._all_request_batch_info))
+
+    @property
+    def average_latency(self):
+        completed_requests = [request for request in self._requests.values() if request.completed]
+        if not completed_requests:
+            return 0
+        return (sum([request.completed_at - request.scheduled_at for request in completed_requests]) /
+                len(completed_requests))
 
     @property
     def average_stage_time(self):
         stage_times = []
-        for info in self._target_request_batch_info:
+        for info in self._all_request_batch_info:
             stage_times.extend(info["batch_execution_time"])
         return sum(stage_times) / len(stage_times)
 
     @property
     def average_batch_size(self):
-        return (sum([info["batch_size"] for info in self._target_request_batch_info]) /
-                len(self._target_request_batch_info))
-
-    @property
-    def min_batch_size(self):
-        return min([info["batch_size"] for info in self._target_request_batch_info])
+        return (sum([info["batch_size"] for info in self._all_request_batch_info]) /
+                len(self._all_request_batch_info))
 
     @property
     def max_batch_size(self):
-        return max([info["batch_size"] for info in self._target_request_batch_info])
+        return max([info["batch_size"] for info in self._all_request_batch_info])
 
     @property
     def avg_block_size(self):
-        return (sum([info["num_allocated_blocks"] for info in self._target_request_batch_info]) /
-                len(self._target_request_batch_info))
+        return (sum([info["num_allocated_blocks"] for info in self._all_request_batch_info]) /
+                len(self._all_request_batch_info))
 
     def get_execution_time(self, batch: Batch, stage_id: int):
         if self._estimate_execution_time:

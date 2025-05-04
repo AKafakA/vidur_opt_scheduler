@@ -23,3 +23,4 @@ class TargetMetric(BaseIntEnum):
     MIN_DECODING_DELAY = 5
     MIN_GPU_BLOCKS = 6
     MIN_REQUESTS = 7
+    MIN_NEW_REQUEST_LATENCY = 8
