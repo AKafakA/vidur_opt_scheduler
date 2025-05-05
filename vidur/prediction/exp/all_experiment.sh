@@ -6,6 +6,11 @@ DATASET_NAMES="sharegpt"
 N=10
 START_INDEX=0
 TARGET_HOST='asdwb@d7525-10s10325.wisc.cloudlab.us'
+ENABLE_CHUNKED_PREFILL=false
+
+PREDICTOR_WORKERS=4
+GLOBAL_SCHEDULER_WORKERS=1
+BACKEND_WORKERS=4
 
 for model in $MODEL; do
   if [ "$model" = "meta-llama/Llama-2-7b-hf" ]; then
@@ -24,7 +29,7 @@ for model in $MODEL; do
 
     for scheduler in $SCHEDULER_NAME; do
       echo "Running experiment for scheduler: $scheduler with dataset: $dataset_name and model: $model"
-      sh vidur/prediction/exp/experiment.sh $scheduler $N true $BATCH_CAP $dataset_name $DATASET_PATH $DATASET_TYPE true false $START_INDEX $model $MODEL_TYPE $MAX_MODEL_LENGTH $TARGET_HOST
+      sh vidur/prediction/exp/experiment.sh $scheduler $N true $BATCH_CAP $dataset_name $DATASET_PATH $DATASET_TYPE true false $START_INDEX $model $MODEL_TYPE $MAX_MODEL_LENGTH $TARGET_HOST $ENABLE_CHUNKED_PREFILL
     done
   done
 done

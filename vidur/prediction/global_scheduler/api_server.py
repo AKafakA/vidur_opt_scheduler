@@ -199,6 +199,7 @@ if __name__ == "__main__":
     parser.add_argument("-m", "--num_required_predictor", type=int, default=1)
     parser.add_argument("--debugging_logs", type=bool, default=False)
     args = parser.parse_args()
+    logger.info("Starting server with args: %s", str(args))
     # in case the limited by the number of files
     resource.setrlimit(resource.RLIMIT_NOFILE, (65536, 65536))
 

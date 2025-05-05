@@ -1,7 +1,6 @@
 SCHEDULER_METRIC_TYPE=$1
 DISABLE_TIME_ESTIMATION=false
 
-
 NUM_DATA=$2
 RESTART_VLLM=$3
 BATCH_CAP=$4
@@ -21,6 +20,11 @@ MAX_MODEL_LENGTH=${13}
 TARGET_HOST=${14}
 HOST_CONFIG_PATH='vidur/prediction/config/host_configs.json'
 PREDICTOR_CONFIG_PATH="vidur/prediction/config/${MODEL_TYPE}_config.json"
+ENABLE_CHUNKED_PREFILL=${15}
+
+PREDICTOR_WORKERS= ${16}
+GLOBAL_SCHEDULER_WORKERS= ${17}
+BACKEND_WORKERS= ${18}
 
 # Current the v1 version of vllm is supported yet
 VLLM_VERSION=0
@@ -41,8 +45,8 @@ esac
 if [ "$RESTART_VLLM" = "true" ]; then
   parallel-ssh --host $TARGET_HOST "cd vidur_opt_scheduler && rm experiment_output/logs/*"
   sh vidur/prediction/exp/reset.sh
-  nohup sh vidur/prediction/exp/run_exp_vllm.sh $BATCH_CAP $MODEL $UPDATE_VLLM_CODE $VLLM_VERSION $MAX_MODEL_LENGTH > /dev/null 2>&1 &
-  nohup sh vidur/prediction/exp/run_exp_predictor.sh $PREDICTOR_CONFIG_PATH $SCHEDULER_METRIC_TYPE $DISABLE_TIME_ESTIMATION $UPDATE_VIDUR_CODE $BATCH_CAP> /dev/null 2>&1 &
+  nohup sh vidur/prediction/exp/run_exp_vllm.sh $BATCH_CAP $MODEL $UPDATE_VLLM_CODE $VLLM_VERSION $MAX_MODEL_LENGTH $BACKEND_WORKERS> /dev/null 2>&1 &
+  nohup sh vidur/prediction/exp/run_exp_predictor.sh $PREDICTOR_CONFIG_PATH $SCHEDULER_METRIC_TYPE $DISABLE_TIME_ESTIMATION $UPDATE_VIDUR_CODE $BATCH_CAP $ENABLE_CHUNKED_PREFILL $PREDICTOR_WORKERS > /dev/null 2>&1 &
   sleep 60
 fi
 
@@ -61,7 +65,7 @@ if [ "$RUN_EXP" = "true" ]; then
           fi
           for n in $N; do
                   echo "Running experiment with qps: $qps, num_queries: $num_queries, n: $n, metric_type: $metric_type"
-                  nohup sh vidur/prediction/exp/run_exp_global_scheduler.sh $TARGET_HOST $n $n $metric_type $HOST_CONFIG_PATH > /dev/null 2>&1 &
+                  nohup sh vidur/prediction/exp/run_exp_global_scheduler.sh $TARGET_HOST $n $n $metric_type $HOST_CONFIG_PATH $GLOBAL_SCHEDULER_WORKERS > /dev/null 2>&1 &
                   LOG_FILENAME="benchmark.log"
                   OUTPUT_DIR="${DATASET_TYPE}/${metric_type}/qps_${qps}_num_queries_${num_queries}_n_${n}"
                   sleep 10
