@@ -57,7 +57,7 @@ class SimulatePredictor(Predictor):
         self._request_timeline_predictor.attach_execution_time_predictor(self._execution_time_predictor)
         self._request_timeline_predictor.disable_copy_of_base_replica_scheduler()
         if config.disable_batch_time_estimation:
-            self._request_timeline_predictor.disable_batch_time_estimation()
+            self._request_timeline_predictor.use_estimated_time = False
         self._port = port
         self._request_decode_length_prediction_map = {}
         self._start_time = time.time()
@@ -163,8 +163,12 @@ class SimulatePredictor(Predictor):
                             request = self.__generate_requests_from_backend(requests_info, 'running')
                             if request.num_processed_tokens == request.total_tokens:
                                 continue
+                            if self._enable_chunked_prefill:
+                                allocated_tokens = max(request.num_processed_tokens, request.num_prefill_tokens)
+                            else:
+                                allocated_tokens = request.num_processed_tokens
                             num_required_blocks = ceil(
-                                request.num_processed_tokens / self._config.replica_scheduler_config.block_size
+                                allocated_tokens / self._config.replica_scheduler_config.block_size
                             )
                             replica_scheduler.allocate(request.id, num_required_blocks)
                             request.loading_tokens = request.num_processed_tokens

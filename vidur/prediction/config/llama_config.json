@@ -12,6 +12,6 @@
 		"batch_size_cap": 48,
 		"chunk_size": 512
 	},
-	"target_metric": "random",
+	"target_metric": "min_latency",
 	"disable_batch_time_estimation": false
 }

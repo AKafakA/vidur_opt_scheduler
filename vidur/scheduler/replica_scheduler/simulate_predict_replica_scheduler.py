@@ -89,6 +89,7 @@ class SimulatePredictReplicaScheduler:
         new_batches = self._replica_scheduler.on_schedule()
         num_allocated_blocks = self._replica_scheduler.num_allocated_blocks
         for new_batch in new_batches:
+            new_batch.on_schedule(schedule_time)
             self.__push_batch(new_batch, completed_at)
         return batch_id, batch_execution_time, schedule_time, batch, num_allocated_blocks
 

@@ -1,18 +1,12 @@
-from vidur.entities import Request
 from vidur.request_timeline_predictor.base_request_timeline_predictor import BaseRequestTimelinePredictor
-from vidur.scheduler.replica_scheduler.base_replica_scheduler import BaseReplicaScheduler
 from vidur.scheduler.replica_scheduler.simulate_predict_replica_scheduler import SimulatePredictReplicaScheduler
-from vidur.types.optimal_global_scheduler_target_metric import TargetMetric
 
 
 class SimulateRequestTimelinePredictor(BaseRequestTimelinePredictor):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._use_estimated_time = True
+        self.use_estimated_time = True
         self._copy_base_replica_scheduler = True
-
-    def disable_batch_time_estimation(self):
-        self._use_estimated_time = False
 
     def disable_copy_of_base_replica_scheduler(self):
         self._copy_base_replica_scheduler = False
@@ -22,7 +16,7 @@ class SimulateRequestTimelinePredictor(BaseRequestTimelinePredictor):
             replica_scheduler=replica_scheduler,
             request=request,
             execution_time_predictor=self._execution_time_predictor,
-            use_estimated_execution_time=self._use_estimated_time,
+            use_estimated_execution_time=self.use_estimated_time,
             copy_replica_scheduler=self._copy_base_replica_scheduler,
         )
         simulate_predict_replica_scheduler.simulate()
@@ -33,7 +27,7 @@ class SimulateRequestTimelinePredictor(BaseRequestTimelinePredictor):
             replica_scheduler=replica_scheduler,
             request=request,
             execution_time_predictor=self._execution_time_predictor,
-            use_estimated_execution_time=self._use_estimated_time,
+            use_estimated_execution_time=self.use_estimated_time,
             copy_replica_scheduler=self._copy_base_replica_scheduler,
         )
         simulate_predict_replica_scheduler.simulate()
@@ -44,7 +38,7 @@ class SimulateRequestTimelinePredictor(BaseRequestTimelinePredictor):
             replica_scheduler=replica_scheduler,
             request=request,
             execution_time_predictor=self._execution_time_predictor,
-            use_estimated_execution_time=self._use_estimated_time,
+            use_estimated_execution_time=self.use_estimated_time,
             copy_replica_scheduler=self._copy_base_replica_scheduler,
         )
         simulate_predict_replica_scheduler.simulate()
@@ -55,7 +49,7 @@ class SimulateRequestTimelinePredictor(BaseRequestTimelinePredictor):
             replica_scheduler=replica_scheduler,
             request=request,
             execution_time_predictor=self._execution_time_predictor,
-            use_estimated_execution_time=self._use_estimated_time,
+            use_estimated_execution_time=self.use_estimated_time,
             copy_replica_scheduler=self._copy_base_replica_scheduler,
         )
         simulate_predict_replica_scheduler.simulate()
@@ -77,7 +71,7 @@ class SimulateRequestTimelinePredictor(BaseRequestTimelinePredictor):
             replica_scheduler=replica_scheduler,
             request=request,
             execution_time_predictor=self._execution_time_predictor,
-            use_estimated_execution_time=self._use_estimated_time,
+            use_estimated_execution_time=self.use_estimated_time,
             copy_replica_scheduler=self._copy_base_replica_scheduler,
         )
         simulate_predict_replica_scheduler.simulate()
