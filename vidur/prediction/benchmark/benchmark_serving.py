@@ -1018,6 +1018,8 @@ def main():
 
     prompts = list(zip(prompts, prompt_lens, max_response_lens, estimated_response_lens, range(len(prompt_lens))))
 
+    print(f"sampled {len(prompts)} after filtering by length")
+
     generated_dataset_path = ''
     tagged_dataset_path = ''
 
