@@ -4,7 +4,7 @@ BATCH_CAP=48
 MODEL="meta-llama/Llama-2-7b-hf"
 MAX_MODEL_LENGTH=4096
 DATASET_NAMES="sharegpt"
-N=10
+NUM_REQUEST=1000
 START_INDEX=0
 TARGET_HOST='asdwb@d7525-10s10325.wisc.cloudlab.us'
 ENABLE_CHUNKED_PREFILL=false
@@ -32,7 +32,7 @@ for model in $MODEL; do
 
     for scheduler in $SCHEDULER_NAME; do
       echo "Running experiment for scheduler: $scheduler with dataset: $dataset_name and model: $model"
-      sh vidur/prediction/exp/experiment.sh $scheduler $N true $BATCH_CAP $dataset_name $DATASET_PATH $DATASET_TYPE true false $START_INDEX $model $MODEL_TYPE $MAX_MODEL_LENGTH $TARGET_HOST $ENABLE_CHUNKED_PREFILL $PREDICTOR_WORKERS $GLOBAL_SCHEDULER_WORKERS $BACKEND_WORKERS $CHUNK_SIZE
+      sh vidur/prediction/exp/experiment.sh $scheduler $NUM_REQUEST true $BATCH_CAP $dataset_name $DATASET_PATH $DATASET_TYPE true false $START_INDEX $model $MODEL_TYPE $MAX_MODEL_LENGTH $TARGET_HOST $ENABLE_CHUNKED_PREFILL $PREDICTOR_WORKERS $GLOBAL_SCHEDULER_WORKERS $BACKEND_WORKERS $CHUNK_SIZE
     done
   done
 done
