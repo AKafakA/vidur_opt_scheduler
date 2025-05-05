@@ -22,9 +22,16 @@ HOST_CONFIG_PATH='vidur/prediction/config/host_configs.json'
 PREDICTOR_CONFIG_PATH="vidur/prediction/config/${MODEL_TYPE}_config.json"
 ENABLE_CHUNKED_PREFILL=${15}
 
-PREDICTOR_WORKERS= ${16}
-GLOBAL_SCHEDULER_WORKERS= ${17}
-BACKEND_WORKERS= ${18}
+PREDICTOR_WORKERS=${16}
+GLOBAL_SCHEDULER_WORKERS=${17}
+BACKEND_WORKERS=${18}
+CHUNK_SIZE=${19}
+
+IF [ "$ENABLE_CHUNKED_PREFILL" = "true" ]; then
+  MAX_NUM_BATCHED_TOKEN=$CHUNK_SIZE
+else
+  MAX_NUM_BATCHED_TOKEN=$MAX_MODEL_LENGTH
+fi
 
 # Current the v1 version of vllm is supported yet
 VLLM_VERSION=0
@@ -45,7 +52,7 @@ esac
 if [ "$RESTART_VLLM" = "true" ]; then
   parallel-ssh --host $TARGET_HOST "cd vidur_opt_scheduler && rm experiment_output/logs/*"
   sh vidur/prediction/exp/reset.sh
-  nohup sh vidur/prediction/exp/run_exp_vllm.sh $BATCH_CAP $MODEL $UPDATE_VLLM_CODE $VLLM_VERSION $MAX_MODEL_LENGTH $BACKEND_WORKERS> /dev/null 2>&1 &
+  nohup sh vidur/prediction/exp/run_exp_vllm.sh $BATCH_CAP $MODEL $UPDATE_VLLM_CODE $VLLM_VERSION $MAX_MODEL_LENGTH $BACKEND_WORKERS $MAX_NUM_BATCHED_TOKEN > /dev/null 2>&1 &
   nohup sh vidur/prediction/exp/run_exp_predictor.sh $PREDICTOR_CONFIG_PATH $SCHEDULER_METRIC_TYPE $DISABLE_TIME_ESTIMATION $UPDATE_VIDUR_CODE $BATCH_CAP $ENABLE_CHUNKED_PREFILL $PREDICTOR_WORKERS > /dev/null 2>&1 &
   sleep 60
 fi
