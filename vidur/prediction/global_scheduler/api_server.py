@@ -45,6 +45,7 @@ async def generate_benchmark(request: Request) -> Response:
     request_id = request_dict["request_id"]
     prompt = request_dict.pop("prompt")
     num_context_tokens = request_dict.pop("prompt_len")
+    print(num_context_tokens)
     predicted_num_decode_tokens = request_dict.pop("predicted_response_len")
     max_response_len = request_dict.pop("max_response_len")
     arrived_at = time.time() - start_time

@@ -80,6 +80,7 @@ class SimulatePredictReplicaScheduler:
         self._scheduled_batch_id += 1
         completed_at = sum(batch_execution_time) + schedule_time
         batch_info = (completed_at, schedule_time, batch_id, batch, batch_execution_time)
+        batch.on_schedule(schedule_time)
         heapq.heappush(self._scheduled_batch_heap, batch_info)
 
     def __pop_batch(self):
@@ -89,7 +90,6 @@ class SimulatePredictReplicaScheduler:
         new_batches = self._replica_scheduler.on_schedule()
         num_allocated_blocks = self._replica_scheduler.num_allocated_blocks
         for new_batch in new_batches:
-            new_batch.on_schedule(schedule_time)
             self.__push_batch(new_batch, completed_at)
         return batch_id, batch_execution_time, schedule_time, batch, num_allocated_blocks
 

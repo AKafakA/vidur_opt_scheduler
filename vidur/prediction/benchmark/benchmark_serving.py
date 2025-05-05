@@ -938,7 +938,7 @@ def main():
     parser.add_argument('--num_sampled_requests', type=int, default=10)
     parser.add_argument('--data_start_index', type=int, default=0,
                         help="Start index of the dataset to sample from.")
-    parser.add_argument('--max_request_len', type=int, default=8192)
+    parser.add_argument('--max_request_len', type=int, default=4096)
     parser.add_argument(
         '--distribution', choices=["uniform", "gamma", "exponential"], default="gamma")
     parser.add_argument('--qps', type=float, default=4.0)
