@@ -44,4 +44,9 @@ class PredictorConfig(ABC):
                 data_class=SarathiSchedulerConfig,
                 data=data['replica_scheduler_config'],
             )
+        else:
+            config.replica_scheduler_config = from_dict(
+                data_class=VllmSchedulerConfig,
+                data=data['replica_scheduler_config'],
+            )
         return config

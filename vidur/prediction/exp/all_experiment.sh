@@ -1,4 +1,4 @@
-SCHEDULER_NAME="random"
+SCHEDULER_NAME="min_new_request_latency"
 BATCH_CAP=48
 #MODEL="Qwen/Qwen-7B"
 MODEL="meta-llama/Llama-2-7b-hf"

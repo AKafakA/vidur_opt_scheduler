@@ -13,6 +13,6 @@
 		"chunk_size": 512,
 		"num_blocks": 1052
 	},
-	"target_metric": "min_latency",
+	"target_metric": "min_new_request_latency",
 	"disable_batch_time_estimation": false
 }
