@@ -1,5 +1,4 @@
 import copy
-
 from vidur.entities import Request, Batch
 from vidur.execution_time_predictor import BaseExecutionTimePredictor
 from vidur.scheduler.replica_scheduler.base_replica_scheduler import BaseReplicaScheduler
@@ -36,9 +35,9 @@ class SimulatePredictReplicaScheduler:
         self._scheduled_batch_heap = []
         self._scheduled_batch_id = 0
         self._estimate_execution_time = use_estimated_execution_time
-        self._default_execution_time = 0.05
+        self._default_execution_time = 0.02
         self._start_time = start_time
-        self._requests = {}
+        self._request_ids = set()
 
     def simulate(self):
         assert self._target_request is not None
@@ -48,25 +47,25 @@ class SimulatePredictReplicaScheduler:
         for batch in existing_batches:
             self.__push_batch(copy.copy(batch), self._start_time)
         new_batches = self._replica_scheduler.on_schedule()
-
         # so the initialized batch == the number of stages then only be pushed after pop so that the batch number
         # is limited by the number of stages
         for new_batch in new_batches:
             self.__push_batch(new_batch, self._start_time)
         while self._scheduled_batch_heap:
             (batch_id, batch_execution_time, schedule_time, batch, num_allocated_blocks) = self.__pop_batch()
-            for request in batch.requests:
-                self._requests[request.id] = request
+            for request_id in batch.request_ids:
+                self._request_ids.add(request_id)
             self._all_request_batch_info.append({
                 "batch_id": batch_id,
                 "batch_execution_time": batch_execution_time,
                 "schedule_time": schedule_time,
                 "batch_size": batch.size,
-                "num_allocated_blocks": num_allocated_blocks
+                "num_allocated_blocks": num_allocated_blocks,
+                "request_ids": batch.request_ids,
+                "completed_time": schedule_time + sum(batch_execution_time)
             })
 
-
-    def __push_batch(self, batch: Batch, schedule_time: int):
+    def __push_batch(self, batch: Batch, schedule_time):
         batch_execution_time = []
         for stage_id in self._replica_scheduler.replica_stage_schedulers.keys():
             execution_time = self.__get_execution_time(batch, stage_id)
@@ -99,13 +98,22 @@ class SimulatePredictReplicaScheduler:
         else:
             return self._default_execution_time
 
+    def get_target_request_batches(self, request_id):
+        return [selected_batch for selected_batch in self._all_request_batch_info
+                if request_id in selected_batch["request_ids"]]
+
     @property
     def target_request_scheduled_at(self):
-        return self._target_request.scheduled_at
+        return self.get_target_request_batches(self._target_request.id)[0]["schedule_time"]
 
     @property
     def target_request_completed_at(self):
-        return self._target_request.completed_at
+        last_batch = self.get_target_request_batches(self._target_request.id)[-1]
+        return last_batch["completed_time"]
+
+    @property
+    def target_request_end_to_end(self):
+        return self.target_request_completed_at - self._start_time
 
     @property
     def average_execution_time(self):
@@ -114,11 +122,12 @@ class SimulatePredictReplicaScheduler:
 
     @property
     def average_latency(self):
-        completed_requests = [request for request in self._requests.values() if request.completed]
-        if not completed_requests:
-            return 0
-        return (sum([request.completed_at - request.scheduled_at for request in completed_requests]) /
-                len(completed_requests))
+        execution_time = []
+        for request_id in self._request_ids:
+            batches = self.get_target_request_batches(request_id)
+            execution_time.append(batches[-1]["completed_time"] - batches[0]["schedule_time"])
+        return sum(execution_time) / len(execution_time)
+
 
     @property
     def average_stage_time(self):

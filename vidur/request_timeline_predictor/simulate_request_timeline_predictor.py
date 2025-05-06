@@ -9,7 +9,7 @@ class SimulateRequestTimelinePredictor(BaseRequestTimelinePredictor):
         self._copy_base_replica_scheduler = True
 
     def disable_copy_of_base_replica_scheduler(self):
-        self._copy_base_replica_scheduler = False
+        self._copy_base_replica_scheduler = True
 
     def predict_avg_block_size(self, replica_scheduler, request):
         simulate_predict_replica_scheduler = SimulatePredictReplicaScheduler(
@@ -42,7 +42,7 @@ class SimulateRequestTimelinePredictor(BaseRequestTimelinePredictor):
             copy_replica_scheduler=self._copy_base_replica_scheduler,
         )
         simulate_predict_replica_scheduler.simulate()
-        return simulate_predict_replica_scheduler.target_request_completed_at
+        return simulate_predict_replica_scheduler.target_request_end_to_end
 
     def predict_average_latency(self, replica_scheduler, request):
         simulate_predict_replica_scheduler = SimulatePredictReplicaScheduler(
