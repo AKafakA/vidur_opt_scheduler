@@ -62,13 +62,20 @@ def request_gen(generator, qps: float, distribution="uniform"):
             return
 
 
-async def async_request_gen(generator, qps: float, distribution="uniform", burstiness: float = 0.0):
+async def async_request_gen(generator, qps: float, distribution="uniform", burstiness: float = 0.0,
+                            double_qps_at: int = -1):
+    input_qps = qps
+    current_time = 0
     while True:
         try:
             item = next(generator)
             yield item
             if distribution != "burst":
-                await asyncio.sleep(get_wait_time(qps, distribution, burstiness))
+                wait_time = get_wait_time(input_qps, distribution, burstiness)
+                await asyncio.sleep(wait_time)
+                current_time += wait_time
+                if 0 < double_qps_at <= current_time:
+                    input_qps *= 2
         except StopIteration:
             return
 
@@ -974,6 +981,7 @@ def main():
     parser.add_argument('--keep_all_metrics', type=bool, default=False)
     parser.add_argument("--output_dir", type=str, default="benchmark_output")
     parser.add_argument("--use_estimated_response_lens", type=bool, default=False)
+    parser.add_argument("--double_aps_at", type=int, default=-1)
 
     args = parser.parse_args()
 

@@ -21,6 +21,10 @@ lock = asyncio.Lock()
 TIMEOUT_KEEP_ALIVE = 10  # seconds.
 app = FastAPI()
 instances = []
+available_instance_indexes = []
+last_revision_checking_time = 0
+max_avg_qpm_shift_before_revision = 0
+last_avg_qpm = 0
 num_requests = 0
 n = 0
 m = 0
@@ -39,7 +43,7 @@ async def generate_benchmark(request: Request) -> Response:
     2) select the host based on target metrics and call its vllm generate API to generate the completion.
     3) return the completion to the client with profiling
     """
-    assert len(instances) > 0
+    assert len(instances) > 0 and len(available_instance_indexes) > 0
     request_start_time = time.time()
     request_dict = await request.json()
     request_id = request_dict["request_id"]
@@ -51,7 +55,9 @@ async def generate_benchmark(request: Request) -> Response:
     _ = request_dict.pop("stream", False)
     predict_tasks = []
 
-    for instance in instances:
+    available_instance = [instances[i] for i in available_instance_indexes]
+
+    for instance in available_instance:
         predict_tasks.append(instance.query_predictor(
             request_id, num_context_tokens, predicted_num_decode_tokens, arrived_at))
     try:
@@ -88,14 +94,14 @@ async def generate_benchmark(request: Request) -> Response:
         selected_instance_id = (predict_results[metric_selected_index])['instance_id']
         selected_index = [i for i, instance in enumerate(instances) if selected_instance_id == instance._instance_id][0]
     elif metrics_type == "random":
-        selected_index = random.randint(0, len(instances) - 1)
+        selected_index = random.choice(available_instance_indexes)
     elif metrics_type == "round_robin":
-        selected_index = int(request_id) % len(instances)
+        selected_index = available_instance_indexes[num_requests % len(available_instance_indexes)]
     elif metrics_type == "request_per_seconds":
-        instance_qpm = [(instance.get_current_qpm(), instance._instance_id) for instance in instances]
+        instance_qpm = [(instance.get_current_qpm(), instance._instance_id) for instance in available_instance]
         min_qpm = min(instance_qpm, key=lambda x: x[0])[0]
         selected_instance_id = random.choice([x[1] for x in instance_qpm if x[0] == min_qpm])
-        selected_index = [i for i in range(len(instances)) if instances[i]._instance_id == selected_instance_id][0]
+        selected_index = [i for i in range(len(instances)) if available_instance[i]._instance_id == selected_instance_id][0]
     else:
         raise ValueError(f"Invalid metrics type: {metrics_type}")
 
@@ -115,6 +121,23 @@ async def generate_benchmark(request: Request) -> Response:
     bottleneck_host = max(time_in_predictions, key=lambda x: x[0])
     response['time_on_backend'] = time_for_inference + bottleneck_host[1]
     response['time_on_probe'] = bottleneck_host[0] - bottleneck_host[1]
+    with lock:
+        global last_revision_checking_time, last_avg_qpm, max_avg_qpm_shift_before_revision, available_instance_indexes
+        if time.time() - last_revision_checking_time > args.revision_cycle_in_seconds:
+            average_qpm = np.mean([instance.get_current_qpm() for instance in available_instance])
+            if (time.time() - start_time > args.revision_cycle_start_at) and \
+                    (abs(average_qpm - last_avg_qpm) > max_avg_qpm_shift_before_revision):
+                unselected_indexes = list(set(range(len(instances))) - set(available_instance_indexes))
+                if len(unselected_indexes) > 0:
+                    available_instance_indexes.append(random.choice(unselected_indexes))
+                else:
+                    print("All instances are already available, no need to add more.")
+            last_avg_qpm = average_qpm
+            last_revision_checking_time = time.time()
+
+
+
+
     return JSONResponse(response)
 
 
@@ -131,8 +154,14 @@ async def init_app(
         instances_list: Optional[List[Instance]] = None,
 ) -> FastAPI:
     app = build_app(args)
-    global instances, start_time, metrics_type
+    start_time = time.time()
+    global instances, start_time, metrics_type, available_instance_indexes, last_revision_checking_time, \
+        max_avg_qpm_shift_before_revision, last_avg_qpm
+    max_avg_qpm_shift_before_revision = args.max_avg_qpm_shift_before_revision
     config_path = args.config_path
+    available_instance_indexes = random.sample(list(range(len(instances))), args.num_available_host_min)
+    last_revision_checking_time = start_time
+    last_avg_qpm = 0
 
     instance_dict = json.load(open(config_path))
     if instances_list is not None:
@@ -141,7 +170,6 @@ async def init_app(
         for key, value in instance_dict.items():
             instance = Instance(key, value["ip_address"], value["predictor_port"], value["backend_port"])
             instances.append(instance)
-    start_time = time.time()
     metrics_type = args.metrics_type
     return app
 
@@ -198,6 +226,10 @@ if __name__ == "__main__":
     parser.add_argument("-n", "--num_query_predictor", type=int, default=1)
     parser.add_argument("-m", "--num_required_predictor", type=int, default=1)
     parser.add_argument("--debugging_logs", type=bool, default=False)
+    parser.add_argument("--num_available_host_min", type=int, default=6)
+    parser.add_argument("--max_avg_qpm_shift_before_revision", type=int, default=1)
+    parser.add_argument("--revision_cycle_start_at", type=int, default=60)
+    parser.add_argument("--revision_cycle_in_seconds", type=int, default=10)
     args = parser.parse_args()
     logger.info("Starting server with args: %s", str(args))
     # in case the limited by the number of files

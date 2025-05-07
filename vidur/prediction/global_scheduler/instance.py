@@ -66,5 +66,5 @@ class Instance:
 
     def get_current_qpm(self):
         current_time = time.time()
-        return sum([1 for time_of_request in self.request_timeline
-                    if current_time - time_of_request <= 60])
+        count = [1 for time_of_request in self.request_timeline if current_time - time_of_request <= 60]
+        return len(count)
