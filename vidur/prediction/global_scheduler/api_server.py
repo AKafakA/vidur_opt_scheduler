@@ -6,7 +6,6 @@ import ssl
 import time
 from argparse import Namespace
 from typing import Any, Optional, List
-
 import numpy as np
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, Response
@@ -17,7 +16,9 @@ import resource
 import logging
 import threading
 
-lock = asyncio.Lock()
+lock = threading.Lock()
+condition = threading.Condition()
+profiling_sampling_rate = 0.1
 TIMEOUT_KEEP_ALIVE = 10  # seconds.
 app = FastAPI()
 instances = []
@@ -30,6 +31,8 @@ logging.basicConfig(level=logging.INFO,
                     filemode='a+',
                     filename='experiment_output/logs/predictor_output.log')
 logger = logging.getLogger(__name__)
+
+correct_flags = []
 
 
 @app.post("/generate_benchmark")
@@ -51,6 +54,8 @@ async def generate_benchmark(request: Request) -> Response:
     _ = request_dict.pop("stream", False)
     predict_tasks = []
 
+    is_sampled_for_compare = random.uniform(0, 1) < profiling_sampling_rate
+
     for instance in instances:
         predict_tasks.append(instance.query_predictor(
             request_id, num_context_tokens, predicted_num_decode_tokens, arrived_at))
@@ -69,60 +74,102 @@ async def generate_benchmark(request: Request) -> Response:
     if (metrics_type.startswith("min") or metrics_type.startswith("max")) and "current" not in metrics_type:
         predict_results = random.sample(predict_results, min(n, len(predict_results)))
 
-    target_metrics = [x['target_metric'] for x in predict_results]
-    time_in_predictions = [(x["time_to_predict"], x["time_to_probe"]) for x in predict_results]
-    assert len(target_metrics) == len(predict_results)
-    if metrics_type.startswith("min") or metrics_type.startswith("max"):
-        # if current in metrics means all node need to be queried and select the one with min/max
-        # as just report the current value without prediction is cheap and sample no need to be limited
-        if metrics_type.startswith("min"):
-            target_metric = min(target_metrics)
-        else:
-            target_metric = max(target_metrics)
-        candidates_indexes = [i for i, value in enumerate(target_metrics) if value == target_metric]
-        # if args.debugging_logs:
-        #     free_gpus = [predict_results[i]['gpu_blocks'] for i in candidates_indexes]
-        #     max_gpu = max(free_gpus)
-        #     candidates_indexes = [i for i in candidates_indexes if predict_results[i]['gpu_blocks'] == max_gpu]
-        metric_selected_index = random.choice(candidates_indexes)
-        selected_instance_id = (predict_results[metric_selected_index])['instance_id']
-        selected_index = [i for i, instance in enumerate(instances) if selected_instance_id == instance._instance_id][0]
-    elif metrics_type == "random":
-        selected_index = random.randint(0, len(instances) - 1)
-    elif metrics_type == "round_robin":
-        selected_index = int(request_id) % len(instances)
-    elif metrics_type == "request_per_seconds":
-        instance_qpm = [(instance.get_current_qpm(), instance._instance_id) for instance in instances]
-        min_qpm = min(instance_qpm, key=lambda x: x[0])[0]
-        selected_instance_id = random.choice([x[1] for x in instance_qpm if x[0] == min_qpm])
-        selected_index = [i for i in range(len(instances)) if instances[i]._instance_id == selected_instance_id][0]
-    else:
-        raise ValueError(f"Invalid metrics type: {metrics_type}")
+    predicted_sampled_results = []
+    if is_sampled_for_compare:
+        for result in predict_results:
+            predicted_sampled_results.append((result['instance_id'], result['target_metric']))
 
-    selected_instance = instances[selected_index]
-    try:
-        time_to_query = time.time()
-        response = await selected_instance.query_backend(prompt, max_response_len, request_id)
-        time_for_inference = (time.time() - time_to_query) * 1000
-    except Exception as e:
-        print(f"Error during prediction: {e}")
-        return JSONResponse({"error": "Prediction failed"}, status_code=500)
-    if args.debugging_logs:
-        print(f"Selected instance: {selected_instance._instance_id} for request {request_id} "
-              f"with metrics type: {metrics_type} and predict results: {predict_results}")
+    target_metrics = [x['target_metric'] for x in predict_results]
+    assert len(target_metrics) == len(predict_results)
+
+    if is_sampled_for_compare:
+        # only one profile sampling is allowed and will block the other normal request
+        sampled_instanced = [x['instance_id'] for x in predict_results]
+        responses = await asyncio.gather(*[instance.query_backend(prompt, max_response_len, request_id) for
+                                            instance in instances if instance._instance_id in sampled_instanced])
+
+        serving_times = [(response['instance_id'], response["serving_time"]) for response in responses]
+
+        instance_id_with_least_serving_time = min(serving_times, key=lambda x: x[1])[0]
+        instance_id_with_least_predicted_time = min(predicted_sampled_results, key=lambda x: x[1])[0]
+
+        if instance_id_with_least_serving_time == instance_id_with_least_predicted_time:
+            correct_flags.append(True)
+        else:
+            correct_flags.append(False)
+        response = random.choice(responses)
+        predict_accuracy = (1.0 * sum(correct_flags)) / len(correct_flags)
+        print(f"predict_accuracy = {predict_accuracy} with {len(correct_flags)} requests for compare")
+    else:
+        if metrics_type.startswith("min") or metrics_type.startswith("max"):
+            # if current in metrics means all node need to be queried and select the one with min/max
+            # as just report the current value without prediction is cheap and sample no need to be limited
+            if metrics_type.startswith("min"):
+                target_metric = min(target_metrics)
+            else:
+                target_metric = max(target_metrics)
+            candidates_indexes = [i for i, value in enumerate(target_metrics) if value == target_metric]
+            metric_selected_index = random.choice(candidates_indexes)
+            selected_instance_id = (predict_results[metric_selected_index])['instance_id']
+            selected_index = [i for i, instance in enumerate(instances) if selected_instance_id == instance._instance_id][0]
+        elif metrics_type == "random":
+            selected_index = random.randint(0, len(instances) - 1)
+        elif metrics_type == "round_robin":
+            selected_index = int(request_id) % len(instances)
+        elif metrics_type == "request_per_seconds":
+            instance_qpm = [(instance.get_current_qpm(), instance._instance_id) for instance in instances]
+            min_qpm = min(instance_qpm, key=lambda x: x[0])[0]
+            selected_instance_id = random.choice([x[1] for x in instance_qpm if x[0] == min_qpm])
+            selected_index = [i for i in range(len(instances)) if instances[i]._instance_id == selected_instance_id][0]
+        else:
+            raise ValueError(f"Invalid metrics type: {metrics_type}")
+        selected_instance = instances[selected_index]
+        try:
+            response = await selected_instance.query_backend(prompt, max_response_len, request_id)
+        except Exception as e:
+            print(f"Error during prediction: {e}")
+            return JSONResponse({"error": "Prediction failed"}, status_code=500)
     for key, value in single_metric.items():
         response[key] = value
-    bottleneck_host = max(time_in_predictions, key=lambda x: x[0])
-    response['time_on_backend'] = time_for_inference + bottleneck_host[1]
-    response['time_on_probe'] = bottleneck_host[0] - bottleneck_host[1]
+    errors = []
+    error_ratios = []
+    real_response_serving_time = []
+    for instance in instances:
+        errors.extend(instance.predicted_error)
+        error_ratios.extend(instance.predicted_error_ratio)
+        real_response_serving_time.extend(instance.serving_time)
+
+    print(f"Mean of Prediction error {np.mean(errors)}")
+    print(f"P50 of Prediction error {np.percentile(errors, 50)}")
+
+    print(f"underestimated errors (s > p) {len([error for error in errors if error > 0])} in {len(errors)} in error")
+
+    print(f"Percentage of A-0.1 {len([error for error in errors if error < 0.1]) / len(errors)}")
+    print(f"Percentage of A-1 {len([error for error in errors if error < 1]) / len(errors)}")
+
+    print(f"Average error {np.mean(errors)}")
+
+    total_s = 0.0
+    total_p = 0.0
+    count = 0.0
+    for serving, predicted in real_response_serving_time:
+        total_s = total_s + serving
+        total_p = total_p + predicted
+        count = count + 1
+
+    print(f"average serving {total_s / count} and average predicted {total_p / count}")
+
+    print(f"Mean of Prediction error ratio {np.mean(error_ratios)}")
+    print(f"P50 of Prediction error ratio {np.percentile(error_ratios, 50)}")
     return JSONResponse(response)
 
 
 def build_app(args: Namespace) -> FastAPI:
-    global app, n, m
+    global app, n, m, profiling_sampling_rate
     n = args.num_query_predictor
     m = args.num_required_predictor
     app.root_path = args.root_path
+    app.profiling_sampling_rate = args.profiling_sampling_rate
     return app
 
 
@@ -197,7 +244,8 @@ if __name__ == "__main__":
     parser.add_argument("--metrics_type", type=str, default="min_latency")
     parser.add_argument("-n", "--num_query_predictor", type=int, default=1)
     parser.add_argument("-m", "--num_required_predictor", type=int, default=1)
-    parser.add_argument("--debugging_logs", type=bool, default=False)
+    parser.add_argument("--debugging_logs", type=bool, default=True)
+    parser.add_argument("--profiling_sampling_rate", type=float, default=0.1)
     args = parser.parse_args()
     logger.info("Starting server with args: %s", str(args))
     # in case the limited by the number of files
