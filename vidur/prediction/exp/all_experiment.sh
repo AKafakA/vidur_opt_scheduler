@@ -39,3 +39,6 @@ for model in $MODEL; do
     done
   done
 done
+
+mkdir -p ~/vidur_opt_scheduler/single_node_experiment_output/
+scp -r $TARGET_HOST:~/vidur_opt_scheduler/experiment_output/* ~/vidur_opt_scheduler/single_node_experiment_output/.
