@@ -58,7 +58,7 @@ async def init_app(
     if args.metric_type:
         config.target_metric = args.metric_type
     config.replica_scheduler_config.batch_size_cap = args.batch_size_cap
-    config.disable_batch_time_estimation = args.disable_time_estimation
+    config.enable_batch_time_estimation = args.enable_time_estimation
     predictor = (instance_predictor if instance_predictor is not None else
                  get_predictor(args.predictor_type, config, instance_port))
     return app
@@ -112,9 +112,9 @@ if __name__ == "__main__":
     parser.add_argument("--config_path", type=str, default="vidur/prediction/config/llama_config.json")
     parser.add_argument("--predictor_type", type=str, default="simulate")
     parser.add_argument("--metric_type", type=str, default="")
-    parser.add_argument("--disable_time_estimation", type=bool, default=False)
+    parser.add_argument("--enable_time_estimation", type=bool, default=True)
     parser.add_argument("--batch_size_cap", type=int, default=48)
-    parser.add_argument("--enable_chunked_prefill", type=bool, default=False)
+    parser.add_argument("--enable_chunked_prefill", action='store_true')
     logging.log(logging.INFO, "Starting server with args: %s", str(parser.parse_args()))
     args = parser.parse_args()
     resource.setrlimit(resource.RLIMIT_NOFILE, (65536, 65536))

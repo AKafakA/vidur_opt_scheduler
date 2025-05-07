@@ -1,5 +1,5 @@
 SCHEDULER_METRIC_TYPE=$1
-DISABLE_TIME_ESTIMATION=false
+ENABLE_TIME_ESTIMATION=true
 
 NUM_DATA=$2
 RESTART_VLLM=$3
@@ -26,6 +26,7 @@ PREDICTOR_WORKERS=${16}
 GLOBAL_SCHEDULER_WORKERS=${17}
 BACKEND_WORKERS=${18}
 CHUNK_SIZE=${19}
+QPS=${20}
 
 if [ "$ENABLE_CHUNKED_PREFILL" = "true" ]; then
   MAX_NUM_BATCHED_TOKEN=$CHUNK_SIZE
@@ -35,7 +36,6 @@ fi
 
 # Current the v1 version of vllm is supported yet
 VLLM_VERSION=0
-
 case "$1" in
     -d|--daemon)
         $0 < /dev/null &> /dev/null & disown
@@ -53,12 +53,11 @@ if [ "$RESTART_VLLM" = "true" ]; then
   parallel-ssh --host $TARGET_HOST "cd vidur_opt_scheduler && rm experiment_output/logs/*"
   sh vidur/prediction/exp/reset.sh
   nohup sh vidur/prediction/exp/run_exp_vllm.sh $BATCH_CAP $MODEL $UPDATE_VLLM_CODE $VLLM_VERSION $MAX_MODEL_LENGTH $ENABLE_CHUNKED_PREFILL $BACKEND_WORKERS $MAX_NUM_BATCHED_TOKEN > /dev/null 2>&1 &
-  nohup sh vidur/prediction/exp/run_exp_predictor.sh $PREDICTOR_CONFIG_PATH $SCHEDULER_METRIC_TYPE $DISABLE_TIME_ESTIMATION $UPDATE_VIDUR_CODE $BATCH_CAP $ENABLE_CHUNKED_PREFILL $PREDICTOR_WORKERS > /dev/null 2>&1 &
+  nohup sh vidur/prediction/exp/run_exp_predictor.sh $PREDICTOR_CONFIG_PATH $SCHEDULER_METRIC_TYPE $ENABLE_TIME_ESTIMATION $UPDATE_VIDUR_CODE $BATCH_CAP $ENABLE_CHUNKED_PREFILL $PREDICTOR_WORKERS > /dev/null 2>&1 &
   sleep 60
 fi
 
 if [ "$RUN_EXP" = "true" ]; then
-  QPS="1"
   NUM_QUERIES=$NUM_DATA
   METRIC_TYPES=$SCHEDULER_METRIC_TYPE
   for qps in $QPS; do
@@ -74,10 +73,12 @@ if [ "$RUN_EXP" = "true" ]; then
                   echo "Running experiment with qps: $qps, num_queries: $num_queries, n: $n, metric_type: $metric_type"
                   nohup sh vidur/prediction/exp/run_exp_global_scheduler.sh $TARGET_HOST $n $n $metric_type $HOST_CONFIG_PATH $GLOBAL_SCHEDULER_WORKERS > /dev/null 2>&1 &
                   LOG_FILENAME="benchmark.log"
-                  OUTPUT_DIR="${DATASET_TYPE}/${metric_type}/qps_${qps}_num_queries_${num_queries}_n_${n}"
+                  OUTPUT_DIR="${DATASET_TYPE}/${metric_type}/qps_${qps}_num_queries_${num_queries}_n_${n}_chunked_${ENABLE_CHUNKED_PREFILL}"
                   sleep 10
                   parallel-ssh -i -t 0 --host $TARGET_HOST "cd vidur_opt_scheduler && export PYTHONPATH=. && export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib/python3.10/dist-packages/nvidia/cudnn/lib:/usr/local/lib/python3.10/dist-packages/nvidia/nccl/lib:/usr/local/lib/python3.10/dist-packages/cusparselt/lib && python vidur/prediction/benchmark/benchmark_serving.py --ip_ports 127.0.0.1:8200 --tokenizer $MODEL --num_sampled_requests $num_queries --dataset_type $DATASET_TYPE --dataset_path $DATASET_PATH --qps $qps --backend block --log_filename $LOG_FILENAME --output_dir $OUTPUT_DIR --tag_dataset_with_real_response $GENERATE_NEW_DATA --enable_csv_files false --keep_all_metrics $KEEP_ALL_METRICS --use_estimated_response_lens false --data_start_index $START_INDEX --trust_remote_code --max_request_len $MAX_MODEL_LENGTH"
                   sleep 60
+                  parallel-ssh --host $TARGET_HOST "cd vidur_opt_scheduler && mkdir experiment_output/$OUTPUT_DIR/running_logs"
+                  parallel-ssh --host $TARGET_HOST "cd vidur_opt_scheduler && mv experiment_output/logs/* experiment_output/$OUTPUT_DIR/running_logs/."
               done
           done
       done

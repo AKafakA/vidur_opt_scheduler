@@ -27,8 +27,8 @@ class PredictorConfig(ABC):
         default="min_latency",
         metadata={"help": "Target metric to optimize for."},
     )
-    disable_batch_time_estimation: bool = field(
-        default=False,
+    enable_batch_time_estimation: bool = field(
+        default=True,
         metadata={"help": "Whether to use the tree model to estimate the batch execution time"},
     )
 
@@ -49,4 +49,5 @@ class PredictorConfig(ABC):
                 data_class=VllmSchedulerConfig,
                 data=data['replica_scheduler_config'],
             )
+        print(config)
         return config
