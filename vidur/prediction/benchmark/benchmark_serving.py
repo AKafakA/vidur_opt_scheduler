@@ -543,6 +543,7 @@ class MeasureLatency:
         self._var_num_waiting_requests = []
         self._requested_timestamps = []
         self._num_preempted = []
+        self._avg_qpm = []
 
     def measure(self, f):
         async def measured(*args, **kwargs):
@@ -606,10 +607,11 @@ class MeasureLatency:
                 record_timestamp = True
             if 'num_preempted' in output:
                 self._num_preempted.append(output['num_preempted'])
+            if 'average_qpm' in output:
+                self._avg_qpm.append(output['average_qpm'])
             if record_timestamp:
                 self._requested_timestamps.append(start)
             return prompt, output
-
         return measured
 
 
@@ -731,6 +733,9 @@ async def benchmark(
         if m._global_scheduling_overhead_ratio:
             data = {'timestamp': timestamps, 'metric': m._global_scheduling_overhead_ratio}
             plot_sampled_timestamp_metrics(data, log_filename, "prediction overhead ratio(%)", output_dir)
+        if m._avg_qpm:
+            data = {'timestamp': timestamps, 'metric': m._avg_qpm}
+            plot_sampled_timestamp_metrics(data, log_filename, "Average QPM", output_dir)
 
     # avg_instance_num = plot_instance(log_filename)
     avg_instance_num = 0.0

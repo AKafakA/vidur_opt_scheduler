@@ -70,7 +70,8 @@ async def generate_benchmark(request: Request) -> Response:
                      'sampled_var_gpu_blocks': np.var([x['gpu_blocks'] for x in predict_results]),
                      'sampled_avg_n_request': np.mean([x['num_requests'] for x in predict_results]),
                      'sampled_var_n_request': np.var([x['num_requests'] for x in predict_results]),
-                     'num_preempted': sum([x['num_preempted'] for x in predict_results])}
+                     'num_preempted': sum([x['num_preempted'] for x in predict_results]),
+                     'average_qpm': np.mean([instance.get_current_qpm() for instance in available_instance])}
 
     if (metrics_type.startswith("min") or metrics_type.startswith("max")) and "current" not in metrics_type:
         predict_results = random.sample(predict_results, min(n, len(predict_results)))
