@@ -30,6 +30,7 @@ from enum import Enum
 from transformers import AutoTokenizer
 from typing import List
 import resource
+from scipy.ndimage import gaussian_filter1d
 
 resource.setrlimit(resource.RLIMIT_NOFILE, (65536, 65536))
 
@@ -459,11 +460,14 @@ def plot_len_cdf(prompt_lens, response_lens, total_tokens, log_filename, estimat
     fig.savefig(output_dir + "/" + fig_filename)
 
 
-def plot_sampled_timestamp_metrics(data, log_filename, metric_name, output_dir='.'):
+def plot_sampled_timestamp_metrics(data, log_filename, metric_name, output_dir='.', smooth=True):
     fig_filename = os.path.splitext(log_filename)[0] + f"_{metric_name}.png"
     fig, ax = plt.subplots()
-    ax.plot(data['timestamp'], data['metric'])
-    ax.set_xlabel('timestamp (ms)')
+    y = data['metric']
+    if smooth:
+        y = gaussian_filter1d(y, sigma=10)
+    ax.plot(data['timestamp'], y)
+    ax.set_xlabel('timestamp (s)')
     ax.set_ylabel(metric_name)
     plt.suptitle(metric_name, fontsize=6)
     fig.savefig(output_dir + "/" + fig_filename)
@@ -525,6 +529,7 @@ class MeasureLatency:
         self._waiting_latencies = []
         self._engine_ttft = []
         self._global_scheduling_overhead = []
+        self._global_scheduling_overhead_ratio = []
         self._avg_gpu_blocks = []
         self._avg_num_waiting_requests = []
         self._var_gpu_blocks = []
@@ -560,15 +565,18 @@ class MeasureLatency:
                 self._decode_sum_latencies.append(decode_sum_latency)
                 self._all_decode_token_latencies.extend(lat_arr[1:, 1])
                 self._prefill_token_latencies.append(lat_arr[0][1])
-                if 'time_on_probe' in output:
-                    self._global_scheduling_overhead.append(output['time_on_probe'])
+                if 'time_to_predict_in_ms' in output:
+                    # self._global_scheduling_overhead.append(output['time_to_predict_in_ms'])
+                    overhead = output['time_to_predict_in_ms']
                 else:
                     if 'time_on_backend' in output:
                         time_on_backend = output['time_on_backend']
                     else:
                         start_time_on_backend = lat_arr[0][0] - lat_arr[0][1] / 1000
                         time_on_backend = (lat_arr[-1][0] - start_time_on_backend) * 1000
-                    self._global_scheduling_overhead.append(latency - time_on_backend)
+                    overhead = latency - time_on_backend
+                self._global_scheduling_overhead.append(overhead)
+                self._global_scheduling_overhead_ratio.append(100.0 * overhead / latency)
             if 'per_token_latency_breakdown_dict' in output:
                 self._inference_latencies.append(
                     np.mean(output['per_token_latency_breakdown_dict']['step_latency_engine']))
@@ -689,7 +697,7 @@ async def benchmark(
     plot_latency_cdf(m._request_latencies, m._prefill_token_latencies, m._decode_token_latencies, m._waiting_latencies,
                      m._global_scheduling_overhead, log_filename, backend=backend, output_dir=output_dir)
     save_all_decode_token_latencies_npy(m._all_token_latencies, log_filename, output_dir=output_dir)
-    timestamps = [int((x - start_time) * 1000) for x in m._requested_timestamps]
+    timestamps = [int((x - start_time)) for x in m._requested_timestamps]
     if timestamps:
         # data = {'timestamp': m._requested_timestamps, 'metric': m._avg_gpu_blocks}
         # plot_sampled_timestamp_metrics(data, log_filename, "avg_gpu_blocks")
@@ -710,6 +718,12 @@ async def benchmark(
         if m._num_preempted:
             data = {'timestamp': timestamps, 'metric': m._num_preempted}
             plot_sampled_timestamp_metrics(data, log_filename, "num_preempted", output_dir)
+        if m._global_scheduling_overhead:
+            data = {'timestamp': timestamps, 'metric': m._global_scheduling_overhead}
+            plot_sampled_timestamp_metrics(data, log_filename, "prediction overhead(ms)", output_dir)
+        if m._global_scheduling_overhead_ratio:
+            data = {'timestamp': timestamps, 'metric': m._global_scheduling_overhead_ratio}
+            plot_sampled_timestamp_metrics(data, log_filename, "prediction overhead ratio(%)", output_dir)
 
     # avg_instance_num = plot_instance(log_filename)
     avg_instance_num = 0.0

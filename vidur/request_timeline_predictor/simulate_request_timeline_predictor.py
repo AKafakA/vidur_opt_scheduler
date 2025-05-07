@@ -9,7 +9,7 @@ class SimulateRequestTimelinePredictor(BaseRequestTimelinePredictor):
         self._copy_base_replica_scheduler = True
 
     def disable_copy_of_base_replica_scheduler(self):
-        self._copy_base_replica_scheduler = True
+        self._copy_base_replica_scheduler = False
 
     def predict_avg_block_size(self, replica_scheduler, request):
         simulate_predict_replica_scheduler = SimulatePredictReplicaScheduler(

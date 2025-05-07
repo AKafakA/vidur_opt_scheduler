@@ -56,8 +56,7 @@ class SimulatePredictor(Predictor):
         self._request_timeline_predictor = SimulateRequestTimelinePredictor()
         self._request_timeline_predictor.attach_execution_time_predictor(self._execution_time_predictor)
         self._request_timeline_predictor.disable_copy_of_base_replica_scheduler()
-        if config.disable_batch_time_estimation:
-            self._request_timeline_predictor.use_estimated_time = False
+        self._request_timeline_predictor.use_estimated_time = config.enable_batch_time_estimation
         self._port = port
         self._request_decode_length_prediction_map = {}
         self._start_time = time.time()
@@ -68,7 +67,6 @@ class SimulatePredictor(Predictor):
         start_time = time.time()
         (replica_scheduler, current_gpu_blocks, current_num_requests, current_num_running_request,
          current_num_waiting_request, current_num_preempted) = await self.get_replica_scheduler()
-        time_to_probe = (time.time() - start_time) * 1000
         metrics = {}
         # replica_scheduler.print_requests()
         if self._need_to_predict:
@@ -91,7 +89,7 @@ class SimulatePredictor(Predictor):
         metrics["gpu_blocks"] = current_gpu_blocks
         metrics["num_requests"] = current_num_requests
         metrics["num_preempted"] = current_num_preempted
-        metrics["time_to_probe"] = time_to_probe
+        metrics["time_to_predict_in_ms"] = (time.time() - start_time) * 1000
         return metrics
 
     def __generate_requests_from_backend(self, request_info: dict, source: str) -> Request:
