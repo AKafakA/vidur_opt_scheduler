@@ -247,10 +247,6 @@ def plot_per_qps(experiments_set, output_dir, min_qps=24, max_qps=30):
     tbt_cdfs = {}
     e2e_cdfs = {}
 
-    avg_free_gpu = {}
-    var_free_gpu_per_node = {}
-    num_total_preemption = {}
-
     qps_set = sorted(set([record["qps"] for record in experiments_set]))
     if min_qps > 0:
         qps_set = [qps for qps in qps_set if min_qps <= qps <= max_qps]
@@ -274,6 +270,11 @@ def plot_per_qps(experiments_set, output_dir, min_qps=24, max_qps=30):
         e2e_cdfs[qps] = e2e_cdfs_per_qps
         qps_experiments = [record for record in experiments_set if record["qps"] == qps]
         map_from_name_exp = {}
+
+        avg_free_gpu = {}
+        var_free_gpu_per_node = {}
+        num_total_preemption = {}
+
         for experiment in qps_experiments:
             experiment_name = f"{experiment['scheduler_name']}".replace("_", " ")
             for key in experiment_name_replacement.keys():
