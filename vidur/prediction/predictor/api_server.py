@@ -59,6 +59,7 @@ async def init_app(
         config.target_metric = args.metric_type
     config.replica_scheduler_config.batch_size_cap = args.batch_size_cap
     config.enable_batch_time_estimation = args.enable_time_estimation
+    config.threshold_batch_size_for_time_estimation = args.threshold_batch_size_for_time_estimation
     predictor = (instance_predictor if instance_predictor is not None else
                  get_predictor(args.predictor_type, config, instance_port))
     return app
@@ -115,6 +116,10 @@ if __name__ == "__main__":
     parser.add_argument("--enable_time_estimation", type=bool, default=True)
     parser.add_argument("--batch_size_cap", type=int, default=48)
     parser.add_argument("--enable_chunked_prefill", action='store_true')
+    parser.add_argument("--threshold_batch_size_for_time_estimation", type=int, default=36,
+                        help="Threshold batch size for enabling time estimation. "
+                             "Less that 0 means disable time estimation. 0 means always enable time estimation."
+                             "And >0 means enable time estimation only when batch size > this")
     logging.log(logging.INFO, "Starting server with args: %s", str(parser.parse_args()))
     args = parser.parse_args()
     resource.setrlimit(resource.RLIMIT_NOFILE, (65536, 65536))

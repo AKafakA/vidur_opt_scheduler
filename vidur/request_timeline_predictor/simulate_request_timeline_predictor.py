@@ -7,6 +7,7 @@ class SimulateRequestTimelinePredictor(BaseRequestTimelinePredictor):
         super().__init__(*args, **kwargs)
         self.use_estimated_time = True
         self._copy_base_replica_scheduler = True
+        self.threshold_batch_size_for_time_estimation = 36
 
     def disable_copy_of_base_replica_scheduler(self):
         self._copy_base_replica_scheduler = False
@@ -18,6 +19,7 @@ class SimulateRequestTimelinePredictor(BaseRequestTimelinePredictor):
             execution_time_predictor=self._execution_time_predictor,
             use_estimated_execution_time=self.use_estimated_time,
             copy_replica_scheduler=self._copy_base_replica_scheduler,
+            threshold_batch_size_for_time_estimation=self.threshold_batch_size_for_time_estimation,
         )
         simulate_predict_replica_scheduler.simulate()
         return simulate_predict_replica_scheduler.avg_block_size
@@ -29,6 +31,7 @@ class SimulateRequestTimelinePredictor(BaseRequestTimelinePredictor):
             execution_time_predictor=self._execution_time_predictor,
             use_estimated_execution_time=self.use_estimated_time,
             copy_replica_scheduler=self._copy_base_replica_scheduler,
+            threshold_batch_size_for_time_estimation=self.threshold_batch_size_for_time_estimation,
         )
         simulate_predict_replica_scheduler.simulate()
         return simulate_predict_replica_scheduler.target_request_scheduled_at
@@ -40,6 +43,7 @@ class SimulateRequestTimelinePredictor(BaseRequestTimelinePredictor):
             execution_time_predictor=self._execution_time_predictor,
             use_estimated_execution_time=self.use_estimated_time,
             copy_replica_scheduler=self._copy_base_replica_scheduler,
+            threshold_batch_size_for_time_estimation=self.threshold_batch_size_for_time_estimation,
         )
         simulate_predict_replica_scheduler.simulate()
         return simulate_predict_replica_scheduler.target_request_end_to_end
@@ -51,6 +55,7 @@ class SimulateRequestTimelinePredictor(BaseRequestTimelinePredictor):
             execution_time_predictor=self._execution_time_predictor,
             use_estimated_execution_time=self.use_estimated_time,
             copy_replica_scheduler=self._copy_base_replica_scheduler,
+            threshold_batch_size_for_time_estimation=self.threshold_batch_size_for_time_estimation,
         )
         simulate_predict_replica_scheduler.simulate()
         return simulate_predict_replica_scheduler.average_latency
@@ -62,6 +67,7 @@ class SimulateRequestTimelinePredictor(BaseRequestTimelinePredictor):
             execution_time_predictor=self._execution_time_predictor,
             use_estimated_execution_time=False,
             copy_replica_scheduler=self._copy_base_replica_scheduler,
+            threshold_batch_size_for_time_estimation=self.threshold_batch_size_for_time_estimation,
         )
         simulate_predict_replica_scheduler.simulate()
         return simulate_predict_replica_scheduler.average_batch_size
@@ -73,6 +79,7 @@ class SimulateRequestTimelinePredictor(BaseRequestTimelinePredictor):
             execution_time_predictor=self._execution_time_predictor,
             use_estimated_execution_time=self.use_estimated_time,
             copy_replica_scheduler=self._copy_base_replica_scheduler,
+            threshold_batch_size_for_time_estimation=self.threshold_batch_size_for_time_estimation,
         )
         simulate_predict_replica_scheduler.simulate()
         return simulate_predict_replica_scheduler.average_execution_time

@@ -18,7 +18,8 @@ class SimulatePredictReplicaScheduler:
                  execution_time_predictor: BaseExecutionTimePredictor,
                  use_estimated_execution_time=True,
                  copy_replica_scheduler=True,
-                 start_time=0) -> None:
+                 start_time=0,
+                 threshold_batch_size_for_time_estimation=36) -> None:
         self._replica_id = replica_scheduler.replica_id
         self._raw_replica_scheduler = replica_scheduler
         if copy_replica_scheduler:
@@ -36,6 +37,7 @@ class SimulatePredictReplicaScheduler:
         self._scheduled_batch_id = 0
         self._estimate_execution_time = use_estimated_execution_time
         self._default_execution_time = 0.02
+        self._threshold_batch_size_for_time_estimation = threshold_batch_size_for_time_estimation
         self._start_time = start_time
         self._request_ids = set()
 
@@ -151,7 +153,7 @@ class SimulatePredictReplicaScheduler:
                 len(self._all_request_batch_info))
 
     def get_execution_time(self, batch: Batch, stage_id: int):
-        if self._estimate_execution_time:
+        if self._estimate_execution_time and batch.size > self._threshold_batch_size_for_time_estimation >= 0:
             return self._execution_time_predictor.get_execution_time(batch, stage_id).total_time
         else:
             return self._default_execution_time

@@ -57,6 +57,8 @@ class SimulatePredictor(Predictor):
         self._request_timeline_predictor.attach_execution_time_predictor(self._execution_time_predictor)
         self._request_timeline_predictor.disable_copy_of_base_replica_scheduler()
         self._request_timeline_predictor.use_estimated_time = config.enable_batch_time_estimation
+        self._request_timeline_predictor.threshold_batch_size_for_time_estimation = \
+            config.threshold_batch_size_for_time_estimation
         self._port = port
         self._request_decode_length_prediction_map = {}
         self._start_time = time.time()

@@ -31,6 +31,10 @@ class PredictorConfig(ABC):
         default=True,
         metadata={"help": "Whether to use the tree model to estimate the batch execution time"},
     )
+    threshold_batch_size_for_time_estimation: int = field(
+        default=36,
+        metadata={"help": "Threshold batch size for time estimation."},
+    )
 
     @classmethod
     def create_from_dict(cls, data: dict, enable_chunked_prefill: bool = False):
