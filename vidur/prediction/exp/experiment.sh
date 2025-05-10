@@ -64,7 +64,7 @@ if [ "$RUN_EXP" = "true" ]; then
   for qps in $QPS; do
       for num_queries in $NUM_QUERIES; do
         for metric_type in $METRIC_TYPES; do
-         if [ "$metric_type" = "min_latency" ] || [ "$metric_type" = "min_scheduling_delay" ]
+         if [ "$metric_type" = "min_latency" ] || [ "$metric_type" = "min_new_request_latency" ]
          then
               N="2"
           else
