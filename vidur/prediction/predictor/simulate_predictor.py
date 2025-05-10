@@ -85,7 +85,7 @@ class SimulatePredictor(Predictor):
         elif self._config.target_metric == "random" or self._config.target_metric == "round_robin":
             target_metric = random.randint(0, 100)
         elif self._config.target_metric == "min_infass_load":
-            target_metric = (current_num_requests / current_gpu_blocks)*(-1)
+            target_metric = (current_num_requests / current_gpu_blocks) * (-1)
         else:
             raise ValueError(f"Invalid metrics type: {self._config.target_metric}")
         metrics["target_metric"] = target_metric
@@ -132,9 +132,10 @@ class SimulatePredictor(Predictor):
         return request
 
     async def get_replica_scheduler(self):
+        start_time = time.time()
         async with aiohttp.ClientSession(timeout=AIOHTTP_TIMEOUT) as session:
-            headers = {"User-Agent": "Test Client"}
-            async with session.get(self._backend_url, headers=headers) as response:
+            async with session.get(self._backend_url) as response:
+                connect_time = (time.time() - start_time) * 1000
                 serialized_response = await response.json()
                 current_gpu_blocks = 0
                 current_num_requests = 0
@@ -193,9 +194,13 @@ class SimulatePredictor(Predictor):
                             replica_scheduler.add_request(request)
 
                     current_gpu_blocks += batch_request_information["free_gpu_blocks"]
-                    current_num_requests += len(running_request_length) + len(swap_request_length) + len(waiting_request_length)
+                    current_num_requests += len(running_request_length) + len(swap_request_length) + len(
+                        waiting_request_length)
                     current_num_preempted += batch_request_information["num_preempted"]
                     current_num_running_request += len(running_request_length)
                     current_num_waiting_request += len(waiting_request_length)
+                time_to_get_replica_scheduler = (time.time() - start_time) * 1000
+                print(f"Time to get replica scheduler: {time_to_get_replica_scheduler}")
+                print(f"Connect time: {connect_time}")
                 return (replica_scheduler, current_gpu_blocks, current_num_requests, current_num_running_request,
                         current_num_waiting_request, current_num_preempted)

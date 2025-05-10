@@ -730,7 +730,7 @@ async def benchmark(
             plot_sampled_timestamp_metrics(data, log_filename, "prediction overhead ratio(%)", output_dir)
         if m._time_to_get_replica_scheduler:
             data = {'timestamp': timestamps, 'metric': m._time_to_get_replica_scheduler}
-            plot_sampled_timestamp_metrics(data, log_filename, "time to get replica scheduler(ms)", output_dir)
+            plot_sampled_timestamp_metrics(data, log_filename, "Time_to_get_replica(ms)", output_dir)
 
     # avg_instance_num = plot_instance(log_filename)
     avg_instance_num = 0.0
