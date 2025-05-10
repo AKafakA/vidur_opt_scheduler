@@ -6,14 +6,16 @@ MAX_MODEL_LENGTH=4096
 DATASET_NAMES="sharegpt"
 NUM_REQUEST=10
 START_INDEX=0
-TARGET_HOST='asdwb@d7525-10s10325.wisc.cloudlab.us'
-ENABLE_CHUNKED_PREFILL="true false"
+TARGET_HOST='asdwb@d7525-10s10309.wisc.cloudlab.us'
+ENABLE_CHUNKED_PREFILL="true"
 
 PREDICTOR_WORKERS=4
 GLOBAL_SCHEDULER_WORKERS=1
 BACKEND_WORKERS=4
 CHUNK_SIZE=512
-QPS="1 2"
+#QPS="24 28 30"
+QPS="1"
+BRANCH_NAME="single_predictor_evaluation"
 
 for model in $MODEL; do
   if [ "$model" = "meta-llama/Llama-2-7b-hf" ]; then
