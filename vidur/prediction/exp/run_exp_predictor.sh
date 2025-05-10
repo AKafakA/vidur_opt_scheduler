@@ -5,8 +5,10 @@ UPDATE_CODE=$4
 BATCH_CAP=$5
 ENABLE_CHUNKED_PREFILL=$6
 NUM_WORKERS=$7
+BRANCH_NAME=$8
 
 if [ "$UPDATE_CODE" = "true" ]; then
+    parallel-ssh -t 0 -h vidur/prediction/config/hosts "cd vidur_opt_scheduler && git checkout $BRANCH_NAME && git pull"
     parallel-ssh -t 0 -h vidur/prediction/config/hosts "cd vidur_opt_scheduler && git reset --hard HEAD~1 && git pull"
 fi
 
