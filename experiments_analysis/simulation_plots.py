@@ -35,17 +35,26 @@ def flatten_dict(value, g, c=None):
         g.append(c)
 
 
-def plot_bar_chart(stats_dir, stats, metric_name, print_stats=True):
-    plt.figure()
-    target_dir = f"{stats_dir}/bar_charts"
-    os.makedirs(target_dir, exist_ok=True)
-    for key, value in stats.items():
-        plt.bar(key, value)
+def plot_bar_chart(stats_dir, stats, metric_name, print_stats=True, ax=None, enable_title=True):
+    if ax is None:
+        plt.figure()
+        target_dir = f"{stats_dir}/bar_charts"
+        os.makedirs(target_dir, exist_ok=True)
+        for key, value in stats.items():
+            plt.bar(key, value)
 
-    plt.xlabel("Configuration")
-    plt.ylabel(metric_name)
-    plt.title(metric_name + " Bar Chart")
-    plt.savefig(f"{target_dir}/{metric_name}_bar_chart.png")
+        plt.xlabel("Scheduler")
+        plt.ylabel(metric_name)
+        if enable_title:
+            plt.title(metric_name + " Bar Chart")
+        plt.savefig(f"{target_dir}/{metric_name}_bar_chart.png")
+    else:
+        for key, value in stats.items():
+            ax.bar(key, value)
+        ax.set_xlabel("Scheduler", fontsize=12)
+        ax.set_ylabel(metric_name, fontsize=12)
+        if enable_title:
+            ax.set_title(metric_name)
 
     if print_stats:
         print(metric_name)
@@ -123,6 +132,8 @@ def process_stats(stats_dir, data_filtering_condition: dict, label_getter: calla
                 data_frame = data_filter(pd.read_csv(f), data_filtering_condition)
                 for index, row in data_frame.iterrows():
                     label = label_getter(row)
+                    if label == "opt_max_mbs":
+                        continue
                     ttft_cdfs[label] = row["ttft_cdf"]
                     tbt_cdfs[label] = row["tbt_cdf"]
                     batch_size_cdfs[label] = row["batch_size_cdf"]
@@ -164,6 +175,13 @@ def process_stats(stats_dir, data_filtering_condition: dict, label_getter: calla
     plot_bar_chart(stats_dir, scheduling_delay_mean, "Scheduling Delay mean")
     plot_bar_chart(stats_dir, scheduling_delay_p99, "Scheduling Delay p99")
 
+    fig, ax = plt.subplots(1, 2)
+    plot_bar_chart(stats_dir, scheduling_delay_mean, "Simulated Scheduling Delay Average (s)", ax=ax[0], enable_title=False)
+    plot_bar_chart(stats_dir, scheduling_delay_p99, "Simulated Scheduling Delay p99 (s)", ax=ax[1], enable_title=False)
+    fig.set_size_inches(11, 6)
+    fig.subplots_adjust(hspace=0.2, wspace=0.2)
+    plt.savefig(f"{stats_dir}/scheduling_delay_mean_p99_bar_chart.png", bbox_inches='tight')
+
     plot_bar_chart(stats_dir, normalized_e2e_time_mean, "Normalized E2E Time mean")
     plot_bar_chart(stats_dir, normalized_e2e_p99, "Normalized E2E Time p99")
 
@@ -171,11 +189,13 @@ def process_stats(stats_dir, data_filtering_condition: dict, label_getter: calla
         plot_bar_chart(stats_dir, new_max_qps_data, "Max QPS under SLO", print_stats=True)
 
 
+
+
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--stats-dir", type=str, required=True)
-    parser.add_argument("--qps", type=int, required=True)
-    parser.add_argument("--num_replicas", type=int, required=True)
+    parser.add_argument("--stats-dir", type=str, default="experiments_analysis/simulate_output")
+    parser.add_argument("--qps", type=int, default=30)
+    parser.add_argument("--num_replicas", type=int, default=16)
     parser.add_argument("--device", type=str, required=False, default="a100")
     parser.add_argument("--tensor-parallel-size", type=int, required=False, default=1)
     parser.add_argument("--num-pipeline-stages", type=int, required=False, default=1)
@@ -189,7 +209,7 @@ def main():
                 "device": args.device,
                 "tensor_parallel_size": args.tensor_parallel_size,
                 "num_pipeline_stages": args.num_pipeline_stages
-            },
+            }
         }
     }
 

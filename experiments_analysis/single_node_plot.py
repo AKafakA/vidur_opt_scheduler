@@ -12,7 +12,7 @@ import shutil
 import pandas as pd
 from scipy.ndimage import gaussian_filter1d
 
-from experiments_analysis.experiment_plot import plot_linear
+from experiments_analysis.experiment_plot import plot_linear_for_multiple_qps
 
 experiment_name_replacement = {"min latency": "Block", "min infass load": "INFaaS++",
                                "request per seconds": "Instance-QPM"}
@@ -43,13 +43,13 @@ def extract_prediction_errors(log_file):
                 if match:
                     average_prediction_errors_ratio.append(float(match.group(1)))
             elif "requests for compare" in line:
-                match = re.search(r"predict_accuracy = (\d+\.\d+) with \d requests for compare", line)
+                match = re.search(r"predict_accuracy = (\d+\.\d+) with \d+ requests for compare", line)
                 if match:
                     compare_error_rate.append(float(match.group(1)))
     return average_prediction_errors, average_prediction_errors_ratio, compare_error_rate
 
 
-def plot_per_qps(experiments_set, output_dir, min_qps=1, max_qps=2):
+def plot_per_qps(experiments_set, output_dir, min_qps=1, max_qps=3):
     qps_output_dir = output_dir + "/qps"
     if os.path.exists(qps_output_dir):
         shutil.rmtree(qps_output_dir)
@@ -65,18 +65,28 @@ def plot_per_qps(experiments_set, output_dir, min_qps=1, max_qps=2):
 
     sorted_keys = []
     map_from_name_exp = {}
+    prediction_overhead = {}
+    prediction_overhead_ratio = {}
+    prediction_errors = {}
+    compare_errors = {}
+    prediction_errors_rate = {}
     for qps in qps_set:
-        prediction_overhead = {}
-        prediction_overhead_ratio = {}
-        prediction_errors = {}
-        prediction_errors_rate = {}
-        compare_errors = {}
+        prediction_overhead_per_qps = {}
+        prediction_overhead_ratio_per_qps = {}
+        prediction_errors_per_qps = {}
+        prediction_errors_rate_per_qps = {}
+        compare_errors_per_qps = {}
+        prediction_overhead[qps] = prediction_overhead_per_qps
+        prediction_overhead_ratio[qps] = prediction_overhead_ratio_per_qps
+        prediction_errors[qps] = prediction_errors_per_qps
+        prediction_errors_rate[qps] = prediction_errors_rate_per_qps
+        compare_errors[qps] = compare_errors_per_qps
         qps_experiments = [record for record in experiments_set if record["qps"] == qps]
         for experiment in qps_experiments:
             if experiment['chunked'] == 'true':
                 experiment_name = "Chunked Prefilled vLLM"
             else:
-                experiment_name = "Original VLLM"
+                experiment_name = "Original vLLM"
             for key in experiment_name_replacement.keys():
                 if key in experiment_name:
                     experiment_name = experiment_name.replace(key, experiment_name_replacement[key])
@@ -93,25 +103,59 @@ def plot_per_qps(experiments_set, output_dir, min_qps=1, max_qps=2):
             experiments = map_from_name_exp[index_name]
             if index_name not in prediction_overhead:
                 current_prediction_overhead = experiments['prediction_overhead']
-                prediction_overhead[index_name] = current_prediction_overhead
+                prediction_overhead_per_qps[index_name] = current_prediction_overhead
                 end_to_end_latencies = experiments['request_latencies']
-                prediction_overhead_ratio[index_name] = [(100.0 * overhead / latency)
-                                                         for overhead, latency
-                                                         in zip(current_prediction_overhead, end_to_end_latencies)
-                                                         if latency > 0]
-                prediction_errors[index_name] = experiments['prediction_errors']
-                prediction_errors_rate[index_name] = experiments['prediction_errors_rate']
-                compare_errors[index_name] = experiments['compare_error_rate']
-        plot_linear(prediction_overhead, "Prediction Overhead", qps_output_dir, qps=qps, sigma=10,
-                    y_dim_appendix=" (ms)")
-        plot_linear(prediction_overhead_ratio, "Prediction Overhead Percentage", qps_output_dir, qps=qps,
-                    sigma=20, y_dim_appendix="%")
-        plot_linear(prediction_errors, "Prediction Errors", qps_output_dir, qps=qps, sigma=20,
-                    y_dim_appendix=" (s)")
-        plot_linear(prediction_errors_rate, "Prediction Errors Rate", qps_output_dir, qps=qps, sigma=20,
-                    y_dim_appendix="%")
-        plot_linear(compare_errors, "Compare Error rate", qps_output_dir, qps=qps, sigma=20,
-                    y_dim_appendix="%")
+                prediction_overhead_ratio_per_qps[index_name] = [(100.0 * overhead / latency)
+                                                                 for overhead, latency
+                                                                 in
+                                                                 zip(current_prediction_overhead, end_to_end_latencies)
+                                                                 if latency > 0]
+                prediction_errors_per_qps[index_name] = experiments['prediction_errors']
+                prediction_errors_rate_per_qps[index_name] = experiments['prediction_errors_rate']
+                compare_errors_per_qps[index_name] = experiments['compare_error_rate']
+        # plot_linear(prediction_overhead, "Prediction Overhead", qps_output_dir, qps=qps, sigma=10,
+        #             y_dim_appendix=" (ms)")
+        # plot_linear(prediction_overhead_ratio, "Prediction Overhead Percentage", qps_output_dir, qps=qps,
+        #             sigma=20, y_dim_appendix="%")
+        # plot_linear(prediction_errors, "Prediction Errors", qps_output_dir, qps=qps, sigma=20,
+        #             y_dim_appendix=" (s)")
+        # plot_linear(prediction_errors_rate, "Prediction Errors Rate", qps_output_dir, qps=qps, sigma=20,
+        #             y_dim_appendix="%")
+        # plot_linear(compare_errors, "Compare Error rate", qps_output_dir, qps=qps, sigma=20,
+        #             y_dim_appendix="%")
+    fig, axs = plt.subplots(3, len(qps_set))
+    # axs_for_prediction_overhead = {}
+    axs_for_prediction_overhead_ratio = {}
+    axs_for_prediction_errors_rate = {}
+    axs_for_compare_errors_rate = {}
+
+    for i, qps_value in enumerate(qps_set):
+        # axs_for_prediction_overhead[qps_value] = axs[0][i]
+        axs_for_prediction_overhead_ratio[qps_value] = axs[0][i]
+        axs_for_prediction_errors_rate[qps_value] = axs[1][i]
+        axs_for_compare_errors_rate[qps_value] = axs[2][i]
+
+    # plot_linear_for_multiple_qps(axs_for_prediction_overhead, prediction_overhead, "Overhead (ms)",
+    #                              sigma=10,
+    #                              enable_legend_at_middle=True, legend_anchor=(1.1, 1.25),
+    #                              title_fontsize=10)
+    plot_linear_for_multiple_qps(axs_for_prediction_overhead_ratio, prediction_overhead_ratio,
+                                 "Overhead Rate (%)", sigma=10,
+                                 enable_legend_at_middle=True,
+                                 legend_anchor=(1.1, 1.25),
+                                 title_fontsize=10)
+    plot_linear_for_multiple_qps(axs_for_prediction_errors_rate, prediction_errors_rate,
+                                 "Real Errors (%)", sigma=10,
+                                 enable_legend_at_middle=False,
+                                 title_fontsize=10)
+    plot_linear_for_multiple_qps(axs_for_compare_errors_rate, compare_errors,
+                                 "Compare Errors (%)", sigma=10,
+                                 enable_legend_at_middle=False,
+                                 title_fontsize=10)
+    fig.tight_layout()
+    fig.set_size_inches(11, 6)
+    fig.subplots_adjust(hspace=0.2, wspace=0.35)
+    plt.savefig(qps_output_dir + "/all_qps.png", bbox_inches='tight')
 
 
 def main():

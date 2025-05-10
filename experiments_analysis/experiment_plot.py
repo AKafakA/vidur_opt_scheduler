@@ -34,35 +34,42 @@ def extract_data_from_log_file(log_file):
         return match.groupdict()
 
 
-def plot_linear(data, metric_name, output_dir, qps, y_dim_appendix="Per Node", sigma=-1, adjust_legend=False):
-    plt.figure()
-    output_dir = output_dir + f"/linear_plots/{qps}"
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-    for key, value in data.items():
-        # smooth by guassian 1d
-        if sigma > 0:
-            value = gaussian_filter1d(value, sigma)
-        plt.plot(value, label=key)
+def plot_linear_for_multiple_qps(axes, data, metric_name, sigma=-1,
+                                 enable_legend_at_middle=False, x_label="Query ID: ", legend_anchor=(2.0, 1.215),
+                                 title_fontsize=12):
+    i = 0
+    enable_label = True
+    for qps in data.keys():
+        ax = axes.get(qps)
+        qps_data = data[qps]
+        for key, value in qps_data.items():
+            # smooth by guassian 1d
+            if sigma > 0:
+                value = gaussian_filter1d(value, sigma)
+            ax.plot(value, label=key)
+        #
+        # plt.xlabel("Request ID")
+        # plt.ylabel(metric_name + " " + y_dim_appendix)
+        if enable_label:
+            ax.set_xlabel(x_label, fontsize=title_fontsize)
+            ax.xaxis.set_label_coords(-0.135, -0.025)
+            ax.set_ylabel(f"{metric_name} \n QPS={qps}", fontsize=title_fontsize)
+            enable_label = False
+        else:
+            ax.set_ylabel("QPS = " + str(qps), fontsize=12)
+        if enable_legend_at_middle and i == len(data) // 2:
+            ax.legend(fancybox=False, shadow=False, ncol=6, fontsize=title_fontsize,
+                      loc='upper right', bbox_to_anchor=legend_anchor)
+        i += 1
 
-    plt.xlabel("Request ID")
-    plt.ylabel(metric_name + " " + y_dim_appendix)
-    if adjust_legend:
-        plt.legend(fancybox=True, shadow=True, ncol=4, fontsize=8, title_fontsize='small',
-                   loc='upper right', bbox_to_anchor=(0.9, 1.1))
-    else:
-        plt.legend(fancybox=True, shadow=True)
-    plt.savefig(f"{output_dir}/{metric_name}_linear.png")
 
-
-def plot_bar_chart(dataframe, index_names, output_dir, metric_name, x_dim="QPS", stack_data=False, plot_kind='bar',
-                   xt_rotation='horizontal', legend_title='', zoom_out=False, y_append=" (s)"):
-    plt.figure()
+def plot_bar_chart(ax, dataframe, index_names, output_dir, metric_name, x_dim="QPS", stack_data=False, plot_kind='bar',
+                   xt_rotation='horizontal', legend_title='', zoom_out=False, y_append=" (per s)", keep_legend=False,
+                   keep_x_ticks_labels=False):
     output_dir = output_dir + "/bar_charts"
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
     if zoom_out:
-        fig, ax = plt.subplots(1, 1)
         axins = inset_axes(plt.gca(), width="40%", height="30%", loc='upper left')
         dataframe.plot(x=x_dim, y=list(index_names), kind=plot_kind, stacked=stack_data, ax=ax)
         dataframe.plot(x=x_dim, y=list(index_names), kind=plot_kind, stacked=stack_data, ax=axins)
@@ -82,23 +89,25 @@ def plot_bar_chart(dataframe, index_names, output_dir, metric_name, x_dim="QPS",
         ax.tick_params("x", rotation=0)
         ax.ticklabel_format(axis='y', style='sci', scilimits=(0, 0))
     else:
-        dataframe.plot(x=x_dim, y=list(index_names), kind=plot_kind, stacked=stack_data)
-        plt.xlabel(x_dim)
-        plt.ylabel(metric_name + y_append)
-        plt.xticks(rotation=xt_rotation)
-        if legend_title:
-            plt.legend(fancybox=True, shadow=True, ncol=1, fontsize=8, title=legend_title, title_fontsize='small',
-                       loc='upper right', bbox_to_anchor=(1.1, 1.015))
+        dataframe.plot(ax=ax, x=x_dim, y=list(index_names), kind=plot_kind, stacked=stack_data)
+
+        ax.set_ylabel(metric_name + y_append)
+        x_ticks = ax.get_xticks()
+        ax.set_xticks(x_ticks)
+        if keep_x_ticks_labels:
+            ax.set_xlabel(x_dim + ":", fontsize=12)
+            ax.xaxis.set_label_coords(-0.055, -0.055)
         else:
-            plt.legend(ncol=3, fontsize=8, loc='best', fancybox=True, shadow=True)
-        plt.tight_layout()
-        # plt.ticklabel_format(axis='y', style='sci', scilimits=(0, 0))
-    plt.savefig(f"{output_dir}/{metric_name}_bar_chart.png")
+            ax.set_xlabel("")
+        if not keep_legend:
+            ax.get_legend().remove()
+        else:
+            ax.legend(fancybox=False, shadow=False, ncol=6, fontsize=13,
+                      loc='upper right', bbox_to_anchor=(2.0, 1.215))
 
 
-def plot_single_cdf(data, output_dir_per_qps, metric_name, x_dim_appendix="", y_dim_appendix="", zoom_out=False,
-                    max_x_range_for_zoom=50000):
-    plt.figure()
+def plot_single_cdf(ax, data, qps, metric_name, x_dim_appendix="", y_dim_appendix="", zoom_out=False,
+                    max_x_range_for_zoom=50000, enable_legend=False, enable_label=False):
     if zoom_out:
         fig, ax = plt.subplots(1, 1)
         axins = inset_axes(plt.gca(), width="60%", height="60%", loc='lower right')
@@ -118,26 +127,45 @@ def plot_single_cdf(data, output_dir_per_qps, metric_name, x_dim_appendix="", y_
         ax.ticklabel_format(axis='x', style='sci', scilimits=(0, 0))
     else:
         for key, value in data.items():
-            plt.ecdf(value, label=key)
-        plt.xlabel(metric_name.lower() + x_dim_appendix)
-        plt.ylabel("CDF")
-        plt.legend(fancybox=True, shadow=True, loc='best')
-        plt.ticklabel_format(axis='x', style='sci', scilimits=(0, 0))
-    plt.savefig(f"{output_dir_per_qps}/{metric_name}_cdf.png")
+            ax.ecdf(value, label=key)
+        # plt.xlabel(metric_name.lower() + x_dim_appendix)
+        # plt.ylabel("CDF")
+        # plt.legend(fancybox=True, shadow=True, loc='best')
+        # plt.ticklabel_format(axis='x', style='sci', scilimits=(0, 0))
+        if enable_label:
+            ax.set_xlabel(x_dim_appendix, fontsize=12)
+            ax.xaxis.set_label_coords(-0.125, -0.025)
+            ax.set_ylabel(f"{metric_name} \n QPS={qps}", fontsize=12)
+        else:
+            ax.set_ylabel("QPS " + str(qps), fontsize=12)
+        if enable_legend:
+            ax.legend(fancybox=False, shadow=False, ncol=6, fontsize=13,
+                      loc='upper right', bbox_to_anchor=(2.0, 1.215))
+
+    # plt.savefig(f"{output_dir_per_qps}/{metric_name}_cdf.png")
 
 
-def plot_latency_cdf_per_qps(data, output_dir, metric_name, x_dim_appendix="", zoom_out=False,
-                             max_x_range_for_zoom=50000):
+def plot_latency_cdf_per_qps(axes, data, output_dir, metric_name, x_dim_appendix="", zoom_out=False,
+                             max_x_range_for_zoom=50000, enable_legend_at_middle=False):
     output_dir = output_dir + "/cdf_plots"
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
+    enable_label = True
+    mid_point = len(axes) // 2
+    i = 0
     for qps in data.keys():
         output_dir_per_qps = output_dir + f"/{qps}"
         if not os.path.exists(output_dir_per_qps):
             os.makedirs(output_dir_per_qps)
-        plot_single_cdf(data[qps], output_dir_per_qps, metric_name, x_dim_appendix,
-                        f" under QPS {qps}", zoom_out=zoom_out, max_x_range_for_zoom=max_x_range_for_zoom)
+        ax = axes.get(qps)
+        enable_legend = enable_legend_at_middle and i == mid_point
+        plot_single_cdf(ax, data[qps], qps, metric_name, x_dim_appendix,
+                        f" under QPS {qps}", zoom_out=zoom_out, max_x_range_for_zoom=max_x_range_for_zoom,
+                        enable_label=enable_label, enable_legend=enable_legend)
+        i += 1
+        if enable_label:
+            enable_label = False
 
 
 def plot_per_scheduler(experiments_set, output_dir, scheduler_excluded="round_robin"):
@@ -203,30 +231,50 @@ def plot_per_scheduler(experiments_set, output_dir, scheduler_excluded="round_ro
         average_e2e.append(average_e2e_data)
         p99_e2e.append(p99_e2e_data)
 
+    fig, axs = plt.subplots(2, 4)
+
     token_s_df = pd.DataFrame(token_throughput, columns=['Scheduler'] + list(qps_set))
-    plot_bar_chart(token_s_df, qps_set, output_dir, "Token Throughput", "Scheduler",
+    plot_bar_chart(axs[0, 0], token_s_df, qps_set, output_dir, "Token Throughput", "Scheduler",
                    xt_rotation='horizontal', legend_title="QPS")
     requests_throughput_df = pd.DataFrame(requests_throughput, columns=['Scheduler'] + list(qps_set))
-    plot_bar_chart(requests_throughput_df, qps_set, output_dir, "Request Throughput", "Scheduler",
+    # plot_bar_chart(requests_throughput_df, qps_set, output_dir, "Request Throughput", "Scheduler",
+    #                xt_rotation='horizontal', legend_title="QPS")
+    plot_bar_chart(axs[0, 1], requests_throughput_df, qps_set, output_dir, "Request Throughput", "Scheduler",
                    xt_rotation='horizontal', legend_title="QPS")
     average_ttft_df = pd.DataFrame(average_ttft, columns=['Scheduler'] + list(qps_set))
-    plot_bar_chart(average_ttft_df, qps_set, output_dir, "Average TTFT", "Scheduler",
+    # plot_bar_chart(average_ttft_df, qps_set, output_dir, "Average TTFT", "Scheduler",
+    #                xt_rotation='horizontal', legend_title="QPS")
+    plot_bar_chart(axs[0, 2], average_ttft_df, qps_set, output_dir, "Average TTFT", "Scheduler",
                    xt_rotation='horizontal', legend_title="QPS")
     average_tbt_df = pd.DataFrame(average_tbt, columns=['Scheduler'] + list(qps_set))
-    plot_bar_chart(average_tbt_df, qps_set, output_dir, "Average TBT", "Scheduler",
+    # plot_bar_chart(average_tbt_df, qps_set, output_dir, "Average TBT", "Scheduler",
+    #                xt_rotation='horizontal', legend_title="QPS")
+    plot_bar_chart(axs[0, 3], average_tbt_df, qps_set, output_dir, "Average TBT", "Scheduler",
                    xt_rotation='horizontal', legend_title="QPS")
     p99_ttft_df = pd.DataFrame(p99_ttft, columns=['Scheduler'] + list(qps_set))
-    plot_bar_chart(p99_ttft_df, qps_set, output_dir, "TTFT P99", "Scheduler",
+    # plot_bar_chart(p99_ttft_df, qps_set, output_dir, "TTFT P99", "Scheduler",
+    #                xt_rotation='horizontal', legend_title="QPS")
+    plot_bar_chart(axs[1, 0], p99_ttft_df, qps_set, output_dir, "TTFT P99", "Scheduler",
                    xt_rotation='horizontal', legend_title="QPS")
     p99_tbt_df = pd.DataFrame(p99_tbt, columns=['Scheduler'] + list(qps_set))
-    plot_bar_chart(p99_tbt_df, qps_set, output_dir, "TBT P99", "Scheduler",
+    # plot_bar_chart(p99_tbt_df, qps_set, output_dir, "TBT P99", "Scheduler",
+    #                xt_rotation='horizontal', legend_title="QPS")
+    plot_bar_chart(axs[1, 1], p99_tbt_df, qps_set, output_dir, "TBT P99", "Scheduler",
                    xt_rotation='horizontal', legend_title="QPS")
     average_e2e_df = pd.DataFrame(average_e2e, columns=['Scheduler'] + list(qps_set))
-    plot_bar_chart(average_e2e_df, qps_set, output_dir, "Request Latency", "Scheduler",
+    # plot_bar_chart(average_e2e_df, qps_set, output_dir, "Request Latency", "Scheduler",
+    #                xt_rotation='horizontal', legend_title="QPS")
+    plot_bar_chart(axs[1, 2], average_e2e_df, qps_set, output_dir, "Average Request Latency", "Scheduler",
                    xt_rotation='horizontal', legend_title="QPS")
     p99_e2e_df = pd.DataFrame(p99_e2e, columns=['Scheduler'] + list(qps_set))
-    plot_bar_chart(p99_e2e_df, qps_set, output_dir, "Request Latency P99", "Scheduler",
+    # plot_bar_chart(p99_e2e_df, qps_set, output_dir, "Request Latency P99", "Scheduler",
+    #                xt_rotation='horizontal', legend_title="QPS")
+    plot_bar_chart(axs[1, 3], p99_e2e_df, qps_set, output_dir, "Request Latency P99", "Scheduler",
                    xt_rotation='horizontal', legend_title="QPS")
+
+    fig.tight_layout()
+    fig.subplots_adjust(hspace=0.4, wspace=0.4)
+    fig.savefig(f"{output_dir}/scheduler.png", bbox_inches='tight')
 
 
 def plot_per_qps(experiments_set, output_dir, min_qps=24, max_qps=30):
@@ -246,6 +294,10 @@ def plot_per_qps(experiments_set, output_dir, min_qps=24, max_qps=30):
     ttft_cdfs = {}
     tbt_cdfs = {}
     e2e_cdfs = {}
+
+    avg_free_gpu = {}
+    var_free_gpu_per_node = {}
+    num_total_preemption = {}
 
     qps_set = sorted(set([record["qps"] for record in experiments_set]))
     if min_qps > 0:
@@ -271,9 +323,15 @@ def plot_per_qps(experiments_set, output_dir, min_qps=24, max_qps=30):
         qps_experiments = [record for record in experiments_set if record["qps"] == qps]
         map_from_name_exp = {}
 
-        avg_free_gpu = {}
-        var_free_gpu_per_node = {}
-        num_total_preemption = {}
+        avg_free_gpu_per_qps = {}
+        # var_free_gpu_per_node = {}
+        # num_total_preemption = {}
+        var_free_gpu_per_node_per_qps = {}
+        num_total_preemption_per_qps = {}
+
+        avg_free_gpu[qps] = avg_free_gpu_per_qps
+        var_free_gpu_per_node[qps] = var_free_gpu_per_node_per_qps
+        num_total_preemption[qps] = num_total_preemption_per_qps
 
         for experiment in qps_experiments:
             experiment_name = f"{experiment['scheduler_name']}".replace("_", " ")
@@ -302,18 +360,11 @@ def plot_per_qps(experiments_set, output_dir, min_qps=24, max_qps=30):
             ttft_cdf_per_qps[index_name] = experiments['ttft'] * 1.0 / 1000
             tbt_cdfs_per_qps[index_name] = experiments['tbt'] * 1.0 / 1000
             e2e_cdfs_per_qps[index_name] = experiments['e2e'] * 1.0 / 1000
-            avg_free_gpu[index_name] = experiments['avg_gpu_blocks']
-            var_free_gpu_per_node[index_name] = experiments['var_gpu_blocks']
+            avg_free_gpu_per_qps[index_name] = experiments['avg_gpu_blocks']
+            var_free_gpu_per_node_per_qps[index_name] = experiments['var_gpu_blocks']
             num_preempted_list = (experiments['num_preempted'] - experiments['num_preempted'][0]).tolist()
             num_preempted = np.asarray([max(0, preempted) for preempted in num_preempted_list])
-            num_total_preemption[index_name] = num_preempted
-
-            print(f"when {qps}, the {num_total_preemption[index_name][-1]} For {index_name}")
-
-        plot_linear(avg_free_gpu, "Average Free GPU Blocks", qps_output_dir, qps=qps, sigma=10)
-        plot_linear(var_free_gpu_per_node, "Free GPU Blocks Var", qps_output_dir, qps=qps, sigma=20,
-                    adjust_legend=True)
-        plot_linear(num_total_preemption, "Number of new Preemption", qps_output_dir, qps=qps, sigma=10)
+            num_total_preemption_per_qps[index_name] = num_preempted
 
         token_throughput.append(token_s_data)
         requests_throughput.append(requests_throughput_data)
@@ -326,27 +377,86 @@ def plot_per_qps(experiments_set, output_dir, min_qps=24, max_qps=30):
 
     index_names = sorted_keys
 
+    fig, axs = plt.subplots(2, 3)
+
     token_s_df = pd.DataFrame(token_throughput, columns=['QPS'] + list(index_names))
-    plot_bar_chart(token_s_df, index_names, qps_output_dir, "Token Throughput", "QPS")
+    plot_bar_chart(axs[0, 0], token_s_df, index_names, qps_output_dir, "Token Throughput", "QPS",
+                   keep_x_ticks_labels=True)
+
     requests_throughput_df = pd.DataFrame(requests_throughput, columns=['QPS'] + list(index_names))
-    plot_bar_chart(requests_throughput_df, index_names, qps_output_dir, "Request Throughput", "QPS")
+    plot_bar_chart(axs[1, 0], requests_throughput_df, index_names, qps_output_dir, "Request Throughput", "QPS",
+                   keep_x_ticks_labels=True)
+
     average_ttft_df = pd.DataFrame(average_ttft, columns=['QPS'] + list(index_names))
-    plot_bar_chart(average_ttft_df, index_names, qps_output_dir, "Average TTFT", "QPS", zoom_out=False)
-    average_tbt_df = pd.DataFrame(average_tbt, columns=['QPS'] + list(index_names))
-    plot_bar_chart(average_tbt_df, index_names, qps_output_dir, "Average TBT", "QPS")
+
+    plot_bar_chart(axs[0, 1], average_ttft_df, index_names, qps_output_dir, "Average TTFT", "QPS",
+                   zoom_out=False, y_append=" (s)", keep_legend=True)
+    # average_tbt_df = pd.DataFrame(average_tbt, columns=['QPS'] + list(index_names))
+    # plot_bar_chart(axs[0, 3], average_tbt_df, index_names, qps_output_dir, "Average TBT", "QPS",
+    #                zoom_out=False)
     p99_ttft_df = pd.DataFrame(p99_ttft, columns=['QPS'] + list(index_names))
-    plot_bar_chart(p99_ttft_df, index_names, qps_output_dir, "TTFT P99", "QPS", zoom_out=False)
-    p99_tbt_df = pd.DataFrame(p99_tbt, columns=['QPS'] + list(index_names))
-    plot_bar_chart(p99_tbt_df, index_names, qps_output_dir, "TBT P99", "QPS", zoom_out=False)
-
+    plot_bar_chart(axs[1, 1], p99_ttft_df, index_names, qps_output_dir, "TTFT P99", "QPS",
+                   zoom_out=False, y_append=" (s)")
+    # p99_tbt_df = pd.DataFrame(p99_tbt, columns=['QPS'] + list(index_names))
+    # plot_bar_chart(axs[1, 1], p99_tbt_df, index_names, qps_output_dir, "TBT P99", "QPS", zoom_out=False)
+    #
     average_e2e_df = pd.DataFrame(average_e2e, columns=['QPS'] + list(index_names))
-    plot_bar_chart(average_e2e_df, index_names, qps_output_dir, "Average Request Latency", "QPS", zoom_out=False)
+    plot_bar_chart(axs[0, 2], average_e2e_df, index_names, qps_output_dir, "Average Request Latency", "QPS",
+                   zoom_out=False, y_append=" (s)")
     p99_e2e_df = pd.DataFrame(p99_e2e, columns=['QPS'] + list(index_names))
-    plot_bar_chart(p99_e2e_df, index_names, qps_output_dir, "Request Latency P99", "QPS", zoom_out=False)
+    plot_bar_chart(axs[1, 2], p99_e2e_df, index_names, qps_output_dir, "Request Latency P99", "QPS",
+                   zoom_out=False, y_append=" (s)")
 
-    plot_latency_cdf_per_qps(ttft_cdfs, qps_output_dir, "TTFT", " (ms)", zoom_out=False)
-    plot_latency_cdf_per_qps(tbt_cdfs, qps_output_dir, "TBT", " (ms)", max_x_range_for_zoom=100000)
-    plot_latency_cdf_per_qps(e2e_cdfs, qps_output_dir, "Request Latency", " (ms)", max_x_range_for_zoom=100000)
+    fig.tight_layout()
+    fig.subplots_adjust(hspace=0.2, wspace=0.25)
+    fig.set_size_inches(16, 8)
+    fig.savefig(f"{qps_output_dir}/qps.png", bbox_inches='tight')
+
+    fig, axs = plt.subplots(2, 3)
+    axes_dict_for_ttft = {}
+    axes_dict_for_e2e = {}
+    i = 0
+    for qps in qps_set:
+        axes_dict_for_ttft[qps] = axs[0, i]
+        axes_dict_for_e2e[qps] = axs[1, i]
+        i += 1
+    plot_latency_cdf_per_qps(axes_dict_for_ttft, ttft_cdfs, qps_output_dir, "TTFT", "Time(s): ",
+                             enable_legend_at_middle=True)
+    # plot_latency_cdf_per_qps(tbt_cdfs, qps_output_dir, "TBT", " (ms)", max_x_range_for_zoom=100000)
+    plot_latency_cdf_per_qps(axes_dict_for_e2e,
+                             e2e_cdfs, qps_output_dir, "Request Latency", "Time(s): ",
+                             max_x_range_for_zoom=100000)
+    fig.tight_layout()
+    fig.subplots_adjust(hspace=0.1, wspace=0.2)
+    fig.set_size_inches(14, 7.5)
+    fig.savefig(f"{qps_output_dir}/cdf.png", bbox_inches='tight')
+
+    # plot_linear(avg_free_gpu, "Average Free GPU Blocks", qps_output_dir, sigma=10)
+    # plot_linear(var_free_gpu_per_node, "Free GPU Blocks Var", qps_output_dir, sigma=20,
+    #             adjust_legend=True)
+    # plot_linear(num_total_preemption, "Number of new Preemption", qps_output_dir, sigma=10)
+
+    fig, axs = plt.subplots(3, 3)
+    axs_for_avg_free_gpu = {}
+    axs_for_var_free_gpu = {}
+    axs_for_num_preemption = {}
+    i = 0
+    for qps in qps_set:
+        axs_for_avg_free_gpu[qps] = axs[0, i]
+        axs_for_var_free_gpu[qps] = axs[1, i]
+        axs_for_num_preemption[qps] = axs[2, i]
+        i += 1
+    plot_linear_for_multiple_qps(axs_for_avg_free_gpu, avg_free_gpu, "Free GPU Blocks Mean", sigma=10,
+                                 enable_legend_at_middle=True)
+    plot_linear_for_multiple_qps(axs_for_var_free_gpu, var_free_gpu_per_node, "Free GPU Blocks Var",
+                                 sigma=20)
+    plot_linear_for_multiple_qps(axs_for_num_preemption, num_total_preemption, "Total Preemption Count",
+                                    sigma=10)
+    fig.tight_layout()
+    fig.subplots_adjust(hspace=0.2, wspace=0.3)
+    fig.set_size_inches(16, 10)
+    fig.savefig(f"{qps_output_dir}/linear.png", bbox_inches='tight')
+
 
 
 def main():
