@@ -4,7 +4,7 @@ BATCH_CAP=48
 MODEL="meta-llama/Llama-2-7b-hf"
 MAX_MODEL_LENGTH=4096
 DATASET_NAMES="sharegpt"
-NUM_REQUEST=100
+NUM_REQUEST=1000
 START_INDEX=0
 TARGET_HOST='asdwb@d7525-10s10309.wisc.cloudlab.us'
 ENABLE_CHUNKED_PREFILL="true"
@@ -15,7 +15,7 @@ BACKEND_WORKERS=4
 CHUNK_SIZE=512
 QPS="24"
 BRANCH_NAME="single_predictor_evaluation"
-BATCH_SIZE_THRESHOLD_FOR_TIME_ESTIMATION=128
+BATCH_SIZE_THRESHOLD_FOR_TIME_ESTIMATION=0
 
 for model in $MODEL; do
   if [ "$model" = "meta-llama/Llama-2-7b-hf" ]; then

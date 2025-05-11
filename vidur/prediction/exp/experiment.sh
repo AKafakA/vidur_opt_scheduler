@@ -5,7 +5,7 @@ NUM_DATA=$2
 RESTART_VLLM=$3
 BATCH_CAP=$4
 UPDATE_VIDUR_CODE=false
-UPDATE_VLLM_CODE=true
+UPDATE_VLLM_CODE=false
 RUN_EXP=true
 
 
@@ -68,7 +68,8 @@ fi
 
 if [ "$RUN_EXP" = "true" ]; then
   NUM_QUERIES=$NUM_DATA
-  METRIC_TYPES=$SCHEDULER_METRIC_TYPE
+  # Still use random for global scheduler but use min_latency for predictor
+  METRIC_TYPES="random"
   for qps in $QPS; do
       for num_queries in $NUM_QUERIES; do
         for metric_type in $METRIC_TYPES; do
