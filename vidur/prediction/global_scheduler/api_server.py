@@ -189,11 +189,9 @@ async def init_app(
     else:
         for key, value in instance_dict.items():
             ports = []
-            if 0 < args.num_predictor_ports < len(value["predictor_ports"]):
-                for i in range(args.num_predictor_ports):
+            if args.num_predictor_ports > 0:
+                for i in range(min(args.num_predictor_ports, len(value["predictor_ports"]))):
                     ports.append(value["predictor_ports"][i])
-            else:
-                ports = value["predictor_ports"]
             print(f"instance {key} with ip {value['ip_address']} and predictor port {ports}")
             instance = Instance(key, value["ip_address"], ports, value["backend_port"])
             instances.append(instance)

@@ -4,8 +4,8 @@ ENABLE_TIME_ESTIMATION=true
 NUM_DATA=$2
 RESTART_VLLM=$3
 BATCH_CAP=$4
-UPDATE_VIDUR_CODE=true
-UPDATE_VLLM_CODE=false
+UPDATE_VIDUR_CODE=false
+UPDATE_VLLM_CODE=true
 RUN_EXP=true
 
 
@@ -82,7 +82,7 @@ if [ "$RUN_EXP" = "true" ]; then
                   echo "Running experiment with qps: $qps, num_queries: $num_queries, n: $n, metric_type: $metric_type"
                   nohup sh vidur/prediction/exp/run_exp_global_scheduler.sh $TARGET_HOST $n $n $metric_type $HOST_CONFIG_PATH $GLOBAL_SCHEDULER_WORKERS $PREDICTOR_WORKERS > /dev/null 2>&1 &
                   LOG_FILENAME="benchmark.log"
-                  OUTPUT_DIR="${DATASET_TYPE}/${metric_type}/qps_${qps}_num_queries_${num_queries}_n_${n}_chunked_${ENABLE_CHUNKED_PREFILL}"
+                  OUTPUT_DIR="${DATASET_TYPE}/${metric_type}/qps_${qps}_num_queries_${num_queries}_n_${n}_chunked_${ENABLE_CHUNKED_PREFILL}_predictor_${PREDICTOR_WORKERS}_global_${GLOBAL_SCHEDULER_WORKERS}"
                   sleep 10
                   parallel-ssh -i -t 0 --host $TARGET_HOST "cd vidur_opt_scheduler && export PYTHONPATH=. && export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:/usr/local/lib/python3.10/dist-packages/nvidia/cudnn/lib:/usr/local/lib/python3.10/dist-packages/nvidia/nccl/lib:/usr/local/lib/python3.10/dist-packages/cusparselt/lib && python vidur/prediction/benchmark/benchmark_serving.py --ip_ports 127.0.0.1:8200 --tokenizer $MODEL --num_sampled_requests $num_queries --dataset_type $DATASET_TYPE --dataset_path $DATASET_PATH --qps $qps --backend block --log_filename $LOG_FILENAME --output_dir $OUTPUT_DIR --tag_dataset_with_real_response $GENERATE_NEW_DATA --enable_csv_files false --keep_all_metrics $KEEP_ALL_METRICS --use_estimated_response_lens false --data_start_index $START_INDEX --trust_remote_code --max_request_len $MAX_MODEL_LENGTH"
                   sleep 60

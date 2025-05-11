@@ -34,7 +34,7 @@ for model in $MODEL; do
     for scheduler in $SCHEDULER_NAME; do
       for enable_chunked_prefill in $ENABLE_CHUNKED_PREFILL; do
         for qps in $QPS; do
-          echo "Running experiment for scheduler: $scheduler with dataset: $dataset_name and model: $model with qps: $qps and chunked prefill: $enable_chunked_prefill"
+          echo "Running experiment for scheduler: $scheduler with dataset: $dataset_name and model: $model with qps: $qps and chunked prefill: $enable_chunked_prefill and predictor workers: $PREDICTOR_WORKERS"
           sh vidur/prediction/exp/experiment.sh $scheduler $NUM_REQUEST true $BATCH_CAP $dataset_name $DATASET_PATH $DATASET_TYPE true false $START_INDEX $model $MODEL_TYPE $MAX_MODEL_LENGTH $TARGET_HOST $enable_chunked_prefill $PREDICTOR_WORKERS $GLOBAL_SCHEDULER_WORKERS $BACKEND_WORKERS $CHUNK_SIZE $qps $BRANCH_NAME $BATCH_SIZE_THRESHOLD_FOR_TIME_ESTIMATION
         done
       done
