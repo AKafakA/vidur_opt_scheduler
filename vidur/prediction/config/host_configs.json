@@ -2,61 +2,61 @@
     "d7525-10s10309.wisc.cloudlab.us": {
         "backend_port": 8000,
         "ip_address": "128.105.146.42",
-        "predictor_ports": [8100, 8300, 8400, 8500, 8600, 8700]
+        "predictor_ports": [8100, 8300, 8400, 8500, 8600, 8700, 8800, 8900]
     },
     "d7525-10s10311.wisc.cloudlab.us": {
         "backend_port": 8000,
         "ip_address": "128.105.146.41",
-        "predictor_ports": [8100, 8300, 8400, 8500, 8600, 8700]
+        "predictor_ports": [8100, 8300, 8400, 8500, 8600, 8700, 8800, 8900]
     },
     "d7525-10s10315.wisc.cloudlab.us": {
         "backend_port": 8000,
         "ip_address": "128.105.146.39",
-        "predictor_ports": [8100, 8300, 8400, 8500, 8600, 8700]
+        "predictor_ports": [8100, 8300, 8400, 8500, 8600, 8700, 8800, 8900]
     },
     "d7525-10s10317.wisc.cloudlab.us": {
         "backend_port": 8000,
         "ip_address": "128.105.146.38",
-        "predictor_ports": [8100, 8300, 8400, 8500, 8600, 8700]
+        "predictor_ports": [8100, 8300, 8400, 8500, 8600, 8700, 8800, 8900]
     },
     "d7525-10s10319.wisc.cloudlab.us": {
         "backend_port": 8000,
         "ip_address": "128.105.146.37",
-        "predictor_ports": [8100, 8300, 8400, 8500, 8600, 8700]
+        "predictor_ports": [8100, 8300, 8400, 8500, 8600, 8700, 8800, 8900]
     },
     "d7525-10s10321.wisc.cloudlab.us": {
         "backend_port": 8000,
         "ip_address": "128.105.146.36",
-        "predictor_ports": [8100, 8300, 8400, 8500, 8600, 8700]
+        "predictor_ports": [8100, 8300, 8400, 8500, 8600, 8700, 8800, 8900]
     },
     "d7525-10s10323.wisc.cloudlab.us": {
         "backend_port": 8000,
         "ip_address": "128.105.146.35",
-        "predictor_ports": [8100, 8300, 8400, 8500, 8600, 8700]
+        "predictor_ports": [8100, 8300, 8400, 8500, 8600, 8700, 8800, 8900]
     },
     "d7525-10s10327.wisc.cloudlab.us": {
         "backend_port": 8000,
         "ip_address": "128.105.146.33",
-        "predictor_ports": [8100, 8300, 8400, 8500, 8600, 8700]
+        "predictor_ports": [8100, 8300, 8400, 8500, 8600, 8700, 8800, 8900]
     },
     "d7525-10s10329.wisc.cloudlab.us": {
         "backend_port": 8000,
         "ip_address": "128.105.146.32",
-        "predictor_ports": [8100, 8300, 8400, 8500, 8600, 8700]
+        "predictor_ports": [8100, 8300, 8400, 8500, 8600, 8700, 8800, 8900]
     },
     "d7525-10s10333.wisc.cloudlab.us": {
         "backend_port": 8000,
         "ip_address": "128.105.146.30",
-        "predictor_ports": [8100, 8300, 8400, 8500, 8600, 8700]
+        "predictor_ports": [8100, 8300, 8400, 8500, 8600, 8700, 8800, 8900]
     },
     "d7525-10s10335.wisc.cloudlab.us": {
         "backend_port": 8000,
         "ip_address": "128.105.146.29",
-        "predictor_ports": [8100, 8300, 8400, 8500, 8600, 8700]
+        "predictor_ports": [8100, 8300, 8400, 8500, 8600, 8700, 8800, 8900]
     },
     "d7525-10s10339.wisc.cloudlab.us": {
         "backend_port": 8000,
         "ip_address": "128.105.146.27",
-        "predictor_ports": [8100, 8300, 8400, 8500, 8600, 8700]
+        "predictor_ports": [8100, 8300, 8400, 8500, 8600, 8700, 8800, 8900]
     }
 }
