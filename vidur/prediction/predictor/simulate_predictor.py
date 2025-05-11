@@ -1,9 +1,11 @@
+import json
 import random
 import time
 from math import ceil
 import itertools
 import logging
 import aiohttp
+from aiohttp import ClientSession, TCPConnector
 
 from vidur.config import DummyRequestGeneratorConfig, MetricsConfig, \
     SimulationRequestTimelinePredictorConfig
@@ -63,6 +65,17 @@ class SimulatePredictor(Predictor):
         self._request_decode_length_prediction_map = {}
         self._start_time = time.time()
         self._backend_url = f"http://localhost:{self._port}/schedule_trace"
+
+        self._session = ClientSession(
+            timeout=AIOHTTP_TIMEOUT,
+            connector=TCPConnector(
+                limit=100,  # Adjust based on expected concurrent requests
+                force_close=False,
+                enable_cleanup_closed=True,
+                keepalive_timeout=60.0  # Adjust based on your needs
+            ),
+            json_serialize=lambda x: json.dumps(x, ensure_ascii=False),  # Faster JSON serialization
+        )
 
     async def predict(self, target_request: Request):
         self._request_decode_length_prediction_map[target_request.id] = target_request.num_decode_tokens
@@ -133,74 +146,79 @@ class SimulatePredictor(Predictor):
 
     async def get_replica_scheduler(self):
         start_time = time.time()
-        async with aiohttp.ClientSession(timeout=AIOHTTP_TIMEOUT) as session:
-            async with session.get(self._backend_url) as response:
+        try:
+            async with self._session.get(self._backend_url) as response:
                 connect_time = (time.time() - start_time) * 1000
-                serialized_response = await response.json()
-                current_gpu_blocks = 0
-                current_num_requests = 0
-                current_num_preempted = 0
-                current_num_running_request = 0
-                current_num_waiting_request = 0
+                print(f"Time taken to connect to backend: {connect_time} ms")
+                if response.status != 200:
+                    raise Exception(f"Failed to get response from backend: {response.status}")
+                response_data = await response.json()
+                return self.get_replica_scheduler_with_backend_response(response_data)
+        except aiohttp.ClientError as e:
+            raise Exception(f"Client error: {e}")
 
-                if self._need_to_predict:
-                    replica_scheduler = ReplicaSchedulerRegistry.get(
-                        self._config.replica_scheduler_config.get_type(),
-                        replica_config=self._config.replica_config,
-                        replica_scheduler_config=self._config.replica_scheduler_config,
-                        request_generator_config=self._generate_config,
-                        replica=self._replica,
-                        num_stages=self._replica.num_pipeline_stages,
-                        execution_time_predictor=self._execution_time_predictor,
+    def get_replica_scheduler_with_backend_response(self, response):
+        current_gpu_blocks = 0
+        current_num_requests = 0
+        current_num_preempted = 0
+        current_num_running_request = 0
+        current_num_waiting_request = 0
+
+        if self._need_to_predict:
+            replica_scheduler = ReplicaSchedulerRegistry.get(
+                self._config.replica_scheduler_config.get_type(),
+                replica_config=self._config.replica_config,
+                replica_scheduler_config=self._config.replica_scheduler_config,
+                request_generator_config=self._generate_config,
+                replica=self._replica,
+                num_stages=self._replica.num_pipeline_stages,
+                execution_time_predictor=self._execution_time_predictor,
+            )
+        else:
+            replica_scheduler = None
+
+        for batch in response.keys():
+            batch_request_information = response[batch]
+            waiting_request_length = batch_request_information["waiting"]
+            running_request_length = batch_request_information["running"]
+            swap_request_length = batch_request_information["swap"]
+            if self._need_to_predict:
+                for requests_info in running_request_length:
+                    request = self.__generate_requests_from_backend(requests_info, 'running')
+                    if request.num_processed_tokens == request.total_tokens:
+                        continue
+                    if self._enable_chunked_prefill:
+                        allocated_tokens = max(request.num_processed_tokens, request.num_prefill_tokens)
+                    else:
+                        allocated_tokens = request.num_processed_tokens
+                    num_required_blocks = ceil(
+                        allocated_tokens / self._config.replica_scheduler_config.block_size
                     )
-                else:
-                    replica_scheduler = None
+                    replica_scheduler.allocate(request.id, num_required_blocks)
+                    request.loading_tokens = request.num_processed_tokens
+                    replica_scheduler.add_preempted_request(request)
 
-                for batch in serialized_response.keys():
-                    batch_request_information = serialized_response[batch]
-                    waiting_request_length = batch_request_information["waiting"]
-                    running_request_length = batch_request_information["running"]
-                    swap_request_length = batch_request_information["swap"]
-                    if self._need_to_predict:
-                        for requests_info in running_request_length:
-                            request = self.__generate_requests_from_backend(requests_info, 'running')
-                            if request.num_processed_tokens == request.total_tokens:
-                                continue
-                            if self._enable_chunked_prefill:
-                                allocated_tokens = max(request.num_processed_tokens, request.num_prefill_tokens)
-                            else:
-                                allocated_tokens = request.num_processed_tokens
-                            num_required_blocks = ceil(
-                                allocated_tokens / self._config.replica_scheduler_config.block_size
-                            )
-                            replica_scheduler.allocate(request.id, num_required_blocks)
-                            request.loading_tokens = request.num_processed_tokens
-                            replica_scheduler.add_preempted_request(request)
+                preempted_request = []
+                waiting_request = []
 
-                        preempted_request = []
-                        waiting_request = []
+                for requests_info in itertools.chain(waiting_request_length, swap_request_length):
+                    request = self.__generate_requests_from_backend(requests_info, 'waiting')
+                    if request.num_processed_tokens == request.total_tokens:
+                        continue
+                    if request.num_processed_tokens > 0:
+                        request.restart()
+                        preempted_request.append(request)
+                    else:
+                        waiting_request.append(request)
 
-                        for requests_info in itertools.chain(waiting_request_length, swap_request_length):
-                            request = self.__generate_requests_from_backend(requests_info, 'waiting')
-                            if request.num_processed_tokens == request.total_tokens:
-                                continue
-                            if request.num_processed_tokens > 0:
-                                request.restart()
-                                preempted_request.append(request)
-                            else:
-                                waiting_request.append(request)
+                for request in itertools.chain(preempted_request, waiting_request):
+                    replica_scheduler.add_request(request)
 
-                        for request in itertools.chain(preempted_request, waiting_request):
-                            replica_scheduler.add_request(request)
-
-                    current_gpu_blocks += batch_request_information["free_gpu_blocks"]
-                    current_num_requests += len(running_request_length) + len(swap_request_length) + len(
-                        waiting_request_length)
-                    current_num_preempted += batch_request_information["num_preempted"]
-                    current_num_running_request += len(running_request_length)
-                    current_num_waiting_request += len(waiting_request_length)
-                time_to_get_replica_scheduler = (time.time() - start_time) * 1000
-                print(f"Time to get replica scheduler: {time_to_get_replica_scheduler}")
-                print(f"Connect time: {connect_time}")
-                return (replica_scheduler, current_gpu_blocks, current_num_requests, current_num_running_request,
-                        current_num_waiting_request, current_num_preempted)
+            current_gpu_blocks += batch_request_information["free_gpu_blocks"]
+            current_num_requests += len(running_request_length) + len(swap_request_length) + len(
+                waiting_request_length)
+            current_num_preempted += batch_request_information["num_preempted"]
+            current_num_running_request += len(running_request_length)
+            current_num_waiting_request += len(waiting_request_length)
+        return (replica_scheduler, current_gpu_blocks, current_num_requests, current_num_running_request,
+                current_num_waiting_request, current_num_preempted)

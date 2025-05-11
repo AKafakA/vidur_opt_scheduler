@@ -13,12 +13,12 @@ AIOHTTP_TIMEOUT = aiohttp.ClientTimeout(total=6 * 60 * 60 * 10)
 class Instance:
     def __init__(self, instance_id,
                  ip_address,
-                 predictor_port,
+                 predictor_ports,
                  backend_port):
         self._instance_id = instance_id
-        self._predictor_port = predictor_port
+        self._predictor_ports = predictor_ports
         self._backend_port = backend_port
-        self._predictor_url = f"http://{ip_address}:{predictor_port}/predict"
+        self._predictor_urls = [f"http://{ip_address}:{port}/predict" for port in predictor_ports]
         self._backend_url = f"http://{ip_address}:{backend_port}/generate_benchmark"
         self.ip_address = ip_address
         self.total_request = 0
@@ -43,9 +43,9 @@ class Instance:
             "num_context_tokens": num_context_tokens,
             "num_decode_tokens": predicted_num_context_tokens,
         }
-
+        predict_url = self._predictor_urls[request_id % len(self._predictor_urls)]
         async with aiohttp.ClientSession(timeout=AIOHTTP_TIMEOUT) as session:
-            async with session.post(self._predictor_url, json=predict_parameters, ssl=False) as response:
+            async with session.post(predict_url, json=predict_parameters, ssl=False) as response:
                 response_dict = await response.json()
                 response_dict['instance_id'] = self._instance_id
                 self._predicted_latency[request_id] = response_dict['target_metric']

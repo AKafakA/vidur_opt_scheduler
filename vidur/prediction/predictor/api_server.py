@@ -16,7 +16,7 @@ import resource
 
 TIMEOUT_KEEP_ALIVE = 5  # seconds.
 app = FastAPI()
-engine = None
+predictor: Optional[Predictor] = None
 
 
 @app.get("/health")
@@ -70,7 +70,6 @@ async def run_server(args: Namespace,
                      **uvicorn_kwargs: Any) -> None:
     app = await init_app(args, instance_predictor)
     assert predictor is not None
-
     shutdown_task = await serve_http(
         app,
         host=args.host,
