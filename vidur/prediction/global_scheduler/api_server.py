@@ -33,6 +33,7 @@ logging.basicConfig(level=logging.INFO,
 logger = logging.getLogger(__name__)
 
 correct_flags = []
+average_gaps = []
 
 
 @app.post("/generate_benchmark")
@@ -93,14 +94,37 @@ async def generate_benchmark(request: Request) -> Response:
 
         instance_id_with_least_serving_time = min(serving_times, key=lambda x: x[1])[0]
         instance_id_with_least_predicted_time = min(predicted_sampled_results, key=lambda x: x[1])[0]
+        min_predicted_time = min(predicted_sampled_results, key=lambda x: x[1])[1]
+
+        sorted_instances_serving_time = sorted(serving_times, key=lambda x: x[1])
+
+        gap_between_average_serving_time_and_least_predicted_time = \
+            np.mean([x[1] for x in sorted_instances_serving_time]) - min_predicted_time
+
+        gap_between_min_serving_time_and_least_predicted_time = \
+            min([x[1] for x in sorted_instances_serving_time]) - min_predicted_time
+
+        gap_between_random_serving_time_and_least_predicted_time = \
+            random.choice([x[1] for x in sorted_instances_serving_time]) - min_predicted_time
+
+        gap_info = {
+            "average": gap_between_average_serving_time_and_least_predicted_time,
+            "min": gap_between_min_serving_time_and_least_predicted_time,
+            "random": gap_between_random_serving_time_and_least_predicted_time
+        }
 
         if instance_id_with_least_serving_time == instance_id_with_least_predicted_time:
             correct_flags.append(True)
         else:
             correct_flags.append(False)
+        average_gaps.append(gap_info)
         response = random.choice(responses)
         predict_accuracy = (1.0 * sum(correct_flags)) / len(correct_flags)
-        print(f"predict_accuracy = {predict_accuracy} with {len(correct_flags)} requests for compare")
+        averages = [x["average"] for x in average_gaps if x is not None]
+        mins = [x["min"] for x in average_gaps if x is not None]
+        randoms = [x["random"] for x in average_gaps if x is not None]
+        print(f"Average gap: {np.mean(averages)}, Min gap: {np.mean(mins)}, Random gap: {np.mean(randoms)}")
+        print(f"Predict accuracy: {predict_accuracy} for compare")
     else:
         if metrics_type.startswith("min") or metrics_type.startswith("max"):
             # if current in metrics means all node need to be queried and select the one with min/max

@@ -30,6 +30,7 @@ CHUNK_SIZE=${19}
 QPS=${20}
 BRANCH_NAME=${21}
 BATCH_SIZE_THRESHOLD_FOR_TIME_ESTIMATION=${22}
+N_SELECTED=${23}
 
 if [ "$ENABLE_CHUNKED_PREFILL" = "true" ]; then
   MAX_NUM_BATCHED_TOKEN=$CHUNK_SIZE
@@ -63,6 +64,7 @@ if [ "$RESTART_VLLM" = "true" ]; then
   nohup sh vidur/prediction/exp/run_exp_predictor.sh $PREDICTOR_CONFIG_PATH $SCHEDULER_METRIC_TYPE $ENABLE_TIME_ESTIMATION $BATCH_CAP $ENABLE_CHUNKED_PREFILL $PREDICTOR_WORKERS $BRANCH_NAME $BATCH_SIZE_THRESHOLD_FOR_TIME_ESTIMATION > /dev/null 2>&1 &
   nohup sh vidur/prediction/exp/run_exp_predictor_2.sh $PREDICTOR_CONFIG_PATH $SCHEDULER_METRIC_TYPE $ENABLE_TIME_ESTIMATION $BATCH_CAP $ENABLE_CHUNKED_PREFILL $PREDICTOR_WORKERS $BRANCH_NAME $BATCH_SIZE_THRESHOLD_FOR_TIME_ESTIMATION > /dev/null 2>&1 &
   nohup sh vidur/prediction/exp/run_exp_predictor_3.sh $PREDICTOR_CONFIG_PATH $SCHEDULER_METRIC_TYPE $ENABLE_TIME_ESTIMATION $BATCH_CAP $ENABLE_CHUNKED_PREFILL $PREDICTOR_WORKERS $BRANCH_NAME $BATCH_SIZE_THRESHOLD_FOR_TIME_ESTIMATION > /dev/null 2>&1 &
+  nohup sh vidur/prediction/exp/run_exp_predictor_4.sh $PREDICTOR_CONFIG_PATH $SCHEDULER_METRIC_TYPE $ENABLE_TIME_ESTIMATION $BATCH_CAP $ENABLE_CHUNKED_PREFILL $PREDICTOR_WORKERS $BRANCH_NAME $BATCH_SIZE_THRESHOLD_FOR_TIME_ESTIMATION > /dev/null 2>&1 &
   sleep 60
 fi
 
@@ -73,13 +75,7 @@ if [ "$RUN_EXP" = "true" ]; then
   for qps in $QPS; do
       for num_queries in $NUM_QUERIES; do
         for metric_type in $METRIC_TYPES; do
-         if [ "$metric_type" = "min_latency" ] || [ "$metric_type" = "min_new_request_latency" ]
-         then
-              N="2"
-          else
-              N="12"
-          fi
-          for n in $N; do
+          for n in $N_SELECTED; do
                   echo "Running experiment with qps: $qps, num_queries: $num_queries, n: $n, metric_type: $metric_type"
                   nohup sh vidur/prediction/exp/run_exp_global_scheduler.sh $TARGET_HOST $n $n $metric_type $HOST_CONFIG_PATH $GLOBAL_SCHEDULER_WORKERS $PREDICTOR_WORKERS > /dev/null 2>&1 &
                   LOG_FILENAME="benchmark.log"

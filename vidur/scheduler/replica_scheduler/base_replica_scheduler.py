@@ -134,13 +134,14 @@ class BaseReplicaScheduler(ABC):
         return self._config.num_blocks - self._num_allocated_blocks >= num_blocks
 
     def allocate(self, request_id: int, num_blocks: int) -> None:
+        if num_blocks + self._num_allocated_blocks > self._config.num_blocks:
+            return
         self._num_allocated_blocks += num_blocks
         if request_id not in self._allocation_map:
             self._allocation_map[request_id] = num_blocks
         else:
             self._allocation_map[request_id] += num_blocks
 
-        assert self._num_allocated_blocks <= self._config.num_blocks
 
     def free(self, *request_ids: List[int]) -> None:
         for request_id in request_ids:
