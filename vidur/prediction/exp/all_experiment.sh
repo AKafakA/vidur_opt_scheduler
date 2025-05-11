@@ -4,19 +4,18 @@ BATCH_CAP=48
 MODEL="meta-llama/Llama-2-7b-hf"
 MAX_MODEL_LENGTH=4096
 DATASET_NAMES="sharegpt"
-NUM_REQUEST=10
+NUM_REQUEST=100
 START_INDEX=0
 TARGET_HOST='asdwb@d7525-10s10309.wisc.cloudlab.us'
 ENABLE_CHUNKED_PREFILL="true"
 
-PREDICTOR_WORKERS=4
+PREDICTOR_WORKERS=1
 GLOBAL_SCHEDULER_WORKERS=1
 BACKEND_WORKERS=4
 CHUNK_SIZE=512
 QPS="24"
 BRANCH_NAME="single_predictor_evaluation"
 BATCH_SIZE_THRESHOLD_FOR_TIME_ESTIMATION=128
-PREDICTOR_PORTS="8100 8300"
 
 for model in $MODEL; do
   if [ "$model" = "meta-llama/Llama-2-7b-hf" ]; then
@@ -36,7 +35,7 @@ for model in $MODEL; do
       for enable_chunked_prefill in $ENABLE_CHUNKED_PREFILL; do
         for qps in $QPS; do
           echo "Running experiment for scheduler: $scheduler with dataset: $dataset_name and model: $model with qps: $qps and chunked prefill: $enable_chunked_prefill"
-          sh vidur/prediction/exp/experiment.sh $scheduler $NUM_REQUEST true $BATCH_CAP $dataset_name $DATASET_PATH $DATASET_TYPE true false $START_INDEX $model $MODEL_TYPE $MAX_MODEL_LENGTH $TARGET_HOST $enable_chunked_prefill $PREDICTOR_WORKERS $GLOBAL_SCHEDULER_WORKERS $BACKEND_WORKERS $CHUNK_SIZE $qps $BRANCH_NAME $BATCH_SIZE_THRESHOLD_FOR_TIME_ESTIMATION $PREDICTOR_PORTS
+          sh vidur/prediction/exp/experiment.sh $scheduler $NUM_REQUEST true $BATCH_CAP $dataset_name $DATASET_PATH $DATASET_TYPE true false $START_INDEX $model $MODEL_TYPE $MAX_MODEL_LENGTH $TARGET_HOST $enable_chunked_prefill $PREDICTOR_WORKERS $GLOBAL_SCHEDULER_WORKERS $BACKEND_WORKERS $CHUNK_SIZE $qps $BRANCH_NAME $BATCH_SIZE_THRESHOLD_FOR_TIME_ESTIMATION
         done
       done
     done

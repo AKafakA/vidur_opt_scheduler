@@ -186,6 +186,11 @@ async def init_app(
         instances.extend(instances_list)
     else:
         for key, value in instance_dict.items():
+            if args.num_predictor_ports < 0:
+                value["predictor_port"] = args.num_predictor_ports
+            else:
+                value["predictor_port"] = args.num_predictor_ports[:args.num_predictor_ports]
+            print(f"instance {key} with ip {value['ip_address']} and predictor port {value['predictor_port']}")
             instance = Instance(key, value["ip_address"], value["predictor_port"], value["backend_port"])
             instances.append(instance)
     start_time = time.time()
@@ -246,6 +251,7 @@ if __name__ == "__main__":
     parser.add_argument("-m", "--num_required_predictor", type=int, default=1)
     parser.add_argument("--debugging_logs", type=bool, default=True)
     parser.add_argument("--profiling_sampling_rate", type=float, default=0.1)
+    parser.add_argument("--num_predictor_ports", type=int, default=-1)
     args = parser.parse_args()
     logger.info("Starting server with args: %s", str(args))
     # in case the limited by the number of files

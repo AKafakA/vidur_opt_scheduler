@@ -32,31 +32,31 @@
     "d7525-10s10323.wisc.cloudlab.us": {
         "backend_port": 8000,
         "ip_address": "128.105.146.35",
-        "predictor_port": [8100, 8300]
+        "predictor_port": [8100, 8300, 8400]
     },
     "d7525-10s10327.wisc.cloudlab.us": {
         "backend_port": 8000,
         "ip_address": "128.105.146.33",
-        "predictor_port": [8100, 8300]
+        "predictor_port": [8100, 8300, 8400]
     },
     "d7525-10s10329.wisc.cloudlab.us": {
         "backend_port": 8000,
         "ip_address": "128.105.146.32",
-        "predictor_port": [8100, 8300]
+        "predictor_port": [8100, 8300, 8400]
     },
     "d7525-10s10333.wisc.cloudlab.us": {
         "backend_port": 8000,
         "ip_address": "128.105.146.30",
-        "predictor_port": [8100, 8300]
+        "predictor_port": [8100, 8300, 8400]
     },
     "d7525-10s10335.wisc.cloudlab.us": {
         "backend_port": 8000,
         "ip_address": "128.105.146.29",
-        "predictor_port": [8100, 8300]
+        "predictor_port": [8100, 8300, 8400]
     },
     "d7525-10s10339.wisc.cloudlab.us": {
         "backend_port": 8000,
         "ip_address": "128.105.146.27",
-        "predictor_port": [8100, 8300]
+        "predictor_port": [8100, 8300, 8400]
     }
 }
