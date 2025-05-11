@@ -186,12 +186,14 @@ async def init_app(
         instances.extend(instances_list)
     else:
         for key, value in instance_dict.items():
-            if args.num_predictor_ports < 0:
-                value["predictor_port"] = args.num_predictor_ports
+            ports = []
+            if 0 < args.num_predictor_ports < len(value["predictor_ports"]):
+                for i in range(args.num_predictor_ports):
+                    ports.append(value["predictor_ports"][i])
             else:
-                value["predictor_port"] = args.num_predictor_ports[:args.num_predictor_ports]
-            print(f"instance {key} with ip {value['ip_address']} and predictor port {value['predictor_port']}")
-            instance = Instance(key, value["ip_address"], value["predictor_port"], value["backend_port"])
+                ports = value["predictor_ports"]
+            print(f"instance {key} with ip {value['ip_address']} and predictor port {ports}")
+            instance = Instance(key, value["ip_address"], ports, value["backend_port"])
             instances.append(instance)
     start_time = time.time()
     metrics_type = args.metrics_type
