@@ -95,7 +95,7 @@ class SimulatePredictReplicaScheduler:
         return batch_id, batch_execution_time, schedule_time, batch, num_allocated_blocks
 
     def __get_execution_time(self, batch: Batch, stage_id: int):
-        if self._estimate_execution_time and batch.size > self._threshold_batch_size_for_time_estimation >= 0:
+        if batch.size > self._threshold_batch_size_for_time_estimation >= 0:
             return self._execution_time_predictor.get_execution_time(batch, stage_id).total_time
         else:
             return self._default_execution_time
