@@ -116,7 +116,7 @@ class SimulatePredictor(Predictor):
         total_length = request_info["seq_total_output_length"]
         prefilled_length = request_info["seq_computed_length"]
         is_prefill = request_info["is_prefill"]
-        total_decode_length = self._request_decode_length_prediction_map[request_id]
+        total_decode_length = self._request_decode_length_prediction_map.get(request_id, 0)
         if self._enable_chunked_prefill:
             if is_prefill:
                 # total length = sequence.prompts_length + sequence.decoded_length
