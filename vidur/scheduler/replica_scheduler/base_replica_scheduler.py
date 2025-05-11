@@ -145,9 +145,10 @@ class BaseReplicaScheduler(ABC):
 
     def free(self, *request_ids: List[int]) -> None:
         for request_id in request_ids:
+            if request_id not in self._allocation_map:
+                continue
             num_blocks = self._allocation_map.pop(request_id)
             self._num_allocated_blocks -= num_blocks
-
         assert self._num_allocated_blocks >= 0
 
     def free_batch(self, batch: Batch) -> None:
