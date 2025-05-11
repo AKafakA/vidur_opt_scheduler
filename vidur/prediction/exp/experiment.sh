@@ -80,7 +80,7 @@ if [ "$RUN_EXP" = "true" ]; then
           fi
           for n in $N; do
                   echo "Running experiment with qps: $qps, num_queries: $num_queries, n: $n, metric_type: $metric_type"
-                  nohup sh vidur/prediction/exp/run_exp_global_scheduler.sh $TARGET_HOST $n $n $metric_type $HOST_CONFIG_PATH $GLOBAL_SCHEDULER_WORKERS > /dev/null 2>&1 &
+                  nohup sh vidur/prediction/exp/run_exp_global_scheduler.sh $TARGET_HOST $n $n $metric_type $HOST_CONFIG_PATH $GLOBAL_SCHEDULER_WORKERS $PREDICTOR_WORKERS > /dev/null 2>&1 &
                   LOG_FILENAME="benchmark.log"
                   OUTPUT_DIR="${DATASET_TYPE}/${metric_type}/qps_${qps}_num_queries_${num_queries}_n_${n}_chunked_${ENABLE_CHUNKED_PREFILL}"
                   sleep 10
