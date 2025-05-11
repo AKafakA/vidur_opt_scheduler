@@ -85,7 +85,8 @@ async def generate_benchmark(request: Request) -> Response:
     if is_sampled_for_compare:
         # only one profile sampling is allowed and will block the other normal request
         sampled_instanced = [x['instance_id'] for x in predict_results]
-        responses = await asyncio.gather(*[instance.query_backend(prompt, max_response_len, request_id) for
+        responses = await asyncio.gather(*[instance.query_backend(prompt, max_response_len, request_id,
+                                                                  predicted_num_decode_tokens) for
                                             instance in instances if instance._instance_id in sampled_instanced])
 
         serving_times = [(response['instance_id'], response["serving_time"]) for response in responses]
@@ -125,7 +126,8 @@ async def generate_benchmark(request: Request) -> Response:
             raise ValueError(f"Invalid metrics type: {metrics_type}")
         selected_instance = instances[selected_index]
         try:
-            response = await selected_instance.query_backend(prompt, max_response_len, request_id)
+            response = await selected_instance.query_backend(prompt, max_response_len, request_id,
+                                                             predicted_num_decode_tokens)
         except Exception as e:
             print(f"Error during prediction: {e}")
             return JSONResponse({"error": "Prediction failed"}, status_code=500)

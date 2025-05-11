@@ -51,7 +51,8 @@ class Instance:
                 self._predicted_latency[request_id] = response_dict['target_metric']
                 return response_dict
 
-    async def query_backend(self, prompt: str, max_response_len: int, request_id: int):
+    async def query_backend(self, prompt: str, max_response_len: int, request_id: int,
+                            predicted_num_decode_tokens: int):
         self.request_timeline.append(time.time() - self.start_time)
         self.total_request += 1
         max_tokens = max_response_len
@@ -64,7 +65,8 @@ class Instance:
             "max_tokens": max_tokens,
             "ignore_eos": True,
             "stream": False,
-            "request_id": str(request_id)
+            "request_id": str(request_id),
+            "num_predicted_tokens": predicted_num_decode_tokens,
         }
         start = time.time()
         async with aiohttp.ClientSession(timeout=AIOHTTP_TIMEOUT) as session:

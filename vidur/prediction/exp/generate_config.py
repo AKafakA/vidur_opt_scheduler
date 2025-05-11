@@ -11,12 +11,12 @@ def generate_config(ip_address, predictor_port, backend_port):
     config = {
         "ip_address": ip_address,
         "predictor_port": predictor_port,
-        "backend_port": backend_port
+        "backend_ports": backend_port
     }
     return config
 
 
-predictor_port = 8100
+predictor_ports = [8100, 8300, 8400]
 backend_port = 8000
 
 tree = ET.parse(manifest_path)
@@ -50,7 +50,7 @@ with open(host_config_files, "w+") as f, open(host_files, "w+") as n:
     for node in nodes:
         node_info = nodes[node]
         host_names.append("asdwb@" + node_info["hostname"])
-        config = generate_config(node_info["ip_adresses"], predictor_port, backend_port)
+        config = generate_config(node_info["ip_adresses"], predictor_ports, backend_port)
         configs[node_info["hostname"]] = config
     json.dump(configs, f, sort_keys=True, indent = 4)
     for host in host_names:

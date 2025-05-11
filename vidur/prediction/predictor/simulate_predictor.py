@@ -62,7 +62,6 @@ class SimulatePredictor(Predictor):
         self._request_timeline_predictor.threshold_batch_size_for_time_estimation = \
             config.threshold_batch_size_for_time_estimation
         self._port = port
-        self._request_decode_length_prediction_map = {}
         self._start_time = time.time()
         self._backend_url = f"http://localhost:{self._port}/schedule_trace"
 
@@ -78,7 +77,6 @@ class SimulatePredictor(Predictor):
         )
 
     async def predict(self, target_request: Request):
-        self._request_decode_length_prediction_map[target_request.id] = target_request.num_decode_tokens
         start_time = time.time()
         (replica_scheduler, current_gpu_blocks, current_num_requests, current_num_running_request,
          current_num_waiting_request, current_num_preempted) = await self.get_replica_scheduler()
@@ -116,7 +114,7 @@ class SimulatePredictor(Predictor):
         total_length = request_info["seq_total_output_length"]
         prefilled_length = request_info["seq_computed_length"]
         is_prefill = request_info["is_prefill"]
-        total_decode_length = self._request_decode_length_prediction_map.get(request_id, 0)
+        total_decode_length = request_info["seq_expected_decoded_length"]
         if self._enable_chunked_prefill:
             if is_prefill:
                 # total length = sequence.prompts_length + sequence.decoded_length
