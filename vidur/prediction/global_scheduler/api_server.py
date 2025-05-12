@@ -7,6 +7,7 @@ import time
 from argparse import Namespace
 from typing import Any, Optional, List
 import numpy as np
+import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, Response
 
@@ -14,12 +15,9 @@ from vidur.prediction.global_scheduler.instance import Instance
 from vidur.prediction.server_utils import serve_http
 import resource
 import logging
-import threading
 
-lock = threading.Lock()
-condition = threading.Condition()
 profiling_sampling_rate = 0.1
-TIMEOUT_KEEP_ALIVE = 10  # seconds.
+TIMEOUT_KEEP_ALIVE = 5  # seconds.
 app = FastAPI()
 instances = []
 num_requests = 0
@@ -44,7 +42,6 @@ async def generate_benchmark(request: Request) -> Response:
     3) return the completion to the client with profiling
     """
     assert len(instances) > 0
-    request_start_time = time.time()
     request_dict = await request.json()
     request_id = request_dict["request_id"]
     prompt = request_dict.pop("prompt")
@@ -54,6 +51,7 @@ async def generate_benchmark(request: Request) -> Response:
     arrived_at = time.time() - start_time
     _ = request_dict.pop("stream", False)
     predict_tasks = []
+    print(f"received request: {request_id} at {time.time() - start_time}")
 
     is_sampled_for_compare = random.uniform(0, 1) < profiling_sampling_rate
 

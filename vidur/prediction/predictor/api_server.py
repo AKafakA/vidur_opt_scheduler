@@ -17,6 +17,7 @@ import resource
 TIMEOUT_KEEP_ALIVE = 5  # seconds.
 app = FastAPI()
 predictor: Optional[Predictor] = None
+start_time = 0
 
 
 @app.get("/health")
@@ -32,6 +33,7 @@ async def predict(request: Request) -> Response:
     start_time = time.time()
     request_dict = await request.json()
     vidur_request = convert_request(request_dict)
+    print(f"received request: {vidur_request.id} at {time.time() - start_time}")
     metric = await predictor.predict(vidur_request)
     time_elapsed = (time.time() - start_time) * 1000
     logging.debug("Predicted metric: %s for request: %s", metric, str(vidur_request.id))
@@ -68,6 +70,8 @@ async def init_app(
 async def run_server(args: Namespace,
                      instance_predictor: Optional[Predictor] = None,
                      **uvicorn_kwargs: Any) -> None:
+    global start_time, app
+    start_time = time.time()
     app = await init_app(args, instance_predictor)
     assert predictor is not None
     shutdown_task = await serve_http(

@@ -132,7 +132,7 @@ class SimulatePredictor(Predictor):
 
     async def get_replica_scheduler(self, request_id):
         start_time = time.time()
-        print(f"Connecting to backend at {self._backend_url} at {start_time}"
+        print(f"Connecting to backend at {self._backend_url} at {start_time - self._start_time} "
               f" for request, {request_id}")
         async with aiohttp.ClientSession(timeout=AIOHTTP_TIMEOUT) as session:
             print(f"Connected to backend at {self._backend_url} after {(time.time() - start_time) * 1000} "
