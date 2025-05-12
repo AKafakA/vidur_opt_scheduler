@@ -65,17 +65,6 @@ class SimulatePredictor(Predictor):
         self._start_time = time.time()
         self._backend_url = f"http://localhost:{self._port}/schedule_trace"
 
-        self._session = ClientSession(
-            timeout=AIOHTTP_TIMEOUT,
-            connector=TCPConnector(
-                limit=100,  # Adjust based on expected concurrent requests
-                force_close=False,
-                enable_cleanup_closed=True,
-                keepalive_timeout=60.0  # Adjust based on your needs
-            ),
-            json_serialize=lambda x: json.dumps(x, ensure_ascii=False),  # Faster JSON serialization
-        )
-
     async def predict(self, target_request: Request):
         start_time = time.time()
         (replica_scheduler, current_gpu_blocks, current_num_requests, current_num_running_request,
@@ -144,16 +133,14 @@ class SimulatePredictor(Predictor):
 
     async def get_replica_scheduler(self):
         start_time = time.time()
-        try:
-            async with self._session.get(self._backend_url) as response:
+        print(f"Connecting to backend at {self._backend_url} at {start_time}")
+        async with aiohttp.ClientSession(timeout=AIOHTTP_TIMEOUT) as session:
+            print(f"Connected to backend at {self._backend_url} at {start_time}")
+            async with session.get(self._backend_url) as response:
                 connect_time = (time.time() - start_time) * 1000
                 print(f"Time taken to connect to backend: {connect_time} ms")
-                if response.status != 200:
-                    raise Exception(f"Failed to get response from backend: {response.status}")
                 response_data = await response.json()
                 return self.get_replica_scheduler_with_backend_response(response_data)
-        except aiohttp.ClientError as e:
-            raise Exception(f"Client error: {e}")
 
     def get_replica_scheduler_with_backend_response(self, response):
         current_gpu_blocks = 0
