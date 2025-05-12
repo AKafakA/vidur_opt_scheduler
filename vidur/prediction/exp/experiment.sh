@@ -4,7 +4,7 @@ ENABLE_TIME_ESTIMATION=true
 NUM_DATA=$2
 RESTART_VLLM=$3
 BATCH_CAP=$4
-UPDATE_VIDUR_CODE=false
+UPDATE_VIDUR_CODE=true
 UPDATE_VLLM_CODE=false
 RUN_EXP=true
 
@@ -59,7 +59,7 @@ if [ "$RESTART_VLLM" = "true" ]; then
   nohup sh vidur/prediction/exp/run_exp_vllm.sh $BATCH_CAP $MODEL $UPDATE_VLLM_CODE $VLLM_VERSION $MAX_MODEL_LENGTH $ENABLE_CHUNKED_PREFILL $BACKEND_WORKERS $MAX_NUM_BATCHED_TOKEN > /dev/null 2>&1 &
   if [ "$UPDATE_VIDUR_CODE" = "true" ]; then
     parallel-ssh -t 0 -h vidur/prediction/config/hosts "cd vidur_opt_scheduler && git checkout $BRANCH_NAME && git pull"
-    parallel-ssh -t 0 -h vidur/prediction/config/hosts "cd vidur_opt_scheduler && git reset --hard HEAD~1 && git pull"
+    parallel-ssh -t 0 -h vidur/prediction/config/hosts "cd vidur_opt_scheduler && git reset --hard HEAD~20 && git pull"
   fi
   nohup sh vidur/prediction/exp/run_exp_predictor.sh $PREDICTOR_CONFIG_PATH $SCHEDULER_METRIC_TYPE $ENABLE_TIME_ESTIMATION $BATCH_CAP $ENABLE_CHUNKED_PREFILL $PREDICTOR_WORKERS $BRANCH_NAME $BATCH_SIZE_THRESHOLD_FOR_TIME_ESTIMATION > /dev/null 2>&1 &
   nohup sh vidur/prediction/exp/run_exp_predictor_2.sh $PREDICTOR_CONFIG_PATH $SCHEDULER_METRIC_TYPE $ENABLE_TIME_ESTIMATION $BATCH_CAP $ENABLE_CHUNKED_PREFILL $PREDICTOR_WORKERS $BRANCH_NAME $BATCH_SIZE_THRESHOLD_FOR_TIME_ESTIMATION > /dev/null 2>&1 &
