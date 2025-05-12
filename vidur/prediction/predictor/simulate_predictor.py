@@ -5,7 +5,6 @@ from math import ceil
 import itertools
 import logging
 import aiohttp
-from aiohttp import ClientSession, TCPConnector
 
 from vidur.config import DummyRequestGeneratorConfig, MetricsConfig, \
     SimulationRequestTimelinePredictorConfig
@@ -68,7 +67,7 @@ class SimulatePredictor(Predictor):
     async def predict(self, target_request: Request):
         start_time = time.time()
         (replica_scheduler, current_gpu_blocks, current_num_requests, current_num_running_request,
-         current_num_waiting_request, current_num_preempted) = await self.get_replica_scheduler()
+         current_num_waiting_request, current_num_preempted) = await self.get_replica_scheduler(target_request.id)
         metrics = {}
         time_to_get_replica_scheduler = (time.time() - start_time) * 1000
         # replica_scheduler.print_requests()
@@ -131,14 +130,17 @@ class SimulatePredictor(Predictor):
         request.set_id(request_id)
         return request
 
-    async def get_replica_scheduler(self):
+    async def get_replica_scheduler(self, request_id):
         start_time = time.time()
-        print(f"Connecting to backend at {self._backend_url} at {start_time}")
+        print(f"Connecting to backend at {self._backend_url} at {start_time}"
+              f" for request, {request_id}")
         async with aiohttp.ClientSession(timeout=AIOHTTP_TIMEOUT) as session:
-            print(f"Connected to backend at {self._backend_url} at {start_time}")
+            print(f"Connected to backend at {self._backend_url} at {time.time() - start_time} for request, "
+                  f"{request_id}")
             async with session.get(self._backend_url) as response:
                 connect_time = (time.time() - start_time) * 1000
-                print(f"Time taken to connect to backend: {connect_time} ms")
+                print(f"Time taken to connect to backend: {connect_time} ms at {time.time() - start_time} "
+                      f"for request, {request_id}")
                 response_data = await response.json()
                 return self.get_replica_scheduler_with_backend_response(response_data)
 
