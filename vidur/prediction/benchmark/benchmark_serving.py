@@ -609,28 +609,25 @@ class MeasureLatency:
             if 'ttft' in output:
                 self._engine_ttft.append(output['ttft'])
                 engine_ttft = output['ttft']
-            record_timestamp = False
+
             if 'sampled_avg_gpu_blocks' in output:
                 self._avg_gpu_blocks.append(output['sampled_avg_gpu_blocks'])
                 self._var_gpu_blocks.append(output['sampled_var_gpu_blocks'])
-                record_timestamp = True
             else:
                 self._avg_gpu_blocks.append(None)
                 self._var_gpu_blocks.append(None)
             if 'sampled_avg_n_request' in output:
                 self._avg_num_waiting_requests.append(output['sampled_avg_n_request'])
                 self._var_num_waiting_requests.append(output['sampled_var_n_request'])
-                record_timestamp = True
             else:
                 self._avg_num_waiting_requests.append(None)
                 self._var_num_waiting_requests.append(None)
             if 'num_preempted' in output:
                 self._num_preempted.append(output['num_preempted'])
-                record_timestamp = True
             else:
                 self._num_preempted.append(None)
-            if record_timestamp:
-                self._requested_timestamps.append(start)
+
+            self._requested_timestamps.append(start)
             return prompt, output
 
         return measured
