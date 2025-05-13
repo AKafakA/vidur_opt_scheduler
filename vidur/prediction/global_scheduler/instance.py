@@ -1,7 +1,7 @@
 import aiohttp
 import time
 AIOHTTP_TIMEOUT = aiohttp.ClientTimeout(total=60 * 5)
-QUERY_PREDICTOR_TIMEOUT = aiohttp.ClientTimeout(total=60)
+QUERY_PREDICTOR_TIMEOUT = aiohttp.ClientTimeout(total=2)
 
 
 class Instance:
@@ -63,15 +63,16 @@ class Instance:
             "num_predicted_tokens": predicted_num_decode_tokens,
         }
         start = time.time()
-        async with aiohttp.ClientSession(timeout=AIOHTTP_TIMEOUT) as session:
+        async with aiohttp.ClientSession(timeout=QUERY_PREDICTOR_TIMEOUT) as session:
             async with session.post(self._backend_url, json=request_dict, ssl=False) as response:
                 response_dict = await response.json()
                 serving_time = time.time() - start
                 response_dict['serving_time'] = serving_time
                 response_dict['instance_id'] = self._instance_id
-                self.serving_time.append((serving_time, self._predicted_latency[request_id]))
-                self.predicted_error.append(serving_time - self._predicted_latency[request_id])
-                self.predicted_error_ratio.append(abs(serving_time - self._predicted_latency[request_id]) / serving_time)
+                if self._predicted_latency.get(request_id) > 0:
+                    self.serving_time.append((serving_time, self._predicted_latency[request_id]))
+                    self.predicted_error.append(serving_time - self._predicted_latency[request_id])
+                    self.predicted_error_ratio.append(abs(serving_time - self._predicted_latency[request_id]) / serving_time)
                 return response_dict
 
     def get_current_qpm(self):

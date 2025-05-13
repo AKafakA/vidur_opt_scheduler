@@ -5,6 +5,7 @@ from math import ceil
 import itertools
 import logging
 import aiohttp
+import asyncio
 
 from vidur.config import DummyRequestGeneratorConfig, MetricsConfig, \
     SimulationRequestTimelinePredictorConfig
@@ -18,7 +19,7 @@ from vidur.types.optimal_global_scheduler_target_metric import TargetMetric
 logging.basicConfig(level=logging.INFO,
                     filemode='a+',
                     filename='predictor_benchmark.log')
-QUERY_BACKEND_AIOHTTP_TIMEOUT = aiohttp.ClientTimeout(total=10)
+QUERY_BACKEND_AIOHTTP_TIMEOUT = aiohttp.ClientTimeout(total=1)
 
 
 class SimulatePredictor(Predictor):
@@ -81,12 +82,10 @@ class SimulatePredictor(Predictor):
             target_metric = current_gpu_blocks
         elif self._config.target_metric == "min_current_requests":
             target_metric = current_num_requests
-        elif self._config.target_metric == "random" or self._config.target_metric == "round_robin":
-            target_metric = random.randint(0, 100)
         elif self._config.target_metric == "min_infass_load":
             target_metric = (current_num_requests / current_gpu_blocks) * (-1)
         else:
-            raise ValueError(f"Invalid metrics type: {self._config.target_metric}")
+            target_metric = random.randint(0, 100)
         metrics["target_metric"] = target_metric
         metrics["gpu_blocks"] = current_gpu_blocks
         metrics["num_requests"] = current_num_requests
@@ -134,19 +133,21 @@ class SimulatePredictor(Predictor):
         start_time = time.time()
         print(f"Connecting to backend at {self._backend_url} at {start_time - self._start_time} "
               f" for request, {request_id}")
-        try:
-            async with aiohttp.ClientSession(timeout=QUERY_BACKEND_AIOHTTP_TIMEOUT) as session:
-                print(f"Connected to backend at {self._backend_url} after {(time.time() - start_time) * 1000} "
-                      f" ms for request {request_id}")
+
+        async with aiohttp.ClientSession(timeout=QUERY_BACKEND_AIOHTTP_TIMEOUT) as session:
+            print(f"Connected to backend at {self._backend_url} after {(time.time() - start_time) * 1000} "
+                  f" ms for request {request_id}")
+            try:
                 async with session.get(self._backend_url) as response:
                     connect_time = (time.time() - start_time) * 1000
                     print(f"Time taken to connect to backend: {connect_time} ms at {time.time()} "
                           f"for request {request_id}")
                     response_data = await response.json()
                     return self.get_replica_scheduler_with_backend_response(response_data)
-        except aiohttp.ClientError as e:
-            print(f"Error connecting to backend: {e} in time, use default replica scheduler")
-            return None, -1, -1, -1, -1, -1  # return default values if connection fails
+            except asyncio.TimeoutError as e:
+                connect_time = (time.time() - start_time) * 1000
+                print(f"timed out: {e} in time, use default results {connect_time}")
+                return None, -1, -1, -1, -1, -1
 
     def get_replica_scheduler_with_backend_response(self, response):
         current_gpu_blocks = 0
