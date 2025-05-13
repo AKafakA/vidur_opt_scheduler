@@ -1,6 +1,6 @@
 import aiohttp
 import time
-AIOHTTP_TIMEOUT = aiohttp.ClientTimeout(total=60 * 10)
+AIOHTTP_TIMEOUT = aiohttp.ClientTimeout(total=60 * 20)
 QUERY_PREDICTOR_TIMEOUT = aiohttp.ClientTimeout(total=1.5)
 
 
