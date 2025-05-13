@@ -33,7 +33,6 @@ async def predict(request: Request) -> Response:
     start_time = time.time()
     request_dict = await request.json()
     vidur_request = convert_request(request_dict)
-    print(f"received request: {vidur_request.id} at {time.time() - start_time}")
     metric = await predictor.predict(vidur_request)
     time_elapsed = (time.time() - start_time) * 1000
     logging.debug("Predicted metric: %s for request: %s", metric, str(vidur_request.id))

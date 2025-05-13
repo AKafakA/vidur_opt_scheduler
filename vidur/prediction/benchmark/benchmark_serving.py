@@ -38,6 +38,23 @@ num_finished_requests = 0
 server_num_requests = {}
 
 
+def fill_missing_metrics(metric, fill_strategy="average_of_neighbors"):
+    for i in range(len(metric)):
+        if metric[i] is None:
+            if fill_strategy == "average_of_neighbors":
+                left = i - 1
+                right = i + 1
+                while left >= 0 and metric[left] is None:
+                    left -= 1
+                while right < len(metric) and metric[right] is None:
+                    right += 1
+                if left >= 0 and right < len(metric):
+                    metric[i] = (metric[left] + metric[right]) / 2
+                elif left >= 0:
+                    metric[i] = metric[left]
+                elif right < len(metric):
+                    metric[i] = metric[right]
+
 def get_wait_time(qps: float, distribution: str, burstiness: float = 1.0) -> float:
     mean_time_between_requests = 1.0 / qps
     if distribution == "uniform":
@@ -101,7 +118,7 @@ async def query_model_block(prompt, verbose, ip_ports, write_to_file=''):
     prompt, prompt_len, max_response_len, estimated_response_len, request_id = prompt
     global server_num_requests
     global_scheduler_ip_port = ip_ports[0]
-    timeout = aiohttp.ClientTimeout(total=10 * 60 * 60)
+    timeout = aiohttp.ClientTimeout(total=10 * 60)
     global num_finished_requests
 
     request_dict = {
@@ -597,17 +614,36 @@ class MeasureLatency:
                 self._avg_gpu_blocks.append(output['sampled_avg_gpu_blocks'])
                 self._var_gpu_blocks.append(output['sampled_var_gpu_blocks'])
                 record_timestamp = True
+            else:
+                self._avg_gpu_blocks.append(None)
+                self._var_gpu_blocks.append(None)
             if 'sampled_avg_n_request' in output:
                 self._avg_num_waiting_requests.append(output['sampled_avg_n_request'])
                 self._var_num_waiting_requests.append(output['sampled_var_n_request'])
                 record_timestamp = True
+            else:
+                self._avg_num_waiting_requests.append(None)
+                self._var_num_waiting_requests.append(None)
             if 'num_preempted' in output:
                 self._num_preempted.append(output['num_preempted'])
+                record_timestamp = True
+            else:
+                self._num_preempted.append(None)
             if record_timestamp:
                 self._requested_timestamps.append(start)
             return prompt, output
 
         return measured
+
+    def fill_missing_metrics(self):
+        fill_missing_metrics(self._num_preempted)
+        fill_missing_metrics(self._avg_gpu_blocks)
+        fill_missing_metrics(self._var_gpu_blocks)
+        fill_missing_metrics(self._avg_num_waiting_requests)
+        fill_missing_metrics(self._var_num_waiting_requests)
+        fill_missing_metrics(self._num_preempted)
+
+
 
 
 def get_token_ids(input_str, tokenizer):
@@ -680,6 +716,8 @@ async def benchmark(
                 sampled_prompts.append(prompt)
                 sampled_responses.append(output['generated_text'])
                 sampled_responses_length = get_tok_id_lens(tokenizer, sampled_responses)
+
+    m.fill_missing_metrics()
 
     throughput, actual_qps, msg = calculate_throughput(queries,
                                                        dur_s,

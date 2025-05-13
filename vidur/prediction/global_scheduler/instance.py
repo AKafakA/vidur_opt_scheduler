@@ -1,13 +1,7 @@
-import time
-from datetime import datetime
-
 import aiohttp
-import numpy as np
 import time
-
-from vidur.prediction.server_utils import post_predicting_request, get_predicting_response
-
-AIOHTTP_TIMEOUT = aiohttp.ClientTimeout(total=6 * 60 * 60 * 10)
+AIOHTTP_TIMEOUT = aiohttp.ClientTimeout(total=60 * 5)
+QUERY_PREDICTOR_TIMEOUT = aiohttp.ClientTimeout(total=60)
 
 
 class Instance:

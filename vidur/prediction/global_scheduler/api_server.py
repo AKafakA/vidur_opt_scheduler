@@ -7,7 +7,6 @@ import time
 from argparse import Namespace
 from typing import Any, Optional, List
 import numpy as np
-import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, Response
 
@@ -32,6 +31,7 @@ logger = logging.getLogger(__name__)
 
 correct_flags = []
 average_gaps = []
+random_assigned = []
 
 
 @app.post("/generate_benchmark")
@@ -64,13 +64,30 @@ async def generate_benchmark(request: Request) -> Response:
         print(f"Error during prediction: {e}")
         return JSONResponse({"error": "Prediction failed"}, status_code=500)
 
+    predict_results = [x for x in predict_results if x['gpu_blocks'] > 0]
     single_metric = {'sampled_avg_gpu_blocks': np.mean([x['gpu_blocks'] for x in predict_results]),
                      'sampled_var_gpu_blocks': np.var([x['gpu_blocks'] for x in predict_results]),
                      'sampled_avg_n_request': np.mean([x['num_requests'] for x in predict_results]),
                      'sampled_var_n_request': np.var([x['num_requests'] for x in predict_results]),
                      'num_preempted': sum([x['num_preempted'] for x in predict_results])}
 
-    if (metrics_type.startswith("min") or metrics_type.startswith("max")) and "current" not in metrics_type:
+    if len(predict_results) == 0:
+        selected_index = random.randint(0, len(instances) - 1)
+        selected_instance = instances[selected_index]
+        try:
+            response = await selected_instance.query_backend(prompt, max_response_len, request_id,
+                                                             predicted_num_decode_tokens)
+            global random_assigned
+            random_assigned.append((request_id, selected_instance._instance_id))
+        except Exception as e:
+            print(f"Error during prediction: {e}")
+            return JSONResponse({"error": "Prediction failed"}, status_code=500)
+        print(f"Randomly assigned request {request_id} to instance {selected_instance._instance_id}, "
+              f"current number of randomly assigned requests: {len(random_assigned)} at time {time.time() - start_time}")
+        return JSONResponse(response)
+
+    if (metrics_type.startswith("min") or metrics_type.startswith("max")) and "current" not in metrics_type \
+            and len(predict_results) > m:
         predict_results = random.sample(predict_results, min(n, len(predict_results)))
 
     predicted_sampled_results = []
