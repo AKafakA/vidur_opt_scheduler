@@ -1,7 +1,7 @@
 import aiohttp
 import time
-AIOHTTP_TIMEOUT = aiohttp.ClientTimeout(total=60 * 5)
-QUERY_PREDICTOR_TIMEOUT = aiohttp.ClientTimeout(total=2)
+AIOHTTP_TIMEOUT = aiohttp.ClientTimeout(total=60 * 10)
+QUERY_PREDICTOR_TIMEOUT = aiohttp.ClientTimeout(total=1.5)
 
 
 class Instance:
@@ -38,7 +38,7 @@ class Instance:
             "num_decode_tokens": predicted_num_context_tokens,
         }
         predict_url = self._predictor_urls[request_id % len(self._predictor_urls)]
-        async with aiohttp.ClientSession(timeout=AIOHTTP_TIMEOUT) as session:
+        async with aiohttp.ClientSession(timeout=QUERY_PREDICTOR_TIMEOUT) as session:
             async with session.post(predict_url, json=predict_parameters, ssl=False) as response:
                 response_dict = await response.json()
                 response_dict['instance_id'] = self._instance_id
@@ -63,7 +63,7 @@ class Instance:
             "num_predicted_tokens": predicted_num_decode_tokens,
         }
         start = time.time()
-        async with aiohttp.ClientSession(timeout=QUERY_PREDICTOR_TIMEOUT) as session:
+        async with aiohttp.ClientSession(timeout=AIOHTTP_TIMEOUT) as session:
             async with session.post(self._backend_url, json=request_dict, ssl=False) as response:
                 response_dict = await response.json()
                 serving_time = time.time() - start
