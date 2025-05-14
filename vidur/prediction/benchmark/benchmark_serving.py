@@ -349,8 +349,7 @@ def calculate_throughput(queries,
             f"{fail_on_response_failure=}, expected number of successful respones to equal number of queries, got {len(responses)} vs {len(queries)}"
     else:
         error_count = len(queries) - len(responses)
-        msg = (f"error_count {error_count} out of {len(queries)} queries with success rate {error_count / len(queries)} "
-               f"\n")
+        msg += (f"\n error_count {error_count} out of {len(queries)} queries with success rate {error_count / len(queries)}")
     return throughput_tok_s, qps, msg
 
 

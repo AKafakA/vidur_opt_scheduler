@@ -166,6 +166,7 @@ async def generate_benchmark(request: Request) -> Response:
             correct_flags.append(False)
         average_gaps.append(gap_info)
         response = random.choice(responses)
+        print_instance_errors()
     else:
         if metrics_type.startswith("min") or metrics_type.startswith("max"):
             # if current in metrics means all node need to be queried and select the one with min/max
