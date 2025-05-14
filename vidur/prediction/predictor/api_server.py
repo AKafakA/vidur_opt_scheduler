@@ -63,6 +63,7 @@ async def init_app(
     config.threshold_batch_size_for_time_estimation = args.threshold_batch_size_for_time_estimation
     predictor = (instance_predictor if instance_predictor is not None else
                  get_predictor(args.predictor_type, config, instance_port))
+    config.prediction_timeout = args.predictor_timeout
     return app
 
 
@@ -122,6 +123,7 @@ if __name__ == "__main__":
                         help="Threshold batch size for enabling time estimation. "
                              "Less that 0 means disable time estimation. 0 means always enable time estimation."
                              "And >0 means enable time estimation only when batch size > this")
+    parser.add_argument("--predictor_timeout", type=int, default=10)
     logging.log(logging.INFO, "Starting server with args: %s", str(parser.parse_args()))
     args = parser.parse_args()
     resource.setrlimit(resource.RLIMIT_NOFILE, (65536, 65536))

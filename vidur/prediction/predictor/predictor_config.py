@@ -35,6 +35,10 @@ class PredictorConfig(ABC):
         default=36,
         metadata={"help": "Threshold batch size for time estimation."},
     )
+    prediction_timeout: int = field(
+        default=10,
+        metadata={"help": "Timeout for the prediction request."},
+    )
 
     @classmethod
     def create_from_dict(cls, data: dict, enable_chunked_prefill: bool = False):

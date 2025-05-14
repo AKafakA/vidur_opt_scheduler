@@ -19,7 +19,6 @@ from vidur.types.optimal_global_scheduler_target_metric import TargetMetric
 logging.basicConfig(level=logging.INFO,
                     filemode='a+',
                     filename='predictor_benchmark.log')
-QUERY_BACKEND_AIOHTTP_TIMEOUT = aiohttp.ClientTimeout(total=1)
 
 
 class SimulatePredictor(Predictor):
@@ -64,6 +63,7 @@ class SimulatePredictor(Predictor):
         self._port = port
         self._start_time = time.time()
         self._backend_url = f"http://localhost:{self._port}/schedule_trace"
+        self._query_timeout = aiohttp.ClientTimeout(total=config.prediction_timeout * 0.9)
 
     async def predict(self, target_request: Request):
         start_time = time.time()
@@ -134,7 +134,7 @@ class SimulatePredictor(Predictor):
         print(f"Connecting to backend at {self._backend_url} at {start_time - self._start_time} "
               f" for request, {request_id}")
 
-        async with aiohttp.ClientSession(timeout=QUERY_BACKEND_AIOHTTP_TIMEOUT) as session:
+        async with aiohttp.ClientSession(timeout=self._query_timeout) as session:
             print(f"Connected to backend at {self._backend_url} after {(time.time() - start_time) * 1000} "
                   f" ms for request {request_id}")
             try:

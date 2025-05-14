@@ -229,7 +229,9 @@ async def init_app(
                 for i in range(min(args.num_predictor_ports, len(value["predictor_ports"]))):
                     ports.append(value["predictor_ports"][i])
             print(f"instance {key} with ip {value['ip_address']} and predictor port {ports}")
-            instance = Instance(key, value["ip_address"], ports, value["backend_port"])
+            instance = Instance(key, value["ip_address"], ports, value["backend_port"],
+                                query_predictor_timeout=args.predictor_timeout,
+                                query_backend_timeout=args.backend_timeout)
             instances.append(instance)
     start_time = time.time()
     metrics_type = args.metrics_type
@@ -290,6 +292,8 @@ if __name__ == "__main__":
     parser.add_argument("--debugging_logs", type=bool, default=True)
     parser.add_argument("--profiling_sampling_rate", type=float, default=0.1)
     parser.add_argument("--num_predictor_ports", type=int, default=-1)
+    parser.add_argument("--predictor_timeout", type=int, default=10)
+    parser.add_argument("--backend_timeout", type=int, default=600)
     args = parser.parse_args()
     logger.info("Starting server with args: %s", str(args))
     # in case the limited by the number of files

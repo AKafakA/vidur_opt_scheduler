@@ -1,14 +1,14 @@
 import aiohttp
 import time
-AIOHTTP_TIMEOUT = aiohttp.ClientTimeout(total=60 * 20)
-QUERY_PREDICTOR_TIMEOUT = aiohttp.ClientTimeout(total=1.5)
 
 
 class Instance:
     def __init__(self, instance_id,
                  ip_address,
                  predictor_ports,
-                 backend_port):
+                 backend_port,
+                 query_predictor_timeout=10,
+                 query_backend_timeout=10 * 60 * 2):
         self._instance_id = instance_id
         self._predictor_ports = predictor_ports
         self._backend_port = backend_port
@@ -22,6 +22,8 @@ class Instance:
         self.predicted_error = []
         self.predicted_error_ratio = []
         self.serving_time = []
+        self._predictor_timeout = aiohttp.ClientTimeout(total=query_predictor_timeout)
+        self._backend_timeout = aiohttp.ClientTimeout(total=query_backend_timeout)
 
     def __str__(self):
         return (f"Instance {self._instance_id} with predictor port {self._predictor_port} "
@@ -38,7 +40,7 @@ class Instance:
             "num_decode_tokens": predicted_num_context_tokens,
         }
         predict_url = self._predictor_urls[request_id % len(self._predictor_urls)]
-        async with aiohttp.ClientSession(timeout=QUERY_PREDICTOR_TIMEOUT) as session:
+        async with aiohttp.ClientSession(timeout=self._predictor_timeout) as session:
             async with session.post(predict_url, json=predict_parameters, ssl=False) as response:
                 response_dict = await response.json()
                 response_dict['instance_id'] = self._instance_id
@@ -63,7 +65,7 @@ class Instance:
             "num_predicted_tokens": predicted_num_decode_tokens,
         }
         start = time.time()
-        async with aiohttp.ClientSession(timeout=AIOHTTP_TIMEOUT) as session:
+        async with aiohttp.ClientSession(timeout=self._backend_timeout) as session:
             async with session.post(self._backend_url, json=request_dict, ssl=False) as response:
                 response_dict = await response.json()
                 serving_time = time.time() - start

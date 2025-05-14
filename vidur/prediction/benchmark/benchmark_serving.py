@@ -706,7 +706,7 @@ async def benchmark(
     start_time = time.time()
     tasks = []
     async for prompt in async_prompts:
-        tasks.append(asyncio.create_task(query_model(prompt, verbose, ip_ports, write_to_file, timeout_in_seconds)))
+        tasks.append(asyncio.create_task(query_model(prompt, verbose, ip_ports, write_to_file, timeout_in_seconds + 1)))
     queries = await asyncio.gather(*tasks)
     dur_s = time.time() - start_time
     mean_token_latency = np.mean(m._per_token_latencies)
