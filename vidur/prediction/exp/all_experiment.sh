@@ -1,4 +1,3 @@
-NUM_REQUEST=10000
 START_INDEX=0
 BATCH_CAP=48
 TARGET_HOST='asdwb@d7525-10s10309.wisc.cloudlab.us'
@@ -20,6 +19,7 @@ BRANCH_NAME="single_predictor_evaluation"
 #N_SELECTED="12 2"
 #PROFILING_SAMPLE_RATE="0.0 0.1"
 #USE_FOR_PROFILING_ONLY="false"
+#NUM_REQUEST=10000
 ENABLE_CHUNKED_PREFILL="true"
 
 # Config for single predictor experiment
@@ -30,6 +30,7 @@ QPS="24"
 N_SELECTED="12"
 PROFILING_SAMPLE_RATE="0.1"
 USE_FOR_PROFILING_ONLY="true"
+NUM_REQUEST=10000
 
 
 for model in $MODEL; do
