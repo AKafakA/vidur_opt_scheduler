@@ -590,20 +590,6 @@ class MeasureLatency:
                 self._decode_sum_latencies.append(decode_sum_latency)
                 self._all_decode_token_latencies.extend(lat_arr[1:, 1])
                 self._prefill_token_latencies.append(lat_arr[0][1])
-                if 'time_to_predict_in_ms' in output:
-                    # self._global_scheduling_overhead.append(output['time_to_predict_in_ms'])
-                    overhead = output['time_to_predict_in_ms']
-                else:
-                    if 'time_on_backend' in output:
-                        time_on_backend = output['time_on_backend']
-                    else:
-                        start_time_on_backend = lat_arr[0][0] - lat_arr[0][1] / 1000
-                        time_on_backend = (lat_arr[-1][0] - start_time_on_backend) * 1000
-                    overhead = latency - time_on_backend
-                self._global_scheduling_overhead.append(overhead)
-                self._global_scheduling_overhead_ratio.append(100.0 * overhead / latency)
-                if "time_to_get_replica_scheduler_in_ms" in output:
-                    self._time_to_get_replica_scheduler.append(output["time_to_get_replica_scheduler_in_ms"])
             if 'per_token_latency_breakdown_dict' in output:
                 self._inference_latencies.append(
                     np.mean(output['per_token_latency_breakdown_dict']['step_latency_engine']))
@@ -632,7 +618,17 @@ class MeasureLatency:
                 self._num_preempted.append(output['num_preempted'])
             else:
                 self._num_preempted.append(None)
-
+            if 'time_to_predict_in_ms' in output:
+                overhead = output['time_to_predict_in_ms']
+                self._global_scheduling_overhead.append(overhead)
+                self._global_scheduling_overhead_ratio.append(100.0 * overhead / latency)
+            else:
+                self._global_scheduling_overhead.append(None)
+                self._global_scheduling_overhead_ratio.append(None)
+            if "time_to_get_replica_scheduler_in_ms" in output:
+                self._time_to_get_replica_scheduler.append(output["time_to_get_replica_scheduler_in_ms"])
+            else:
+                self._time_to_get_replica_scheduler.append(None)
             self._requested_timestamps.append(start)
             return prompt, output
 
@@ -645,6 +641,8 @@ class MeasureLatency:
         fill_missing_metrics(self._avg_num_waiting_requests)
         fill_missing_metrics(self._var_num_waiting_requests)
         fill_missing_metrics(self._num_preempted)
+        fill_missing_metrics(self._global_scheduling_overhead)
+        fill_missing_metrics(self._global_scheduling_overhead_ratio)
 
 
 
