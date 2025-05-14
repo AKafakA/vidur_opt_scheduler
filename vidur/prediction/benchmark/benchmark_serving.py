@@ -578,6 +578,7 @@ class MeasureLatency:
                     pass
             client_ttft = -1.0
             engine_ttft = -1.0
+            time_on_backend = -1.0
             if 'request_id' in output:
                 self._request_ids.append(output['request_id'])
             if 'per_token_latency' in output:
@@ -590,6 +591,11 @@ class MeasureLatency:
                 self._decode_sum_latencies.append(decode_sum_latency)
                 self._all_decode_token_latencies.extend(lat_arr[1:, 1])
                 self._prefill_token_latencies.append(lat_arr[0][1])
+                if 'time_on_backend' in output:
+                    time_on_backend = output['time_on_backend']
+                else:
+                    start_time_on_backend = lat_arr[0][0] - lat_arr[0][1] / 1000
+                    time_on_backend = (lat_arr[-1][0] - start_time_on_backend) * 1000
             if 'per_token_latency_breakdown_dict' in output:
                 self._inference_latencies.append(
                     np.mean(output['per_token_latency_breakdown_dict']['step_latency_engine']))
@@ -620,6 +626,11 @@ class MeasureLatency:
                 self._num_preempted.append(None)
             if 'time_to_predict_in_ms' in output:
                 overhead = output['time_to_predict_in_ms']
+            elif time_on_backend > 0:
+                overhead = latency - time_on_backend
+            else:
+                overhead = None
+            if overhead is not None:
                 self._global_scheduling_overhead.append(overhead)
                 self._global_scheduling_overhead_ratio.append(100.0 * overhead / latency)
             else:
