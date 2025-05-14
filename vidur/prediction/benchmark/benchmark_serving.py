@@ -646,6 +646,7 @@ class MeasureLatency:
         return measured
 
     def fill_missing_metrics(self):
+        print(self._global_scheduling_overhead)
         fill_missing_metrics(self._num_preempted)
         fill_missing_metrics(self._avg_gpu_blocks)
         fill_missing_metrics(self._var_gpu_blocks)
@@ -654,8 +655,9 @@ class MeasureLatency:
         fill_missing_metrics(self._num_preempted)
         fill_missing_metrics(self._global_scheduling_overhead)
         fill_missing_metrics(self._global_scheduling_overhead_ratio)
-
         print(self._global_scheduling_overhead)
+
+
 
 
 
