@@ -706,7 +706,8 @@ async def benchmark(
     start_time = time.time()
     tasks = []
     async for prompt in async_prompts:
-        tasks.append(asyncio.create_task(query_model(prompt, verbose, ip_ports, write_to_file, timeout_in_seconds + 1)))
+        # add small extra timeout to avoid conflict with downstream
+        tasks.append(asyncio.create_task(query_model(prompt, verbose, ip_ports, write_to_file, timeout_in_seconds + 0.01)))
     queries = await asyncio.gather(*tasks)
     dur_s = time.time() - start_time
     mean_token_latency = np.mean(m._per_token_latencies)
@@ -1024,7 +1025,7 @@ def main():
     parser.add_argument('--keep_all_metrics', type=bool, default=False)
     parser.add_argument("--output_dir", type=str, default="benchmark_output")
     parser.add_argument("--use_estimated_response_lens", action='store_true')
-    parser.add_argument("--timeout_in_seconds", type=int, default=600)
+    parser.add_argument("--timeout_in_seconds", type=int, default=1800)
 
     args = parser.parse_args()
 
