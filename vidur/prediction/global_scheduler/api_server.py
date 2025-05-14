@@ -34,6 +34,40 @@ average_gaps = []
 random_assigned = []
 
 
+def print_instance_errors():
+    errors = []
+    error_ratios = []
+    real_response_serving_time = []
+    for instance in instances:
+        errors.extend(instance.predicted_error)
+        error_ratios.extend(instance.predicted_error_ratio)
+        real_response_serving_time.extend(instance.serving_time)
+    total_s = 0.0
+    total_p = 0.0
+    count = 0.0
+    for serving, predicted in real_response_serving_time:
+        total_s = total_s + serving
+        total_p = total_p + predicted
+        count = count + 1
+
+    predict_accuracy = (1.0 * sum(correct_flags)) / len(correct_flags)
+    averages = [x["average"] for x in average_gaps if x is not None]
+    mins = [x["min"] for x in average_gaps if x is not None]
+    randoms = [x["random"] for x in average_gaps if x is not None]
+
+    print(f"average serving {total_s / count} and average predicted {total_p / count}")
+    print(f"Mean of Prediction error ratio {np.mean(error_ratios)}")
+    print(f"P50 of Prediction error ratio {np.percentile(error_ratios, 50)}")
+    print(f"Mean of Prediction error {np.mean(errors)}")
+    print(f"P50 of Prediction error {np.percentile(errors, 50)}")
+    print(f"underestimated errors (s > p) {len([error for error in errors if error > 0])} in {len(errors)} in error")
+    print(f"Percentage of A-0.1 {len([error for error in errors if error < 0.1]) / len(errors)}")
+    print(f"Percentage of A-1 {len([error for error in errors if error < 1]) / len(errors)}")
+    print(f"Average error {np.mean(errors)}")
+    print(f"Average gap: {np.mean(averages)}, Min gap: {np.mean(mins)}, Random gap: {np.mean(randoms)}")
+    print(f"Predict accuracy: {predict_accuracy} for compare")
+
+
 @app.post("/generate_benchmark")
 async def generate_benchmark(request: Request) -> Response:
     """Generate completion for the request with profiling.
@@ -51,8 +85,6 @@ async def generate_benchmark(request: Request) -> Response:
     arrived_at = time.time() - start_time
     _ = request_dict.pop("stream", False)
     predict_tasks = []
-    print(f"received request: {request_id} at {time.time() - start_time}")
-
     is_sampled_for_compare = random.uniform(0, 1) < profiling_sampling_rate
 
     for instance in instances:
@@ -101,9 +133,9 @@ async def generate_benchmark(request: Request) -> Response:
     if is_sampled_for_compare:
         # only one profile sampling is allowed and will block the other normal request
         sampled_instanced = [x['instance_id'] for x in predict_results]
-        responses = await asyncio.gather(*[instance.query_backend(prompt, max_response_len, request_id,
-                                                                  predicted_num_decode_tokens) for
-                                            instance in instances if instance._instance_id in sampled_instanced])
+        responses = await asyncio.gather(*[instance.query_backend(
+            prompt, max_response_len, request_id, predicted_num_decode_tokens)
+            for instance in instances if instance._instance_id in sampled_instanced])
 
         serving_times = [(response['instance_id'], response["serving_time"]) for response in responses]
 
@@ -134,12 +166,6 @@ async def generate_benchmark(request: Request) -> Response:
             correct_flags.append(False)
         average_gaps.append(gap_info)
         response = random.choice(responses)
-        predict_accuracy = (1.0 * sum(correct_flags)) / len(correct_flags)
-        averages = [x["average"] for x in average_gaps if x is not None]
-        mins = [x["min"] for x in average_gaps if x is not None]
-        randoms = [x["random"] for x in average_gaps if x is not None]
-        print(f"Average gap: {np.mean(averages)}, Min gap: {np.mean(mins)}, Random gap: {np.mean(randoms)}")
-        print(f"Predict accuracy: {predict_accuracy} for compare")
     else:
         if metrics_type.startswith("min") or metrics_type.startswith("max"):
             # if current in metrics means all node need to be queried and select the one with min/max
@@ -151,7 +177,8 @@ async def generate_benchmark(request: Request) -> Response:
             candidates_indexes = [i for i, value in enumerate(target_metrics) if value == target_metric]
             metric_selected_index = random.choice(candidates_indexes)
             selected_instance_id = (predict_results[metric_selected_index])['instance_id']
-            selected_index = [i for i, instance in enumerate(instances) if selected_instance_id == instance._instance_id][0]
+            selected_index = \
+                [i for i, instance in enumerate(instances) if selected_instance_id == instance._instance_id][0]
         elif metrics_type == "random":
             selected_index = random.randint(0, len(instances) - 1)
         elif metrics_type == "round_robin":
@@ -172,36 +199,6 @@ async def generate_benchmark(request: Request) -> Response:
             return JSONResponse({"error": "Prediction failed"}, status_code=500)
     for key, value in single_metric.items():
         response[key] = value
-    errors = []
-    error_ratios = []
-    real_response_serving_time = []
-    for instance in instances:
-        errors.extend(instance.predicted_error)
-        error_ratios.extend(instance.predicted_error_ratio)
-        real_response_serving_time.extend(instance.serving_time)
-
-    print(f"Mean of Prediction error {np.mean(errors)}")
-    print(f"P50 of Prediction error {np.percentile(errors, 50)}")
-
-    print(f"underestimated errors (s > p) {len([error for error in errors if error > 0])} in {len(errors)} in error")
-
-    print(f"Percentage of A-0.1 {len([error for error in errors if error < 0.1]) / len(errors)}")
-    print(f"Percentage of A-1 {len([error for error in errors if error < 1]) / len(errors)}")
-
-    print(f"Average error {np.mean(errors)}")
-
-    total_s = 0.0
-    total_p = 0.0
-    count = 0.0
-    for serving, predicted in real_response_serving_time:
-        total_s = total_s + serving
-        total_p = total_p + predicted
-        count = count + 1
-
-    print(f"average serving {total_s / count} and average predicted {total_p / count}")
-
-    print(f"Mean of Prediction error ratio {np.mean(error_ratios)}")
-    print(f"P50 of Prediction error ratio {np.percentile(error_ratios, 50)}")
     return JSONResponse(response)
 
 
