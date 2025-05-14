@@ -644,6 +644,8 @@ class MeasureLatency:
         fill_missing_metrics(self._global_scheduling_overhead)
         fill_missing_metrics(self._global_scheduling_overhead_ratio)
 
+        print(self._global_scheduling_overhead)
+
 
 
 
