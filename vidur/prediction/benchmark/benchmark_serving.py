@@ -560,8 +560,6 @@ class MeasureLatency:
         self._requested_timestamps = []
         self._num_preempted = []
 
-        self._time_to_get_replica_scheduler = []
-
     def measure(self, f):
         async def measured(*args, **kwargs):
             start = time.time()
@@ -636,17 +634,12 @@ class MeasureLatency:
             else:
                 self._global_scheduling_overhead.append(None)
                 self._global_scheduling_overhead_ratio.append(None)
-            if "time_to_get_replica_scheduler_in_ms" in output:
-                self._time_to_get_replica_scheduler.append(output["time_to_get_replica_scheduler_in_ms"])
-            else:
-                self._time_to_get_replica_scheduler.append(None)
             self._requested_timestamps.append(start)
             return prompt, output
 
         return measured
 
     def fill_missing_metrics(self):
-        print(self._global_scheduling_overhead)
         fill_missing_metrics(self._num_preempted)
         fill_missing_metrics(self._avg_gpu_blocks)
         fill_missing_metrics(self._var_gpu_blocks)
@@ -655,7 +648,6 @@ class MeasureLatency:
         fill_missing_metrics(self._num_preempted)
         fill_missing_metrics(self._global_scheduling_overhead)
         fill_missing_metrics(self._global_scheduling_overhead_ratio)
-        print(self._global_scheduling_overhead)
 
 
 
@@ -784,9 +776,6 @@ async def benchmark(
         if m._global_scheduling_overhead_ratio:
             data = {'timestamp': timestamps, 'metric': m._global_scheduling_overhead_ratio}
             plot_sampled_timestamp_metrics(data, log_filename, "prediction overhead ratio(%)", output_dir)
-        if m._time_to_get_replica_scheduler:
-            data = {'timestamp': timestamps, 'metric': m._time_to_get_replica_scheduler}
-            plot_sampled_timestamp_metrics(data, log_filename, "Time_to_get_replica(ms)", output_dir)
 
     # avg_instance_num = plot_instance(log_filename)
     avg_instance_num = 0.0
