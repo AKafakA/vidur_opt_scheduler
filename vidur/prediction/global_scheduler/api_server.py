@@ -96,8 +96,6 @@ async def generate_benchmark(request: Request) -> Response:
         print(f"Error during prediction: {e}")
         return JSONResponse({"error": "Prediction failed"}, status_code=500)
 
-    time_in_predict_in_ms = (time.time() - start_time) * 1000
-
     predict_results = [x for x in predict_results if x['gpu_blocks'] > 0]
     single_metric = {'sampled_avg_gpu_blocks': np.mean([x['gpu_blocks'] for x in predict_results]),
                      'sampled_var_gpu_blocks': np.var([x['gpu_blocks'] for x in predict_results]),
@@ -202,7 +200,6 @@ async def generate_benchmark(request: Request) -> Response:
             return JSONResponse({"error": "Prediction failed"}, status_code=500)
     for key, value in single_metric.items():
         response[key] = value
-    response["time_to_predict_in_ms"] = time_in_predict_in_ms
     return JSONResponse(response)
 
 
