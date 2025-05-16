@@ -750,7 +750,7 @@ async def benchmark(
                      m._global_scheduling_overhead, log_filename, backend=backend, output_dir=output_dir)
     save_all_decode_token_latencies_npy(m._all_token_latencies, log_filename, output_dir=output_dir)
     timestamps = [int((x - start_time)) for x in m._requested_timestamps]
-    if timestamps:
+    if len(timestamps) == len(m._avg_gpu_blocks):
         # data = {'timestamp': m._requested_timestamps, 'metric': m._avg_gpu_blocks}
         # plot_sampled_timestamp_metrics(data, log_filename, "avg_gpu_blocks")
         # data = {'timestamp': m._requested_timestamps, 'metric': m._avg_num_waiting_requests}
