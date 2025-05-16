@@ -750,32 +750,32 @@ async def benchmark(
                      m._global_scheduling_overhead, log_filename, backend=backend, output_dir=output_dir)
     save_all_decode_token_latencies_npy(m._all_token_latencies, log_filename, output_dir=output_dir)
     timestamps = [int((x - start_time)) for x in m._requested_timestamps]
-    if len(timestamps) == len(m._avg_gpu_blocks):
-        # data = {'timestamp': m._requested_timestamps, 'metric': m._avg_gpu_blocks}
-        # plot_sampled_timestamp_metrics(data, log_filename, "avg_gpu_blocks")
-        # data = {'timestamp': m._requested_timestamps, 'metric': m._avg_num_waiting_requests}
-        # plot_sampled_timestamp_metrics(data, log_filename, "avg_num_waiting_requests")
-        if m._avg_gpu_blocks:
-            data = {'timestamp': timestamps, 'metric': m._avg_gpu_blocks}
-            plot_sampled_timestamp_metrics(data, log_filename, "avg_gpu_blocks", output_dir)
-        if m._avg_num_waiting_requests:
-            data = {'timestamp': timestamps, 'metric': m._avg_num_waiting_requests}
-            plot_sampled_timestamp_metrics(data, log_filename, "avg_num_waiting_requests", output_dir=output_dir)
-        if m._var_gpu_blocks:
-            data = {'timestamp': timestamps, 'metric': m._var_gpu_blocks}
-            plot_sampled_timestamp_metrics(data, log_filename, "var_gpu_blocks", output_dir)
-        if m._var_num_waiting_requests:
-            data = {'timestamp': timestamps, 'metric': m._var_num_waiting_requests}
-            plot_sampled_timestamp_metrics(data, log_filename, "var_num_waiting_requests", output_dir)
-        if m._num_preempted:
-            data = {'timestamp': timestamps, 'metric': m._num_preempted}
-            plot_sampled_timestamp_metrics(data, log_filename, "num_preempted", output_dir)
-        if m._global_scheduling_overhead:
-            data = {'timestamp': timestamps, 'metric': m._global_scheduling_overhead}
-            plot_sampled_timestamp_metrics(data, log_filename, "prediction overhead(ms)", output_dir)
-        if m._global_scheduling_overhead_ratio:
-            data = {'timestamp': timestamps, 'metric': m._global_scheduling_overhead_ratio}
-            plot_sampled_timestamp_metrics(data, log_filename, "prediction overhead ratio(%)", output_dir)
+    # if len(timestamps) == len(m._avg_gpu_blocks):
+    #     # data = {'timestamp': m._requested_timestamps, 'metric': m._avg_gpu_blocks}
+    #     # plot_sampled_timestamp_metrics(data, log_filename, "avg_gpu_blocks")
+    #     # data = {'timestamp': m._requested_timestamps, 'metric': m._avg_num_waiting_requests}
+    #     # plot_sampled_timestamp_metrics(data, log_filename, "avg_num_waiting_requests")
+    #     if m._avg_gpu_blocks:
+    #         data = {'timestamp': timestamps, 'metric': m._avg_gpu_blocks}
+    #         plot_sampled_timestamp_metrics(data, log_filename, "avg_gpu_blocks", output_dir)
+    #     if m._avg_num_waiting_requests:
+    #         data = {'timestamp': timestamps, 'metric': m._avg_num_waiting_requests}
+    #         plot_sampled_timestamp_metrics(data, log_filename, "avg_num_waiting_requests", output_dir=output_dir)
+    #     if m._var_gpu_blocks:
+    #         data = {'timestamp': timestamps, 'metric': m._var_gpu_blocks}
+    #         plot_sampled_timestamp_metrics(data, log_filename, "var_gpu_blocks", output_dir)
+    #     if m._var_num_waiting_requests:
+    #         data = {'timestamp': timestamps, 'metric': m._var_num_waiting_requests}
+    #         plot_sampled_timestamp_metrics(data, log_filename, "var_num_waiting_requests", output_dir)
+    #     if m._num_preempted:
+    #         data = {'timestamp': timestamps, 'metric': m._num_preempted}
+    #         plot_sampled_timestamp_metrics(data, log_filename, "num_preempted", output_dir)
+    #     if m._global_scheduling_overhead:
+    #         data = {'timestamp': timestamps, 'metric': m._global_scheduling_overhead}
+    #         plot_sampled_timestamp_metrics(data, log_filename, "prediction overhead(ms)", output_dir)
+    #     if m._global_scheduling_overhead_ratio:
+    #         data = {'timestamp': timestamps, 'metric': m._global_scheduling_overhead_ratio}
+    #         plot_sampled_timestamp_metrics(data, log_filename, "prediction overhead ratio(%)", output_dir)
 
     # avg_instance_num = plot_instance(log_filename)
     avg_instance_num = 0.0
