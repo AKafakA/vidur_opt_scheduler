@@ -1,4 +1,3 @@
-import json
 import random
 import time
 from math import ceil
@@ -6,6 +5,8 @@ import itertools
 import logging
 import aiohttp
 import asyncio
+
+import orjson
 
 from vidur.config import DummyRequestGeneratorConfig, MetricsConfig, \
     SimulationRequestTimelinePredictorConfig
@@ -142,7 +143,7 @@ class SimulatePredictor(Predictor):
                     connect_time = (time.time() - start_time) * 1000
                     print(f"Time taken to connect to backend: {connect_time} ms at {time.time()} "
                           f"for request {request_id}")
-                    response_data = await response.json()
+                    response_data = orjson.loads(await response.read())
                     return self.get_replica_scheduler_with_backend_response(response_data)
             except asyncio.TimeoutError as e:
                 connect_time = (time.time() - start_time) * 1000
