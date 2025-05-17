@@ -170,8 +170,7 @@ class SimulatePredictor(Predictor):
         else:
             replica_scheduler = None
 
-        for batch in response.keys():
-            batch_request_information = response[batch]
+        for batch_request_information in response:
             waiting_request_length = batch_request_information["waiting"]
             running_request_length = batch_request_information["running"]
             swap_request_length = batch_request_information["swap"]
