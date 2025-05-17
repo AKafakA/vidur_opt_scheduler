@@ -26,6 +26,16 @@ logging.basicConfig(level=logging.INFO,
 NUM_FIELD_PER_REQUEST = 7
 
 
+def get_predicted_metrics(self, response_data, predicted_target_request,
+                          target_metric: TargetMetric, request_timeline_predictor):
+    replica_scheduler = self.get_replica_scheduler_with_backend_response(response_data)
+    from vidur.request_timeline_predictor.base_request_timeline_predictor import get_target_metric_value
+    metric = get_target_metric_value(target_metric, replica_scheduler, predicted_target_request,
+                                     request_timeline_predictor)
+
+    return metric
+
+
 def convert_list_to_request_infos(raw: list) -> list:
     """
     Convert the raw list of request information into a dictionary with keys
@@ -108,9 +118,11 @@ class SimulatePredictor(Predictor):
             with ProcessPoolExecutor(max_workers=10) as executor:
                 target_metric = await loop.run_in_executor(
                     executor,
-                    self.get_predicted_metrics,
+                    get_predicted_metrics,
                     response_data,
-                    target_request
+                    target_request,
+                    self._target_metric,
+                    self._execution_time_predictor
                 )
             print(f"simulation taking {(time.time() - start_predict) * 1000} ms")
         elif self._config.target_metric == "min_current_gpu_blocks":
@@ -225,11 +237,3 @@ class SimulatePredictor(Predictor):
         for request in itertools.chain(preempted_request, waiting_request):
             replica_scheduler.add_request(request)
         return replica_scheduler
-
-    async def get_predicted_metrics(self, response_data, predicted_target_request):
-        replica_scheduler = self.get_replica_scheduler_with_backend_response(response_data)
-        from vidur.request_timeline_predictor.base_request_timeline_predictor import get_target_metric_value
-        metric = get_target_metric_value(self._target_metric, replica_scheduler, predicted_target_request,
-                                         self._request_timeline_predictor)
-
-        return metric
