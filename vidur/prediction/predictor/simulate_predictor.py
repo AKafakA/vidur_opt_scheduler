@@ -219,21 +219,21 @@ class SimulatePredictor(Predictor):
                 request.loading_tokens = request.num_processed_tokens
                 replica_scheduler.add_preempted_request(request)
 
-                preempted_request = []
-                waiting_request = []
+            preempted_request = []
+            waiting_request = []
 
-                for requests_info in itertools.chain(waiting_request_length, swap_request_length):
-                    request = self.__generate_requests_from_backend(requests_info, 'waiting')
-                    if request.num_processed_tokens == request.total_tokens:
-                        continue
-                    if request.num_processed_tokens > 0:
-                        request.restart()
-                        preempted_request.append(request)
-                    else:
-                        waiting_request.append(request)
+            for requests_info in itertools.chain(waiting_request_length, swap_request_length):
+                request = self.__generate_requests_from_backend(requests_info, 'waiting')
+                if request.num_processed_tokens == request.total_tokens:
+                    continue
+                if request.num_processed_tokens > 0:
+                    request.restart()
+                    preempted_request.append(request)
+                else:
+                    waiting_request.append(request)
 
-                for request in itertools.chain(preempted_request, waiting_request):
-                    replica_scheduler.add_request(request)
+            for request in itertools.chain(preempted_request, waiting_request):
+                replica_scheduler.add_request(request)
 
         return (replica_scheduler, current_gpu_blocks, current_num_requests, current_num_running_request,
                 current_num_waiting_request, current_num_preempted)
