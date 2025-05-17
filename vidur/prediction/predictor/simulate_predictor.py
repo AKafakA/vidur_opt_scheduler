@@ -101,7 +101,7 @@ class SimulatePredictor(Predictor):
         self._start_time = time.time()
         self._backend_url = f"http://localhost:{self._port}/schedule_trace"
         self._query_timeout = aiohttp.ClientTimeout(total=config.prediction_timeout * 0.9)
-        self._executor = ProcessPoolExecutor(max_workers=14)
+        self._executor = ProcessPoolExecutor(max_workers=3)
 
     async def predict(self, target_request: Request):
         start_time = time.time()
@@ -115,15 +115,14 @@ class SimulatePredictor(Predictor):
             # target_metric_future = asyncio.ensure_future(self.get_predicted_metrics(response_data, target_request))
             # target_metric = await target_metric_future
             loop = asyncio.get_event_loop()
-            with ProcessPoolExecutor(max_workers=10) as executor:
-                target_metric = await loop.run_in_executor(
-                    executor,
+            target_metric = await loop.run_in_executor(
+                    self._executor,
                     get_predicted_metrics,
                     response_data,
                     target_request,
                     self._target_metric,
                     self._execution_time_predictor
-                )
+            )
             print(f"simulation taking {(time.time() - start_predict) * 1000} ms")
         elif self._config.target_metric == "min_current_gpu_blocks":
             target_metric = response_data["free_gpu_blocks"]
