@@ -41,6 +41,8 @@ def convert_list_to_request_infos(raw: list) -> list:
             "is_prefill": raw[i + 5] == 1,
             "seq_expected_decoded_length": raw[i + 6]
         })
+        if not (raw[i + 5] == 1 or raw[i + 5] == 0):
+            raise ValueError(f"Invalid value for is_prefill: {raw[i + 5]}")
     return request_infos
 
 
@@ -173,7 +175,7 @@ class SimulatePredictor(Predictor):
                 return None, -1, -1, -1, -1, -1
 
     def get_replica_scheduler_with_backend_response(self, response):
-        current_num_requests = 0
+
 
         if self._need_to_predict:
             replica_scheduler = ReplicaSchedulerRegistry.get(
@@ -198,6 +200,8 @@ class SimulatePredictor(Predictor):
         current_num_running_request = len(running_request_length)
         current_num_waiting_request = len(waiting_request_length)
         current_num_swap_request = len(swap_request_length)
+
+        current_num_requests = current_num_running_request + current_num_waiting_request + current_num_swap_request
 
         if self._need_to_predict:
             for running_requests_info in running_request_length:
