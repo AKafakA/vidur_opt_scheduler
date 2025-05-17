@@ -31,19 +31,16 @@ def convert_list_to_request_infos(raw: list) -> list:
     "seq_computed_length", "is_prefill", and "seq_expected_decoded_length".
     """
     request_infos = []
-    print(f"raw: {raw}")
-    print(f"len(raw): {len(raw)}")
     for i in range(0, len(raw), NUM_FIELD_PER_REQUEST):
         request_infos.append({
             "request_id": raw[i],
             "arrival_time": raw[i + 1],
-            "seq_prompts_length": raw[i + 2],
-            "seq_total_output_length": raw[i + 3],
+            "seq_total_output_length": raw[i + 2],
+            "seq_prompts_length": raw[i + 3],
             "seq_computed_length": raw[i + 4],
-            "is_prefill": raw[i + 5],
+            "is_prefill": raw[i + 5] == 1,
             "seq_expected_decoded_length": raw[i + 6]
         })
-    print(f"request_infos: {request_infos}")
     return request_infos
 
 
