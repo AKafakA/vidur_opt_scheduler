@@ -64,7 +64,7 @@ class SimulatePredictor(Predictor):
       It will always create a mirror of replica scheduler and make the prediction based on the target metric.
     """
 
-    def __init__(self, config, port):
+    def __init__(self, config, port, use_multiprocessing=False):
         super().__init__(config, port)
         self._logger = logging.getLogger(__name__)
         self._config = config
@@ -101,7 +101,10 @@ class SimulatePredictor(Predictor):
         self._start_time = time.time()
         self._backend_url = f"http://localhost:{self._port}/schedule_trace"
         self._query_timeout = aiohttp.ClientTimeout(total=config.prediction_timeout * 0.9)
-        self._executor = ProcessPoolExecutor(max_workers=3)
+        if use_multiprocessing:
+            self._executor = ThreadPoolExecutor(max_workers=3)
+        else:
+            self._executor = None
 
     async def predict(self, target_request: Request):
         start_time = time.time()
