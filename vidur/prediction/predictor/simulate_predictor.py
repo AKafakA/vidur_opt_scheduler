@@ -21,6 +21,28 @@ logging.basicConfig(level=logging.INFO,
                     filemode='a+',
                     filename='predictor_benchmark.log')
 
+NUM_FIELD_PER_REQUEST = 7
+
+
+def convert_list_to_request_infos(raw: list) -> list:
+    """
+    Convert the raw list of request information into a dictionary with keys
+    "request_id", "arrival_time", "seq_prompts_length", "seq_total_output_length",
+    "seq_computed_length", "is_prefill", and "seq_expected_decoded_length".
+    """
+    request_infos = []
+    for i in range(0, len(raw), NUM_FIELD_PER_REQUEST):
+        request_infos.append({
+            "request_id": raw[i],
+            "arrival_time": raw[i + 1],
+            "seq_prompts_length": raw[i + 2],
+            "seq_total_output_length": raw[i + 3],
+            "seq_computed_length": raw[i + 4],
+            "is_prefill": raw[i + 5],
+            "seq_expected_decoded_length": raw[i + 6]
+        })
+    return request_infos
+
 
 class SimulatePredictor(Predictor):
     """A raw implementation of the predictor class
@@ -151,11 +173,7 @@ class SimulatePredictor(Predictor):
                 return None, -1, -1, -1, -1, -1
 
     def get_replica_scheduler_with_backend_response(self, response):
-        current_gpu_blocks = 0
         current_num_requests = 0
-        current_num_preempted = 0
-        current_num_running_request = 0
-        current_num_waiting_request = 0
 
         if self._need_to_predict:
             replica_scheduler = ReplicaSchedulerRegistry.get(
@@ -170,19 +188,26 @@ class SimulatePredictor(Predictor):
         else:
             replica_scheduler = None
 
-        for batch_request_information in response:
-            waiting_request_length = batch_request_information["waiting"]
-            running_request_length = batch_request_information["running"]
-            swap_request_length = batch_request_information["swap"]
-            if self._need_to_predict:
-                for requests_info in running_request_length:
-                    request = self.__generate_requests_from_backend(requests_info, 'running')
-                    if request.num_processed_tokens == request.total_tokens:
-                        continue
-                    if self._enable_chunked_prefill:
-                        allocated_tokens = max(request.num_processed_tokens, request.num_prefill_tokens)
-                    else:
-                        allocated_tokens = request.num_processed_tokens
+        waiting_request_length = convert_list_to_request_infos(response["waiting"])
+        running_request_length = convert_list_to_request_infos(response["running"])
+        swap_request_length = convert_list_to_request_infos(response["swap"])
+
+        current_gpu_blocks = response["free_gpu_blocks"]
+        current_num_preempted = response["num_preempted"]
+
+        current_num_running_request = len(running_request_length)
+        current_num_waiting_request = len(waiting_request_length)
+        current_num_swap_request = len(swap_request_length)
+
+        if self._need_to_predict:
+            for running_requests_info in running_request_length:
+                request = self.__generate_requests_from_backend(running_requests_info , 'running')
+                if request.num_processed_tokens == request.total_tokens:
+                    continue
+                if self._enable_chunked_prefill:
+                    allocated_tokens = max(request.num_processed_tokens, request.num_prefill_tokens)
+                else:
+                    allocated_tokens = request.num_processed_tokens
                     num_required_blocks = ceil(
                         allocated_tokens / self._config.replica_scheduler_config.block_size
                     )
@@ -206,11 +231,5 @@ class SimulatePredictor(Predictor):
                 for request in itertools.chain(preempted_request, waiting_request):
                     replica_scheduler.add_request(request)
 
-            current_gpu_blocks += batch_request_information["free_gpu_blocks"]
-            current_num_requests += len(running_request_length) + len(swap_request_length) + len(
-                waiting_request_length)
-            current_num_preempted += batch_request_information["num_preempted"]
-            current_num_running_request += len(running_request_length)
-            current_num_waiting_request += len(waiting_request_length)
         return (replica_scheduler, current_gpu_blocks, current_num_requests, current_num_running_request,
                 current_num_waiting_request, current_num_preempted)
