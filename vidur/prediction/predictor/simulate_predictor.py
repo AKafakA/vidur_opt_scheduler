@@ -1,3 +1,4 @@
+import multiprocessing
 import random
 import time
 from math import ceil
@@ -92,33 +93,28 @@ class SimulatePredictor(Predictor):
 
     async def predict(self, target_request: Request):
         start_time = time.time()
-        (replica_scheduler, current_gpu_blocks, current_num_requests, current_num_running_request,
-         current_num_waiting_request, current_num_preempted) = await self.get_replica_scheduler(target_request.id)
+        response_data = await self.get_response_data(target_request.id)
         metrics = {}
         time_to_get_replica_scheduler = (time.time() - start_time) * 1000
         # replica_scheduler.print_requests()
-        if self._need_to_predict and replica_scheduler is not None:
+        if self._need_to_predict:
             start_predict = time.time()
-            from vidur.request_timeline_predictor.base_request_timeline_predictor import get_target_metric_value
-            metric = get_target_metric_value(self._target_metric, replica_scheduler, target_request,
-                                             self._request_timeline_predictor)
-            target_metric = metric
             # self._logger.info(f"Predicted metric: {metric} for request: {str(target_request.id)}")
+            target_metric = await self.get_predicted_metrics(response_data, target_request)
             print(f"simulation taking {(time.time() - start_predict) * 1000} ms")
         elif self._config.target_metric == "min_current_gpu_blocks":
-            target_metric = current_gpu_blocks
+            target_metric = response_data["free_gpu_blocks"]
         elif self._config.target_metric == "min_current_requests":
-            target_metric = current_num_requests
+            target_metric = response_data["num_requests"]
         elif self._config.target_metric == "min_infass_load":
-            target_metric = (current_num_requests / current_gpu_blocks) * (-1)
+            target_metric = (response_data["num_requests"] / response_data["free_gpu_blocks"]) * (-1)
         else:
             target_metric = random.randint(0, 100)
         metrics["target_metric"] = target_metric
-        metrics["gpu_blocks"] = current_gpu_blocks
-        metrics["num_requests"] = current_num_requests
-        metrics["num_preempted"] = current_num_preempted
+        metrics["gpu_blocks"] = response_data["free_gpu_blocks"]
+        metrics["num_requests"] = response_data["num_requests"]
+        metrics["num_preempted"] = response_data["num_preempted"]
         metrics["time_to_predict_in_ms"] = (time.time() - start_time) * 1000
-        metrics["time_to_get_replica_scheduler_in_ms"] = time_to_get_replica_scheduler
         return metrics
 
     def __generate_requests_from_backend(self, request_info: dict, source: str) -> Request:
@@ -156,7 +152,7 @@ class SimulatePredictor(Predictor):
         request.set_id(request_id)
         return request
 
-    async def get_replica_scheduler(self, request_id):
+    async def get_response_data(self, request_id):
         start_time = time.time()
         print(f"Connecting to backend at {self._backend_url} at {start_time - self._start_time} "
               f" for request, {request_id}")
@@ -170,72 +166,59 @@ class SimulatePredictor(Predictor):
                     print(f"Time taken to connect to backend: {connect_time} ms at {time.time()} "
                           f"for request {request_id}")
                     response_data = orjson.loads(await response.read())
-                    return self.get_replica_scheduler_with_backend_response(response_data)
+                    return response_data
             except asyncio.TimeoutError as e:
                 connect_time = (time.time() - start_time) * 1000
                 print(f"timed out: {e} in time, use default results {connect_time}")
-                return None, -1, -1, -1, -1, -1
+                return {}
 
     def get_replica_scheduler_with_backend_response(self, response):
-
-
-        if self._need_to_predict:
-            replica_scheduler = ReplicaSchedulerRegistry.get(
-                self._config.replica_scheduler_config.get_type(),
-                replica_config=self._config.replica_config,
-                replica_scheduler_config=self._config.replica_scheduler_config,
-                request_generator_config=self._generate_config,
-                replica=self._replica,
-                num_stages=self._replica.num_pipeline_stages,
-                execution_time_predictor=self._execution_time_predictor,
-            )
-        else:
-            replica_scheduler = None
-
+        replica_scheduler = ReplicaSchedulerRegistry.get(
+            self._config.replica_scheduler_config.get_type(),
+            replica_config=self._config.replica_config,
+            replica_scheduler_config=self._config.replica_scheduler_config,
+            request_generator_config=self._generate_config,
+            replica=self._replica,
+            num_stages=self._replica.num_pipeline_stages,
+            execution_time_predictor=self._execution_time_predictor,
+        )
         waiting_request_length = convert_list_to_request_infos(response["waiting"])
         running_request_length = convert_list_to_request_infos(response["running"])
         swap_request_length = convert_list_to_request_infos(response["swap"])
 
-        current_gpu_blocks = response["free_gpu_blocks"]
-        current_num_preempted = response["num_preempted"]
+        for requests_info in running_request_length:
+            request = self.__generate_requests_from_backend(requests_info, 'running')
+            if request.num_processed_tokens == request.total_tokens:
+                continue
+            if self._enable_chunked_prefill:
+                allocated_tokens = max(request.num_processed_tokens, request.num_prefill_tokens)
+            else:
+                allocated_tokens = request.num_processed_tokens
+            num_required_blocks = ceil(
+                allocated_tokens / self._config.replica_scheduler_config.block_size
+            )
+            replica_scheduler.allocate(request.id, num_required_blocks)
+            request.loading_tokens = request.num_processed_tokens
+            replica_scheduler.add_preempted_request(request)
+        preempted_request = []
+        waiting_request = []
+        for requests_info in itertools.chain(waiting_request_length, swap_request_length):
+            request = self.__generate_requests_from_backend(requests_info, 'waiting')
+            if request.num_processed_tokens == request.total_tokens:
+                continue
+            if request.num_processed_tokens > 0:
+                request.restart()
+                preempted_request.append(request)
+            else:
+                waiting_request.append(request)
+        for request in itertools.chain(preempted_request, waiting_request):
+            replica_scheduler.add_request(request)
+        return replica_scheduler
 
-        current_num_running_request = len(running_request_length)
-        current_num_waiting_request = len(waiting_request_length)
-        current_num_swap_request = len(swap_request_length)
+    async def get_predicted_metrics(self, response_data, predicted_target_request):
+        replica_scheduler = self.get_replica_scheduler_with_backend_response(response_data)
+        from vidur.request_timeline_predictor.base_request_timeline_predictor import get_target_metric_value
+        metric = get_target_metric_value(self._target_metric, replica_scheduler, predicted_target_request,
+                                         self._request_timeline_predictor)
 
-        current_num_requests = current_num_running_request + current_num_waiting_request + current_num_swap_request
-
-        if self._need_to_predict:
-            for running_requests_info in running_request_length:
-                request = self.__generate_requests_from_backend(running_requests_info , 'running')
-                if request.num_processed_tokens == request.total_tokens:
-                    continue
-                if self._enable_chunked_prefill:
-                    allocated_tokens = max(request.num_processed_tokens, request.num_prefill_tokens)
-                else:
-                    allocated_tokens = request.num_processed_tokens
-                num_required_blocks = ceil(
-                    allocated_tokens / self._config.replica_scheduler_config.block_size
-                )
-                replica_scheduler.allocate(request.id, num_required_blocks)
-                request.loading_tokens = request.num_processed_tokens
-                replica_scheduler.add_preempted_request(request)
-
-            preempted_request = []
-            waiting_request = []
-
-            for requests_info in itertools.chain(waiting_request_length, swap_request_length):
-                request = self.__generate_requests_from_backend(requests_info, 'waiting')
-                if request.num_processed_tokens == request.total_tokens:
-                    continue
-                if request.num_processed_tokens > 0:
-                    request.restart()
-                    preempted_request.append(request)
-                else:
-                    waiting_request.append(request)
-
-            for request in itertools.chain(preempted_request, waiting_request):
-                replica_scheduler.add_request(request)
-
-        return (replica_scheduler, current_gpu_blocks, current_num_requests, current_num_running_request,
-                current_num_waiting_request, current_num_preempted)
+        return metric
