@@ -109,17 +109,22 @@ class SimulatePredictor(Predictor):
         start_time = time.time()
         response_data = await self.get_response_data(target_request.id)
         metrics = {}
-        total_requests = ((len(response_data.get("waiting", [])) +
-                           len(response_data.get("running", [])) +
-                           len(response_data.get("swap", []))) // NUM_FIELD_PER_REQUEST)
-        # replica_scheduler.print_requests()
+        if len(response_data) == 0:
+            current_gpu_blocks = -1
+            current_total_requests = -1
+            current_num_preempted = -1
+        else:
+            current_gpu_blocks = response_data["free_gpu_blocks"]
+            current_num_preempted = response_data["num_preempted"]
+            current_total_requests = (
+                        (len(response_data["waiting"]) + len(response_data["running"]) + len(response_data["swap"]))
+                        // NUM_FIELD_PER_REQUEST)
         if self._need_to_predict:
-            start_predict = time.time()
-            # target_metric_future = asyncio.ensure_future(self.get_predicted_metrics(response_data, target_request))
-            # target_metric = await target_metric_future
-            replica_scheduler = self.get_replica_scheduler_with_backend_response(response_data)
-            loop = asyncio.get_event_loop()
-            target_metric = await loop.run_in_executor(
+            if len(response_data) > 0:
+                start_predict = time.time()
+                replica_scheduler = self.get_replica_scheduler_with_backend_response(response_data)
+                loop = asyncio.get_event_loop()
+                target_metric = await loop.run_in_executor(
                     self._executor,
                     get_predicted_metrics,
                     replica_scheduler,
@@ -127,20 +132,22 @@ class SimulatePredictor(Predictor):
                     target_request,
                     self._target_metric,
                     self._request_timeline_predictor
-            )
-            print(f"simulation taking {(time.time() - start_predict) * 1000} ms")
+                )
+                print(f"simulation taking {(time.time() - start_predict) * 1000} ms")
+            else:
+                target_metric = -1
         elif self._config.target_metric == "min_current_gpu_blocks":
-            target_metric = response_data["free_gpu_blocks"]
+            target_metric = current_gpu_blocks
         elif self._config.target_metric == "min_current_requests":
-            target_metric = response_data["num_requests"]
+            target_metric = current_total_requests
         elif self._config.target_metric == "min_infass_load":
-            target_metric = (response_data["num_requests"] / response_data["free_gpu_blocks"]) * (-1)
+            target_metric = (current_total_requests / current_gpu_blocks) * (-1)
         else:
             target_metric = random.randint(0, 100)
         metrics["target_metric"] = target_metric
-        metrics["gpu_blocks"] = response_data["free_gpu_blocks"]
-        metrics["num_requests"] = total_requests
-        metrics["num_preempted"] = response_data["num_preempted"]
+        metrics["gpu_blocks"] = current_gpu_blocks
+        metrics["num_requests"] = current_total_requests
+        metrics["num_preempted"] = current_num_preempted
         metrics["time_to_predict_in_ms"] = (time.time() - start_time) * 1000
         return metrics
 
@@ -188,7 +195,7 @@ class SimulatePredictor(Predictor):
             print(f"Connected to backend at {self._backend_url} after {(time.time() - start_time) * 1000} "
                   f" ms for request {request_id}")
             try:
-                async with session.post(self._backend_url) as response:
+                async with session.get(self._backend_url) as response:
                     connect_time = (time.time() - start_time) * 1000
                     print(f"Time taken to connect to backend: {connect_time} ms at {time.time()} "
                           f"for request {request_id}")
