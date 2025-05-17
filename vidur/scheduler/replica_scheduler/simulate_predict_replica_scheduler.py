@@ -130,7 +130,6 @@ class SimulatePredictReplicaScheduler:
             execution_time.append(batches[-1]["completed_time"] - batches[0]["schedule_time"])
         return sum(execution_time) / len(execution_time)
 
-
     @property
     def average_stage_time(self):
         stage_times = []

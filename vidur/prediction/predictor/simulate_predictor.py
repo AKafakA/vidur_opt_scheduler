@@ -109,8 +109,9 @@ class SimulatePredictor(Predictor):
         start_time = time.time()
         response_data = await self.get_response_data(target_request.id)
         metrics = {}
-        total_requests = ((len(response_data["waiting"]) + len(response_data["running"]) + len(response_data["swap"]))
-                          // NUM_FIELD_PER_REQUEST)
+        total_requests = ((len(response_data.get("waiting", [])) +
+                           len(response_data.get("running", [])) +
+                           len(response_data.get("swap", []))) // NUM_FIELD_PER_REQUEST)
         # replica_scheduler.print_requests()
         if self._need_to_predict:
             start_predict = time.time()
