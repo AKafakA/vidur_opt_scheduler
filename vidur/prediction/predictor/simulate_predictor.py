@@ -125,7 +125,7 @@ class SimulatePredictor(Predictor):
                     response_data,
                     target_request,
                     self._target_metric,
-                    self._execution_time_predictor
+                    self._request_timeline_predictor
             )
             print(f"simulation taking {(time.time() - start_predict) * 1000} ms")
         elif self._config.target_metric == "min_current_gpu_blocks":
