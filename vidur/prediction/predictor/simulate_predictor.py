@@ -98,11 +98,13 @@ class SimulatePredictor(Predictor):
         time_to_get_replica_scheduler = (time.time() - start_time) * 1000
         # replica_scheduler.print_requests()
         if self._need_to_predict and replica_scheduler is not None:
+            start_predict = time.time()
             from vidur.request_timeline_predictor.base_request_timeline_predictor import get_target_metric_value
             metric = get_target_metric_value(self._target_metric, replica_scheduler, target_request,
                                              self._request_timeline_predictor)
             target_metric = metric
             # self._logger.info(f"Predicted metric: {metric} for request: {str(target_request.id)}")
+            print(f"simulation taking {(time.time() - start_predict) * 1000} ms")
         elif self._config.target_metric == "min_current_gpu_blocks":
             target_metric = current_gpu_blocks
         elif self._config.target_metric == "min_current_requests":
