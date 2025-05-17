@@ -26,9 +26,8 @@ logging.basicConfig(level=logging.INFO,
 NUM_FIELD_PER_REQUEST = 7
 
 
-def get_predicted_metrics(self, response_data, predicted_target_request,
+def get_predicted_metrics(replica_scheduler, response_data, predicted_target_request,
                           target_metric: TargetMetric, request_timeline_predictor):
-    replica_scheduler = self.get_replica_scheduler_with_backend_response(response_data)
     from vidur.request_timeline_predictor.base_request_timeline_predictor import get_target_metric_value
     metric = get_target_metric_value(target_metric, replica_scheduler, predicted_target_request,
                                      request_timeline_predictor)
@@ -117,10 +116,12 @@ class SimulatePredictor(Predictor):
             start_predict = time.time()
             # target_metric_future = asyncio.ensure_future(self.get_predicted_metrics(response_data, target_request))
             # target_metric = await target_metric_future
+            replica_scheduler = self.get_replica_scheduler_with_backend_response(response_data)
             loop = asyncio.get_event_loop()
             target_metric = await loop.run_in_executor(
                     self._executor,
                     get_predicted_metrics,
+                    replica_scheduler,
                     response_data,
                     target_request,
                     self._target_metric,
