@@ -163,7 +163,7 @@ class SimulatePredictor(Predictor):
             print(f"Connected to backend at {self._backend_url} after {(time.time() - start_time) * 1000} "
                   f" ms for request {request_id}")
             try:
-                async with session.get(self._backend_url) as response:
+                async with session.post(self._backend_url) as response:
                     connect_time = (time.time() - start_time) * 1000
                     print(f"Time taken to connect to backend: {connect_time} ms at {time.time()} "
                           f"for request {request_id}")
