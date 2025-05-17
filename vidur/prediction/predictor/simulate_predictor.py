@@ -212,12 +212,12 @@ class SimulatePredictor(Predictor):
                     allocated_tokens = max(request.num_processed_tokens, request.num_prefill_tokens)
                 else:
                     allocated_tokens = request.num_processed_tokens
-                    num_required_blocks = ceil(
-                        allocated_tokens / self._config.replica_scheduler_config.block_size
-                    )
-                    replica_scheduler.allocate(request.id, num_required_blocks)
-                    request.loading_tokens = request.num_processed_tokens
-                    replica_scheduler.add_preempted_request(request)
+                num_required_blocks = ceil(
+                    allocated_tokens / self._config.replica_scheduler_config.block_size
+                )
+                replica_scheduler.allocate(request.id, num_required_blocks)
+                request.loading_tokens = request.num_processed_tokens
+                replica_scheduler.add_preempted_request(request)
 
                 preempted_request = []
                 waiting_request = []
