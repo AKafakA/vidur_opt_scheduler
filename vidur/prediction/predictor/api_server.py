@@ -128,9 +128,8 @@ if __name__ == "__main__":
     parser.add_argument("--predictor_index", type=int, default=1)
     logging.log(logging.INFO, "Starting server with args: %s", str(parser.parse_args()))
     args = parser.parse_args()
-    print(os.getcwd() + f"./experiment_output/logs/predictor_{args.predictor_index}.log")
-    print(os.path.exists(os.getcwd() + f"./experiment_output/logs/predictor_{args.predictor_index}.log"))
-    if os.path.exists(os.getcwd() + f"./experiment_output/logs/predictor_{args.predictor_index}.log"):
+    print(os.path.exists(os.getcwd() + f"/experiment_output/logs/predictor_{args.predictor_index}.log"))
+    if os.path.exists(os.getcwd() + f"/experiment_output/logs/predictor_{args.predictor_index}.log"):
         print("predictor already started")
     else:
         resource.setrlimit(resource.RLIMIT_NOFILE, (65536, 65536))

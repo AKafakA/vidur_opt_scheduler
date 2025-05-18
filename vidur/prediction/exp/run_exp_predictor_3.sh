@@ -14,4 +14,4 @@ if [ "$ENABLE_CHUNKED_PREFILL" = "true" ]; then
     APPEND_CHUNKED_PREFILL="--enable_chunked_prefill"
 fi
 
-parallel-ssh -i -t 0 -h vidur/prediction/config/hosts "cd vidur_opt_scheduler && export PYTHONPATH=. && nohup python vidur/prediction/predictor/api_server.py --config_path $CONFIG_PATH --metric_type $METRIC_TYPE --enable_time_estimation $ENABLE_TIME_ESTIMATION --batch_size_cap $BATCH_CAP --workers $NUM_WORKERS $APPEND_CHUNKED_PREFILL --threshold_batch_size_for_time_estimation $BATCH_SIZE_THRESHOLD_FOR_TIME_ESTIMATION --port 8400 --predictor_timeout $PREDICTOR_TIMEOUT > experiment_output/logs/predictor_3.log 2>&1 &"
+parallel-ssh -i -t 0 -h vidur/prediction/config/hosts "cd vidur_opt_scheduler && export PYTHONPATH=. && nohup python vidur/prediction/predictor/api_server.py --config_path $CONFIG_PATH --metric_type $METRIC_TYPE --enable_time_estimation $ENABLE_TIME_ESTIMATION --batch_size_cap $BATCH_CAP --workers $NUM_WORKERS $APPEND_CHUNKED_PREFILL --threshold_batch_size_for_time_estimation $BATCH_SIZE_THRESHOLD_FOR_TIME_ESTIMATION --port 8400 --predictor_timeout $PREDICTOR_TIMEOUT -predictor_index 3 > experiment_output/logs/predictor_3.log 2>&1 &"
