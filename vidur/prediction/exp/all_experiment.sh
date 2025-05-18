@@ -31,11 +31,11 @@ ENABLE_CHUNKED_PREFILL="true"
 SCHEDULER_NAME="min_new_request_latency"
 MODEL="meta-llama/Llama-2-7b-hf"
 DATASET_NAMES="sharegpt"
-QPS="12 16 18 24"
+QPS="16"
 N_SELECTED="12"
 PROFILING_SAMPLE_RATE="0.1"
 USE_FOR_PROFILING_ONLY="true"
-NUM_REQUEST=10000
+NUM_REQUEST=3000
 
 
 for model in $MODEL; do
