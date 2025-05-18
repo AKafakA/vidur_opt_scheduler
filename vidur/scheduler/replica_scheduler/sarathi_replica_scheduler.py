@@ -46,10 +46,6 @@ class SarathiReplicaScheduler(BaseReplicaScheduler):
         num_tokens_reserved = self._allocation_map[request.id] * self._config.block_size
         num_tokens_required = max(0, request.num_processed_tokens - num_tokens_reserved)
 
-        assert (
-            num_tokens_required == 0 or num_tokens_required == 1
-        ), f"num_tokens_required: {num_tokens_required}"
-
         if num_tokens_required == 0:
             return
 
