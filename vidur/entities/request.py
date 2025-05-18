@@ -260,17 +260,6 @@ class Request(BaseEntity):
         # print("generated token")
         # print(self._num_processed_tokens)
 
-        if self._num_processed_tokens > self.total_tokens:
-            print("request_id " + str(self.id) + f" processed {self.num_processed_tokens} and source {self.source} "
-                                                 f"and new tokens {num_tokens_processed}",
-                                                 f"and the total tokens {self.num_decode_tokens + self._num_prefill_tokens}, "
-                                                 f"and loading tokens {self.loading_tokens}, "
-                                                 f"and initial prefill tokens {self._inital_num_prefill_tokens}, "
-                                                 f"and initial decode tokens {self._inital_num_decode_tokens}, "
-                                                 f"and initial processed tokens {self._inital_num_processed_tokens}")
-
-        assert self._num_processed_tokens <= self.total_tokens
-
         if self._num_processed_tokens == self._num_prefill_tokens:
             self._is_prefill_complete = True
             # we get one decode token when the prefill processing completes
@@ -286,7 +275,6 @@ class Request(BaseEntity):
         if self._num_processed_tokens == self.total_tokens:
             self._completed_at = time
             self._completed = True
-            logger.debug(f"Request {self._id} completed at {self._completed_at}")
 
     def on_batch_stage_schedule(
             self,
