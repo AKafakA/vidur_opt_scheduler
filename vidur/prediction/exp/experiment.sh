@@ -55,6 +55,8 @@ case "$1" in
         ;;
 esac
 
+parallel-ssh -i -t 0 -h vidur/prediction/config/hosts "pip install fastapi-cprofile"
+
 
 #rm -rf experiment_output
 #mkdir -p experiment_output/logs
