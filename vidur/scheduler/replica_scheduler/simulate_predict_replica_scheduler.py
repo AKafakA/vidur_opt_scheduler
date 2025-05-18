@@ -19,7 +19,8 @@ class SimulatePredictReplicaScheduler:
                  use_estimated_execution_time=True,
                  copy_replica_scheduler=True,
                  start_time=0,
-                 threshold_batch_size_for_time_estimation=36) -> None:
+                 threshold_batch_size_for_time_estimation=36,
+                 running_until_target_finished=True) -> None:
         self._replica_id = replica_scheduler.replica_id
         self._raw_replica_scheduler = replica_scheduler
         if copy_replica_scheduler:
@@ -40,6 +41,7 @@ class SimulatePredictReplicaScheduler:
         self._threshold_batch_size_for_time_estimation = threshold_batch_size_for_time_estimation
         self._start_time = start_time
         self._request_ids = set()
+        self._running_until_target_finished = running_until_target_finished
 
     def simulate(self):
         assert self._target_request is not None
@@ -66,6 +68,8 @@ class SimulatePredictReplicaScheduler:
                 "request_ids": batch.request_ids,
                 "completed_time": schedule_time + sum(batch_execution_time)
             })
+            if self._running_until_target_finished and self._target_request.completed:
+                break
 
     def __push_batch(self, batch: Batch, schedule_time):
         batch_execution_time = []
