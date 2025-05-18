@@ -14,17 +14,12 @@ from vidur.prediction.predictor.predictor_config import PredictorConfig
 from vidur.prediction.predictor.predictor import Predictor
 from vidur.prediction.server_utils import convert_request, get_predictor, serve_http
 import resource
-from fastapi_cprofile.profiler import CProfileMiddleware
 
 TIMEOUT_KEEP_ALIVE = 5  # seconds.
 app = FastAPI()
 predictor: Optional[Predictor] = None
 start_time = 0
 
-
-app.add_middleware(CProfileMiddleware,
-                   enable=True, server_app=app,
-                   filename='/tmp/output.pstats', strip_dirs=False, sort_by='cumulative')
 
 
 @app.get("/health")
