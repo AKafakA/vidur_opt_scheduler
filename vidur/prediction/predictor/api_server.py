@@ -2,6 +2,7 @@ import argparse
 import asyncio
 import json
 import logging
+import os
 import ssl
 import time
 from argparse import Namespace
@@ -124,7 +125,11 @@ if __name__ == "__main__":
                              "Less that 0 means disable time estimation. 0 means always enable time estimation."
                              "And >0 means enable time estimation only when batch size > this")
     parser.add_argument("--predictor_timeout", type=int, default=10)
+    parser.add_argument("--predictor_index", type=int, default=1)
     logging.log(logging.INFO, "Starting server with args: %s", str(parser.parse_args()))
     args = parser.parse_args()
-    resource.setrlimit(resource.RLIMIT_NOFILE, (65536, 65536))
-    asyncio.run(run_server(args))
+    if os.path.exists(os.getcwd() + f"/experiment_output/logs/predictor_{args.predictor_index}.log"):
+        print("predictor already started")
+    else:
+        resource.setrlimit(resource.RLIMIT_NOFILE, (65536, 65536))
+        asyncio.run(run_server(args))
