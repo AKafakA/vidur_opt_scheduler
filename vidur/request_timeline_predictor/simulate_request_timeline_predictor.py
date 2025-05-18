@@ -8,7 +8,7 @@ class SimulateRequestTimelinePredictor(BaseRequestTimelinePredictor):
         self.use_estimated_time = True
         self._copy_base_replica_scheduler = True
         self.threshold_batch_size_for_time_estimation = 36
-        self._batch_execution_time_catching_maps = {}
+        self._batch_execution_time_caching_maps = {}
 
     def disable_copy_of_base_replica_scheduler(self):
         self._copy_base_replica_scheduler = False
@@ -21,7 +21,7 @@ class SimulateRequestTimelinePredictor(BaseRequestTimelinePredictor):
             use_estimated_execution_time=self.use_estimated_time,
             copy_replica_scheduler=self._copy_base_replica_scheduler,
             threshold_batch_size_for_time_estimation=self.threshold_batch_size_for_time_estimation,
-            batch_execution_time_catching_map=self._batch_execution_time_catching_maps,
+            batch_execution_time_caching_map=self._batch_execution_time_caching_maps,
         )
         simulate_predict_replica_scheduler.simulate()
         return simulate_predict_replica_scheduler.avg_block_size
@@ -34,7 +34,7 @@ class SimulateRequestTimelinePredictor(BaseRequestTimelinePredictor):
             use_estimated_execution_time=self.use_estimated_time,
             copy_replica_scheduler=self._copy_base_replica_scheduler,
             threshold_batch_size_for_time_estimation=self.threshold_batch_size_for_time_estimation,
-            batch_execution_time_catching_map=self._batch_execution_time_catching_maps,
+            batch_execution_time_caching_map=self._batch_execution_time_caching_maps,
         )
         simulate_predict_replica_scheduler.simulate()
         return simulate_predict_replica_scheduler.target_request_scheduled_at
@@ -47,7 +47,7 @@ class SimulateRequestTimelinePredictor(BaseRequestTimelinePredictor):
             use_estimated_execution_time=self.use_estimated_time,
             copy_replica_scheduler=self._copy_base_replica_scheduler,
             threshold_batch_size_for_time_estimation=self.threshold_batch_size_for_time_estimation,
-            batch_execution_time_catching_map=self._batch_execution_time_catching_maps,
+            batch_execution_time_caching_map=self._batch_execution_time_caching_maps,
         )
         simulate_predict_replica_scheduler.simulate()
         return simulate_predict_replica_scheduler.target_request_end_to_end
@@ -60,7 +60,7 @@ class SimulateRequestTimelinePredictor(BaseRequestTimelinePredictor):
             use_estimated_execution_time=self.use_estimated_time,
             copy_replica_scheduler=self._copy_base_replica_scheduler,
             threshold_batch_size_for_time_estimation=self.threshold_batch_size_for_time_estimation,
-            batch_execution_time_catching_map=self._batch_execution_time_catching_maps,
+            batch_execution_time_caching_map=self._batch_execution_time_caching_maps,
         )
         simulate_predict_replica_scheduler.simulate()
         return simulate_predict_replica_scheduler.average_latency
@@ -73,7 +73,7 @@ class SimulateRequestTimelinePredictor(BaseRequestTimelinePredictor):
             use_estimated_execution_time=False,
             copy_replica_scheduler=self._copy_base_replica_scheduler,
             threshold_batch_size_for_time_estimation=self.threshold_batch_size_for_time_estimation,
-            batch_execution_time_catching_map=self._batch_execution_time_catching_maps,
+            batch_execution_time_caching_map=self._batch_execution_time_caching_maps,
         )
         simulate_predict_replica_scheduler.simulate()
         return simulate_predict_replica_scheduler.average_batch_size
@@ -86,7 +86,7 @@ class SimulateRequestTimelinePredictor(BaseRequestTimelinePredictor):
             use_estimated_execution_time=self.use_estimated_time,
             copy_replica_scheduler=self._copy_base_replica_scheduler,
             threshold_batch_size_for_time_estimation=self.threshold_batch_size_for_time_estimation,
-            batch_execution_time_catching_map=self._batch_execution_time_catching_maps,
+            batch_execution_time_caching_map=self._batch_execution_time_caching_maps,
         )
         simulate_predict_replica_scheduler.simulate()
         return simulate_predict_replica_scheduler.average_execution_time

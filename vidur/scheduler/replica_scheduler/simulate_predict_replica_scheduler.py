@@ -21,7 +21,7 @@ class SimulatePredictReplicaScheduler:
                  start_time=0,
                  threshold_batch_size_for_time_estimation=36,
                  running_until_target_finished=True,
-                 batch_execution_time_catching_map=None) -> None:
+                 batch_execution_time_caching_map=None) -> None:
         self._replica_id = replica_scheduler.replica_id
         self._raw_replica_scheduler = replica_scheduler
         if copy_replica_scheduler:
@@ -43,7 +43,7 @@ class SimulatePredictReplicaScheduler:
         self._start_time = start_time
         self._request_ids = set()
         self._running_until_target_finished = running_until_target_finished
-        self._batch_execution_time_catching_map = batch_execution_time_catching_map
+        self._batch_execution_time_caching_map = batch_execution_time_caching_map
 
     def simulate(self):
         assert self._target_request is not None
@@ -102,17 +102,23 @@ class SimulatePredictReplicaScheduler:
 
     def __get_execution_time(self, batch: Batch, stage_id: int):
         if batch.size > self._threshold_batch_size_for_time_estimation >= 0:
-            if self._batch_execution_time_catching_map is not None:
+            if self._batch_execution_time_caching_map is not None:
                 batch_size = batch.size
                 first_request_id = batch.request_ids[0]
                 last_request_id = batch.request_ids[-1]
-                catch_time = self._batch_execution_time_catching_map.get(
+                catch_time = self._batch_execution_time_caching_map.get(
                     batch_size, {}).get(first_request_id, {}).get(last_request_id, None)
                 if catch_time is not None:
                     return catch_time
                 else:
                     batch_execution_time = self._execution_time_predictor.get_execution_time(batch, stage_id).total_time
-                    self._batch_execution_time_catching_map[batch_size][first_request_id][last_request_id] = \
+                    # self._batch_execution_time_catching_map[batch_size][first_request_id][last_request_id] = \
+                    #     batch_execution_time
+                    if self._batch_execution_time_caching_map.get(batch_size) is None:
+                        self._batch_execution_time_caching_map[batch_size] = {}
+                    if self._batch_execution_time_caching_map[batch_size].get(first_request_id) is None:
+                        self._batch_execution_time_caching_map[batch_size][first_request_id] = {}
+                    self._batch_execution_time_caching_map[batch_size][first_request_id][last_request_id] = \
                         batch_execution_time
                     return batch_execution_time
             else:
