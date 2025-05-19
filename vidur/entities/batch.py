@@ -39,13 +39,16 @@ class Batch(BaseEntity):
 
         self._requests = requests
         self._num_tokens = num_tokens
-        self._total_num_tokens = sum(num_tokens)
-        self._num_prefill_tokens = sum(
-            [
-                (t if not r.is_prefill_complete else 0)
-                for r, t in zip(self.requests, self._num_tokens)
-            ]
-        )
+
+        _total_num_tokens_val = 0
+        _num_prefill_tokens_val = 0
+        for r, t in zip(self._requests, self._num_tokens):
+            _total_num_tokens_val += t
+            if not r._is_prefill_complete:
+                _num_prefill_tokens_val += t
+        self._total_num_tokens = _total_num_tokens_val
+        self._num_prefill_tokens = _num_prefill_tokens_val
+
 
         self._total_num_tokens_rounded = (self._total_num_tokens + 7) // 8 * 8
 

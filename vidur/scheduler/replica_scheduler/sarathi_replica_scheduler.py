@@ -19,7 +19,7 @@ class SarathiReplicaScheduler(BaseReplicaScheduler):
         )
 
     def _can_allocate_request(self, request: Request) -> bool:
-        if request.id not in self._allocation_map:
+        if request._id not in self._allocation_map:
             # new request
             num_required_blocks = ceil(
                 request.num_prefill_tokens / self._config.block_size
@@ -35,28 +35,28 @@ class SarathiReplicaScheduler(BaseReplicaScheduler):
         return self._config.num_blocks - self._num_allocated_blocks >= 1
 
     def _allocate_request(self, request: Request) -> None:
-        if request.id not in self._allocation_map:
+        if request._id not in self._allocation_map:
             # new request
             num_required_blocks = ceil(
                 request.num_prefill_tokens / self._config.block_size
             )
-            self.allocate(request.id, num_required_blocks)
+            self.allocate(request._id, num_required_blocks)
             return
 
-        num_tokens_reserved = self._allocation_map[request.id] * self._config.block_size
+        num_tokens_reserved = self._allocation_map[request._id] * self._config.block_size
         num_tokens_required = max(0, request.num_processed_tokens - num_tokens_reserved)
 
         if num_tokens_required == 0:
             return
 
-        self.allocate(request.id, 1)
+        self.allocate(request._id, 1)
 
     def on_batch_end(self, batch: Batch) -> None:
         self._num_running_batches -= 1
 
         for request in batch.requests:
             if request.completed:
-                self.free(request.id)
+                self.free(request._id)
             else:
                 self._preempted_requests.append(request)
 
@@ -109,11 +109,11 @@ class SarathiReplicaScheduler(BaseReplicaScheduler):
                 if self._preempted_requests:
                     victim_request = self._preempted_requests.pop()
                     victim_request.restart()
-                    self.free(victim_request.id)
+                    self.free(victim_request._id)
                     self._request_queue.appendleft(victim_request)
                 else:
                     request.restart()
-                    self.free(request.id)
+                    self.free(request._id)
                     self._request_queue.appendleft(request)
                     break
             else:
@@ -145,7 +145,7 @@ class SarathiReplicaScheduler(BaseReplicaScheduler):
         # self._preempted_requests = sorted(
         #     self._preempted_requests, key=lambda req: req.arrived_at
         # )
-        skipped_requests = []
+        skipped_requests.clear()
         while self._request_queue:
             current_request = self._request_queue[0]
             if len(self._allocation_map) == self._config.batch_size_cap:
