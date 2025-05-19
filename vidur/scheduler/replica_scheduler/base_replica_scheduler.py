@@ -44,9 +44,11 @@ class BaseReplicaScheduler(ABC):
         memory_planner = MemoryPlanner(self._replica_config, replica)
 
         if not self._config.num_blocks:
-            self._config.num_blocks = (
+            self._num_blocks = (
                 self._max_blocks_per_sequence * memory_planner.get_max_request_slots()
             )
+        else:
+            self._num_blocks = self._config.num_blocks
         self._max_batch_size = min(
             memory_planner.get_max_batch_size(),
             self._config.batch_size_cap,
@@ -68,6 +70,7 @@ class BaseReplicaScheduler(ABC):
             )
             for stage_id in range(num_stages)
         }
+
 
     @property
     def num_pending_requests(self) -> int:
@@ -96,11 +99,11 @@ class BaseReplicaScheduler(ABC):
 
     @property
     def num_free_blocks(self) -> int:
-        return self._config.num_blocks - self._num_allocated_blocks
+        return self._num_blocks - self._num_allocated_blocks
 
     @property
     def memory_usage_percent(self) -> float:
-        return (self._num_allocated_blocks * 100) / self._config.num_blocks
+        return (self._num_allocated_blocks * 100) / self._num_blocks
 
     def is_empty(self) -> bool:
         return (
@@ -128,10 +131,10 @@ class BaseReplicaScheduler(ABC):
         return self._replica_stage_schedulers[stage_id]
 
     def can_allocate(self, num_blocks: int) -> bool:
-        return self._config.num_blocks - self._num_allocated_blocks >= num_blocks
+        return self._num_blocks - self._num_allocated_blocks >= num_blocks
 
     def allocate(self, request_id: int, num_blocks: int) -> None:
-        if num_blocks + self._num_allocated_blocks > self._config.num_blocks:
+        if num_blocks + self._num_allocated_blocks > self._num_blocks:
             return
         self._num_allocated_blocks += num_blocks
         if request_id not in self._allocation_map:

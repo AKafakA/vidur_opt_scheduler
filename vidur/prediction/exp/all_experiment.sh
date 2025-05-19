@@ -31,14 +31,12 @@ ENABLE_CHUNKED_PREFILL="true"
 
 MODEL="meta-llama/Llama-2-7b-hf"
 DATASET_NAMES="sharegpt"
-#SCHEDULER_NAME="min_new_request_latency random round_robin min_infass_load request_per_seconds"
-#QPS="24 12 16 18"
-QPS="24"
-SCHEDULER_NAME="min_new_request_latency"
+SCHEDULER_NAME="min_new_request_latency random round_robin min_infass_load request_per_seconds"
+QPS="12 16 18 24"
 N_SELECTED="2"
 PROFILING_SAMPLE_RATE="0.01"
 USE_FOR_PROFILING_ONLY=false
-NUM_REQUEST=4000
+NUM_REQUEST=10000
 KEEP_ALL_METRICS=true
 
 
