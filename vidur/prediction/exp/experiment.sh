@@ -71,6 +71,7 @@ if [ "$RESTART_VLLM" = "true" ]; then
   script_base="vidur/prediction/exp/run_exp_predictor"
   suffix_range=$(seq 1 7)
   for suffix in $suffix_range; do
+    echo "${script_base}_${suffix}.sh $PREDICTOR_CONFIG_PATH $SCHEDULER_METRIC_TYPE $ENABLE_TIME_ESTIMATION $BATCH_CAP $ENABLE_CHUNKED_PREFILL $PREDICTOR_WORKERS $BRANCH_NAME $BATCH_SIZE_THRESHOLD_FOR_TIME_ESTIMATION $PREDICTOR_TIMEOUT_IN_SECONDS"
     nohup sh "${script_base}_${suffix}.sh" $PREDICTOR_CONFIG_PATH $SCHEDULER_METRIC_TYPE $ENABLE_TIME_ESTIMATION $BATCH_CAP $ENABLE_CHUNKED_PREFILL $PREDICTOR_WORKERS $BRANCH_NAME $BATCH_SIZE_THRESHOLD_FOR_TIME_ESTIMATION $PREDICTOR_TIMEOUT_IN_SECONDS > /dev/null 2>&1 &
   done
   sleep 10
@@ -94,8 +95,8 @@ if [ "$RUN_EXP" = "true" ]; then
       for num_queries in $NUM_QUERIES; do
         for metric_type in $METRIC_TYPES; do
           if [ "$metric_type" = "min_new_request_latency" ]; then
-            N=$N_SELECTED
-            USE_ESTIMATION_LEN="true false"
+            N="12 $N_SELECTED"
+            USE_ESTIMATION_LEN="false"
           else
             N="12"
             USE_ESTIMATION_LEN="false"

@@ -91,7 +91,7 @@ class SarathiReplicaScheduler(BaseReplicaScheduler):
             if len(requests) == self._max_micro_batch_size:
                 break
 
-            request = self._preempted_requests.pop(0)
+            request = self._preempted_requests.popleft()
 
             if not request.is_prefill_complete:
                 running_prefills.append(request)
@@ -107,14 +107,14 @@ class SarathiReplicaScheduler(BaseReplicaScheduler):
 
             while not self._can_allocate_request(request):
                 if self._preempted_requests:
-                    victim_request = self._preempted_requests.pop(-1)
+                    victim_request = self._preempted_requests.pop()
                     victim_request.restart()
                     self.free(victim_request.id)
-                    self._request_queue = [victim_request] + self._request_queue
+                    self._request_queue.appendleft(victim_request)
                 else:
                     request.restart()
                     self.free(request.id)
-                    self._request_queue = [request] + self._request_queue
+                    self._request_queue.appendleft(request)
                     break
             else:
                 self._allocate_request(request)
@@ -141,30 +141,30 @@ class SarathiReplicaScheduler(BaseReplicaScheduler):
 
         # re-add the skipped requests, but make sure that we add them to the
         # front of the queue so that they are scheduled first and we maintain FIFO ordering
-        self._preempted_requests = skipped_requests + self._preempted_requests
-        self._preempted_requests = sorted(
-            self._preempted_requests, key=lambda req: req.arrived_at
-        )
+        self._preempted_requests.extendleft(skipped_requests)
+        # self._preempted_requests = sorted(
+        #     self._preempted_requests, key=lambda req: req.arrived_at
+        # )
         skipped_requests = []
-
         while self._request_queue:
+            current_request = self._request_queue[0]
             if len(self._allocation_map) == self._config.batch_size_cap:
                 break
 
             if len(requests) == self._max_micro_batch_size:
                 break
 
-            if not self._can_allocate_request(self._request_queue[0]):
+            if not self._can_allocate_request(current_request):
                 break
 
             next_num_tokens = self._get_request_next_num_tokens(
-                self._request_queue[0], contains_prefill, num_batch_tokens
+                current_request, contains_prefill, num_batch_tokens
             )
 
             if next_num_tokens == 0:
                 break
 
-            request = self._request_queue.pop(0)
+            request = self._request_queue.popleft()
 
             self._allocate_request(request)
 

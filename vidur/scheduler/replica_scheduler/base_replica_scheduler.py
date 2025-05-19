@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from collections import deque
 from typing import List
 
 from vidur.config import (
@@ -17,13 +18,13 @@ logger = init_logger(__name__)
 
 class BaseReplicaScheduler(ABC):
     def __init__(
-        self,
-        replica_config: ReplicaConfig,
-        replica_scheduler_config: BaseReplicaSchedulerConfig,
-        request_generator_config: BaseRequestGeneratorConfig,
-        replica: Replica,
-        num_stages: int,
-        execution_time_predictor: BaseExecutionTimePredictor,
+            self,
+            replica_config: ReplicaConfig,
+            replica_scheduler_config: BaseReplicaSchedulerConfig,
+            request_generator_config: BaseRequestGeneratorConfig,
+            replica: Replica,
+            num_stages: int,
+            execution_time_predictor: BaseExecutionTimePredictor,
     ) -> None:
         self.running_batches = []
         self._num_running_batches = 0
@@ -37,7 +38,8 @@ class BaseReplicaScheduler(ABC):
             self._request_generator_config.max_tokens // self._config.block_size
         )
 
-        self._preempted_requests: List[Request] = []
+        self._preempted_requests = deque()
+        self._request_queue = deque()
 
         memory_planner = MemoryPlanner(self._replica_config, replica)
 
@@ -54,7 +56,6 @@ class BaseReplicaScheduler(ABC):
             f"Obtained max batch size of {self._max_batch_size} for replica {self._replica_id}"
         )
 
-        self._request_queue = []
         self._num_allocated_blocks = 0
         self._allocation_map = {}
 
@@ -89,7 +90,6 @@ class BaseReplicaScheduler(ABC):
     def num_allocated_blocks(self) -> int:
         return self._num_allocated_blocks
 
-
     @property
     def replica_id(self) -> int:
         return self._replica_id
@@ -98,9 +98,8 @@ class BaseReplicaScheduler(ABC):
     def num_free_blocks(self) -> int:
         return self._config.num_blocks - self._num_allocated_blocks
 
-
     @property
-    def memory_usage_percent(self) -> int:
+    def memory_usage_percent(self) -> float:
         return (self._num_allocated_blocks * 100) / self._config.num_blocks
 
     def is_empty(self) -> bool:
@@ -114,12 +113,10 @@ class BaseReplicaScheduler(ABC):
         )
 
     def _get_request_next_num_tokens(self, request: Request) -> int:
-        assert not request.completed
-
-        if request.is_prefill_complete:
+        if request._is_prefill_complete:
             return 1
 
-        return request.num_prefill_tokens
+        return request._num_prefill_tokens
 
     def add_request(self, request: Request) -> None:
         self._request_queue.append(request)

@@ -11,7 +11,7 @@ PREDICTOR_TIMEOUT_IN_SECONDS=1000
 BATCH_SIZE_THRESHOLD_FOR_TIME_ESTIMATION="0"
 BRANCH_NAME="single_predictor_evaluation"
 USE_PROCESS_FOR_FRONTEND=true
-UPDATE_VIDUR_CODE=false
+UPDATE_VIDUR_CODE=true
 UPDATE_VLLM_CODE=false
 RUN_EXP=true
 RESTART_VLLM=true
@@ -28,14 +28,18 @@ RESTART_VLLM=true
 ENABLE_CHUNKED_PREFILL="true"
 
 # Config for single predictor experiment
-SCHEDULER_NAME="min_new_request_latency random round_robin min_infass_load request_per_seconds"
+
 MODEL="meta-llama/Llama-2-7b-hf"
 DATASET_NAMES="sharegpt"
-QPS="12 16 18"
-N_SELECTED="12 2"
+#SCHEDULER_NAME="min_new_request_latency random round_robin min_infass_load request_per_seconds"
+#QPS="24 12 16 18"
+QPS="24"
+SCHEDULER_NAME="min_new_request_latency"
+N_SELECTED="2"
 PROFILING_SAMPLE_RATE="0.01"
-USE_FOR_PROFILING_ONLY="false"
-NUM_REQUEST=10000
+USE_FOR_PROFILING_ONLY=false
+NUM_REQUEST=4000
+KEEP_ALL_METRICS=true
 
 
 for model in $MODEL; do
@@ -56,8 +60,10 @@ for model in $MODEL; do
       for enable_chunked_prefill in $ENABLE_CHUNKED_PREFILL; do
         for qps in $QPS; do
           for batch_size_cut in $BATCH_SIZE_THRESHOLD_FOR_TIME_ESTIMATION; do
-            echo "Running experiment for scheduler: $scheduler with dataset: $dataset_name and model: $model with qps: $qps and chunked prefill: $enable_chunked_prefill and predictor workers: $PREDICTOR_WORKERS"
-            sh vidur/prediction/exp/experiment.sh $scheduler $NUM_REQUEST $RESTART_VLLM  $BATCH_CAP $dataset_name $DATASET_PATH $DATASET_TYPE true false $START_INDEX $model $MODEL_TYPE $MAX_MODEL_LENGTH $TARGET_HOST $enable_chunked_prefill $PREDICTOR_WORKERS $GLOBAL_SCHEDULER_WORKERS $BACKEND_WORKERS $CHUNK_SIZE $qps $BRANCH_NAME $batch_size_cut $N_SELECTED $PROFILING_SAMPLE_RATE $TIMEOUT_IN_SECONDS $USE_FOR_PROFILING_ONLY $PREDICTOR_TIMEOUT_IN_SECONDS $USE_PROCESS_FOR_FRONTEND $UPDATE_VIDUR_CODE $UPDATE_VLLM_CODE $RUN_EXP
+            for n_selected in $N_SELECTED; do
+              echo "Running experiment with scheduler: $scheduler, model: $model, dataset: $dataset_name, qps: $qps, batch_size_cut: $batch_size_cut enable_chunked_prefill: $enable_chunked_prefill use_for_profiling_only: $USE_FOR_PROFILING_ONLY predictor timeout: $PREDICTOR_TIMEOUT_IN_SECONDS"
+              sh vidur/prediction/exp/experiment.sh $scheduler $NUM_REQUEST $RESTART_VLLM  $BATCH_CAP $dataset_name $DATASET_PATH $DATASET_TYPE true $KEEP_ALL_METRICS $START_INDEX $model $MODEL_TYPE $MAX_MODEL_LENGTH $TARGET_HOST $enable_chunked_prefill $PREDICTOR_WORKERS $GLOBAL_SCHEDULER_WORKERS $BACKEND_WORKERS $CHUNK_SIZE $qps $BRANCH_NAME $batch_size_cut $n_selected $PROFILING_SAMPLE_RATE $TIMEOUT_IN_SECONDS $USE_FOR_PROFILING_ONLY $PREDICTOR_TIMEOUT_IN_SECONDS $USE_PROCESS_FOR_FRONTEND $UPDATE_VIDUR_CODE $UPDATE_VLLM_CODE $RUN_EXP
+            done
           done
         done
       done

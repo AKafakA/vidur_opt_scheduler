@@ -54,9 +54,6 @@ class VLLMReplicaScheduler(BaseReplicaScheduler):
             return
         num_tokens_reserved = self._allocation_map[request.id] * self._config.block_size
         num_tokens_required = max(0, request.num_processed_tokens - num_tokens_reserved)
-        assert (
-            num_tokens_required == 0 or num_tokens_required == 1
-        ), f"num_tokens_required: {num_tokens_required}"
 
         if num_tokens_required == 0:
             return
@@ -87,7 +84,7 @@ class VLLMReplicaScheduler(BaseReplicaScheduler):
             if len(requests) == self._max_micro_batch_size:
                 break
 
-            request = self._request_queue.pop(0)
+            request = self._request_queue.popleft()
 
             self._allocate_request(request)
             requests.append(request)
@@ -98,27 +95,27 @@ class VLLMReplicaScheduler(BaseReplicaScheduler):
             return Batch(self._replica_id, requests, num_tokens)
 
         # Safer to sort preempted_requests to maintain FIFO order
-        self._preempted_requests.sort(key=lambda r: r.arrived_at)
+        # self._preempted_requests.sort(key=lambda r: r.arrived_at)
         # all preempted_requests will have prefill completed
         while self._preempted_requests:
             if len(requests) == self._max_micro_batch_size:
                 break
 
-            request = self._preempted_requests.pop(0)
+            request = self._preempted_requests.popleft()
             if request.completed:
                 self.free(request.id)
                 continue
 
             while not self._can_allocate_request(request):
                 if self._preempted_requests:
-                    victim_request = self._preempted_requests.pop(-1)
+                    victim_request = self._preempted_requests.pop()
                     victim_request.restart()
                     self.free(victim_request.id)
-                    self._request_queue = [victim_request] + self._request_queue
+                    self._request_queue = self._request_queue.appendleft(victim_request)
                 else:
                     request.restart()
                     self.free(request.id)
-                    self._request_queue = [request] + self._request_queue
+                    self._request_queue = self._request_queue.appendleft(request)
                     break
             else:
                 self._allocate_request(request)
