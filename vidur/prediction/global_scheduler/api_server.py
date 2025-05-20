@@ -20,8 +20,8 @@ TIMEOUT_KEEP_ALIVE = 5  # seconds.
 app = FastAPI()
 instances = []
 num_requests = 0
-n = 0
-m = 0
+num_probed_instance = 0
+num_min_probed = 0
 start_time = 0
 metrics_type = "random"
 logging.basicConfig(level=logging.INFO,
@@ -75,7 +75,6 @@ async def generate_benchmark(request: Request) -> Response:
     2) select the host based on target metrics and call its vllm generate API to generate the completion.
     3) return the completion to the client with profiling
     """
-    assert len(instances) > 0
     request_dict = await request.json()
     request_id = request_dict["request_id"]
     prompt = request_dict.pop("prompt")
@@ -87,10 +86,7 @@ async def generate_benchmark(request: Request) -> Response:
     predict_tasks = []
     random_float = random.uniform(0, 1)
     is_sampled_for_compare = random_float < profiling_sampling_rate
-    print("is_sampled_for_compare: ", is_sampled_for_compare, " random_float: ", random_float, "profiling_sampling_rate: ",
-          profiling_sampling_rate)
-    global n
-    random_selected_instances = random.sample(instances, min(n, len(instances)))
+    random_selected_instances = random.sample(instances, min(num_probed_instance, len(instances)))
     for instance in random_selected_instances:
         predict_tasks.append(instance.query_predictor(
             request_id, num_context_tokens, predicted_num_decode_tokens, arrived_at))
@@ -122,15 +118,11 @@ async def generate_benchmark(request: Request) -> Response:
               f"current number of randomly assigned requests: {len(random_assigned)} at time {time.time() - start_time}")
         return JSONResponse(response)
 
-    predicted_sampled_results = []
-    if is_sampled_for_compare:
-        for result in predict_results:
-            predicted_sampled_results.append((result['instance_id'], result['target_metric']))
-
     target_metrics = [x['target_metric'] for x in predict_results]
     assert len(target_metrics) == len(predict_results)
 
     if is_sampled_for_compare:
+        predicted_sampled_results = [(result['instance_id'], result['target_metric']) for result in predict_results]
         # only one profile sampling is allowed and will block the other normal request
         sampled_instanced = [x['instance_id'] for x in predict_results]
         responses = await asyncio.gather(*[instance.query_backend(
@@ -204,11 +196,11 @@ async def generate_benchmark(request: Request) -> Response:
 
 
 def build_app(args: Namespace) -> FastAPI:
-    global app, n, m, profiling_sampling_rate
-    n = args.num_query_predictor
-    m = args.num_required_predictor
+    global app, num_probed_instance, num_min_probed, profiling_sampling_rate
+    num_min_probed = args.num_required_predictor
+    num_probed_instance = args.num_query_predictor
+    profiling_sampling_rate = args.profiling_sampling_rate
     app.root_path = args.root_path
-    app.profiling_sampling_rate = args.profiling_sampling_rate
     return app
 
 
