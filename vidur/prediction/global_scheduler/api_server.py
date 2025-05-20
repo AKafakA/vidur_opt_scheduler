@@ -85,7 +85,10 @@ async def generate_benchmark(request: Request) -> Response:
     arrived_at = time.time() - start_time
     _ = request_dict.pop("stream", False)
     predict_tasks = []
-    is_sampled_for_compare = random.uniform(0, 1) < profiling_sampling_rate
+    random_float = random.uniform(0, 1)
+    is_sampled_for_compare = random_float < profiling_sampling_rate
+    print("is_sampled_for_compare: ", is_sampled_for_compare, " random_float: ", random_float, "profiling_sampling_rate: ",
+          profiling_sampling_rate)
     global n
     random_selected_instances = random.sample(instances, min(n, len(instances)))
     for instance in random_selected_instances:
@@ -118,10 +121,6 @@ async def generate_benchmark(request: Request) -> Response:
         print(f"Randomly assigned request {request_id} to instance {selected_instance._instance_id}, "
               f"current number of randomly assigned requests: {len(random_assigned)} at time {time.time() - start_time}")
         return JSONResponse(response)
-
-    if (metrics_type.startswith("min") or metrics_type.startswith("max")) and "current" not in metrics_type \
-            and len(predict_results) > m:
-        predict_results = random.sample(predict_results, min(n, len(predict_results)))
 
     predicted_sampled_results = []
     if is_sampled_for_compare:

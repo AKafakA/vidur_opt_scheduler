@@ -55,6 +55,7 @@ def fill_missing_metrics(metric, fill_strategy="average_of_neighbors"):
                 elif right < len(metric):
                     metric[i] = metric[right]
 
+
 def get_wait_time(qps: float, distribution: str, burstiness: float = 1.0) -> float:
     mean_time_between_requests = 1.0 / qps
     if distribution == "uniform":
@@ -349,7 +350,8 @@ def calculate_throughput(queries,
             f"{fail_on_response_failure=}, expected number of successful respones to equal number of queries, got {len(responses)} vs {len(queries)}"
     else:
         error_count = len(queries) - len(responses)
-        msg += (f"\n error_count {error_count} out of {len(queries)} queries with success rate {error_count / len(queries)}")
+        msg += (
+            f"\n error_count {error_count} out of {len(queries)} queries with success rate {error_count / len(queries)}")
     return throughput_tok_s, qps, msg
 
 
@@ -648,7 +650,6 @@ class MeasureLatency:
         fill_missing_metrics(self._global_scheduling_overhead_ratio)
 
 
-
 def get_token_ids(input_str, tokenizer):
     t = tokenizer(input_str)
     return t['input_ids']
@@ -706,7 +707,8 @@ async def benchmark(
     tasks = []
     async for prompt in async_prompts:
         # add small extra timeout to avoid conflict with downstream
-        tasks.append(asyncio.create_task(query_model(prompt, verbose, ip_ports, write_to_file, timeout_in_seconds + 0.01)))
+        tasks.append(
+            asyncio.create_task(query_model(prompt, verbose, ip_ports, write_to_file, timeout_in_seconds + 0.001)))
     queries = await asyncio.gather(*tasks)
     dur_s = time.time() - start_time
     mean_token_latency = np.mean(m._per_token_latencies)
@@ -924,7 +926,7 @@ def sample_requests(
         completion_token_ids = tokenizer(res).input_ids
 
         if (len(prompt_token_ids) > 0 and len(completion_token_ids) > 0
-                and max_seqlen >= len(prompt_token_ids) + len(completion_token_ids)):
+                and max_seqlen > len(prompt_token_ids) + len(completion_token_ids)):
             prompts.append(prompt)
             prompt_lens.append(len(prompt_token_ids))
             max_response_lens.append(len(completion_token_ids))

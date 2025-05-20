@@ -12,7 +12,7 @@ BATCH_SIZE_THRESHOLD_FOR_TIME_ESTIMATION="0"
 BRANCH_NAME="single_predictor_evaluation"
 USE_PROCESS_FOR_FRONTEND=true
 UPDATE_VIDUR_CODE=true
-UPDATE_VLLM_CODE=false
+UPDATE_VLLM_CODE=true
 RUN_EXP=true
 RESTART_VLLM=true
 
@@ -31,13 +31,15 @@ ENABLE_CHUNKED_PREFILL="true"
 
 MODEL="meta-llama/Llama-2-7b-hf"
 DATASET_NAMES="sharegpt"
-SCHEDULER_NAME="min_new_request_latency random round_robin min_infass_load request_per_seconds"
-QPS="12 16 18 24"
+#SCHEDULER_NAME="min_new_request_latency random round_robin min_infass_load request_per_seconds"
+#QPS="12 16 18 24"
+SCHEDULER_NAME="random"
+QPS="24"
 N_SELECTED="2"
-PROFILING_SAMPLE_RATE="-1.0"
+PROFILING_SAMPLE_RATE="0.00"
 USE_FOR_PROFILING_ONLY=false
-NUM_REQUEST=10000
-KEEP_ALL_METRICS=true
+NUM_REQUEST=4000
+KEEP_ALL_METRICS=false
 
 
 for model in $MODEL; do
