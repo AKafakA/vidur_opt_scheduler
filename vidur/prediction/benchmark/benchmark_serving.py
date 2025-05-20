@@ -622,9 +622,7 @@ class MeasureLatency:
                 self._num_preempted.append(output['num_preempted'])
             else:
                 self._num_preempted.append(None)
-            if 'time_to_predict_in_ms' in output:
-                overhead = output['time_to_predict_in_ms']
-            elif time_on_backend > 0:
+            if time_on_backend > 0:
                 overhead = latency - time_on_backend
             else:
                 overhead = None
@@ -648,9 +646,6 @@ class MeasureLatency:
         fill_missing_metrics(self._num_preempted)
         fill_missing_metrics(self._global_scheduling_overhead)
         fill_missing_metrics(self._global_scheduling_overhead_ratio)
-
-
-
 
 
 

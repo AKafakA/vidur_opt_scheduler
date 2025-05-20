@@ -98,15 +98,17 @@ class SimulatePredictor(Predictor):
             config.threshold_batch_size_for_time_estimation
         self._port = port
         self._start_time = time.time()
-        self._backend_url = f"http://localhost:{self._port}/schedule_trace"
+        if self._need_to_predict:
+            self._backend_url = f"http://localhost:{self._port}/schedule_trace"
+        else:
+            self._backend_url = f"http://localhost:{self._port}/simple_schedule_trace"
         self._query_timeout = aiohttp.ClientTimeout(total=config.prediction_timeout * 0.9)
         if use_multiprocessing:
-            self._executor = ThreadPoolExecutor(max_workers=3)
+            self._executor = ThreadPoolExecutor(max_workers=6)
         else:
             self._executor = None
 
     async def predict(self, target_request: Request):
-        start_time = time.time()
         response_data = await self.get_response_data(target_request.id)
         metrics = {}
         if len(response_data) == 0:
@@ -116,7 +118,10 @@ class SimulatePredictor(Predictor):
         else:
             current_gpu_blocks = response_data["free_gpu_blocks"]
             current_num_preempted = response_data["num_preempted"]
-            current_total_requests = (
+            if "total_requests_count" in response_data:
+                current_total_requests = response_data["total_requests_count"]
+            else:
+                current_total_requests = (
                         (len(response_data["waiting"]) + len(response_data["running"]) + len(response_data["swap"]))
                         // NUM_FIELD_PER_REQUEST)
         if self._need_to_predict:
@@ -141,6 +146,7 @@ class SimulatePredictor(Predictor):
         elif self._config.target_metric == "min_current_requests":
             target_metric = current_total_requests
         elif self._config.target_metric == "min_infass_load":
+            current_gpu_blocks = max(current_gpu_blocks, 1)
             target_metric = (current_total_requests / current_gpu_blocks) * (-1)
         else:
             target_metric = random.randint(0, 100)
@@ -148,7 +154,6 @@ class SimulatePredictor(Predictor):
         metrics["gpu_blocks"] = current_gpu_blocks
         metrics["num_requests"] = current_total_requests
         metrics["num_preempted"] = current_num_preempted
-        metrics["time_to_predict_in_ms"] = (time.time() - start_time) * 1000
         return metrics
 
     def __generate_requests_from_backend(self, request_info: dict, source: str) -> Request:
@@ -188,17 +193,9 @@ class SimulatePredictor(Predictor):
 
     async def get_response_data(self, request_id):
         start_time = time.time()
-        print(f"Connecting to backend at {self._backend_url} at {start_time - self._start_time} "
-              f" for request, {request_id}")
-
         async with aiohttp.ClientSession(timeout=self._query_timeout) as session:
-            print(f"Connected to backend at {self._backend_url} after {(time.time() - start_time) * 1000} "
-                  f" ms for request {request_id}")
             try:
                 async with session.get(self._backend_url) as response:
-                    connect_time = (time.time() - start_time) * 1000
-                    print(f"Time taken to connect to backend: {connect_time} ms at {time.time()} "
-                          f"for request {request_id}")
                     response_data = orjson.loads(await response.read())
                     return response_data
             except asyncio.TimeoutError as e:

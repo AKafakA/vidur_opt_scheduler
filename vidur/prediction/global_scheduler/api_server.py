@@ -86,8 +86,9 @@ async def generate_benchmark(request: Request) -> Response:
     _ = request_dict.pop("stream", False)
     predict_tasks = []
     is_sampled_for_compare = random.uniform(0, 1) < profiling_sampling_rate
-
-    for instance in instances:
+    global n
+    random_selected_instances = random.sample(instances, min(n, len(instances)))
+    for instance in random_selected_instances:
         predict_tasks.append(instance.query_predictor(
             request_id, num_context_tokens, predicted_num_decode_tokens, arrived_at))
     try:
