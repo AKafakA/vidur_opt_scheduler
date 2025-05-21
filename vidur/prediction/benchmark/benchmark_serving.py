@@ -860,6 +860,7 @@ def gen_random_response_lens(distribution: str, len_mean, len_range, num_prompts
 
 
 def get_dataset_list(dataset_path: str, start_idx: int = 0, num_samples: int = 10):
+    print(f"Loading dataset from {dataset_path} with start_idx {start_idx} and num_samples {num_samples}")
     dataset_list = []
     for file in os.listdir(dataset_path):
         path = os.path.join(dataset_path, file)
