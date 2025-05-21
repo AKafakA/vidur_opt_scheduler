@@ -138,7 +138,6 @@ class SimulatePredictor(Predictor):
                     self._target_metric,
                     self._request_timeline_predictor
                 )
-                print(f"simulation taking {(time.time() - start_predict) * 1000} ms")
             else:
                 target_metric = -1
         elif self._config.target_metric == "min_current_gpu_blocks":

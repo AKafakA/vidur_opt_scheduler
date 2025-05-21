@@ -277,7 +277,7 @@ def plot_per_scheduler(experiments_set, output_dir, scheduler_excluded="round_ro
     fig.savefig(f"{output_dir}/scheduler.png", bbox_inches='tight')
 
 
-def plot_per_qps(experiments_set, output_dir, min_qps=24, max_qps=30):
+def plot_per_qps(experiments_set, output_dir, min_qps=18, max_qps=30):
     qps_output_dir = output_dir + "/qps"
     if os.path.exists(qps_output_dir):
         shutil.rmtree(qps_output_dir)
@@ -461,7 +461,7 @@ def plot_per_qps(experiments_set, output_dir, min_qps=24, max_qps=30):
 
 def main():
     parser = argparse.ArgumentParser(description='Plot the results of the experiments')
-    parser.add_argument("--experiments-dir", type=str, default="/experiments_analysis/experiment_output")
+    parser.add_argument("--experiments-dir", type=str, default="/experiments_analysis/experiment_output/sharegpt")
     parser.add_argument("--output-dir", type=str, default="./experiments_analysis/exp_plots")
     parser.add_argument("--plot-per-qps", type=bool, default=True)
     parser.add_argument("--plot-per-scheduler", type=bool, default=True)
@@ -476,6 +476,8 @@ def main():
             continue
         for root, dirs, files in os.walk(scheduler_dir):
             for directory in dirs:
+                if directory == 'running_logs':
+                    continue
                 record = {"scheduler_name": scheduler_name}
                 experiments_set.append(record)
                 qps, n = directory_name_parser(directory)
