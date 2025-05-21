@@ -36,6 +36,7 @@ resource.setrlimit(resource.RLIMIT_NOFILE, (65536, 65536))
 
 num_finished_requests = 0
 server_num_requests = {}
+exp_start_time = 0
 
 
 def fill_missing_metrics(metric, fill_strategy="average_of_neighbors"):
@@ -710,6 +711,7 @@ async def benchmark(
         tasks.append(
             asyncio.create_task(query_model(prompt, verbose, ip_ports, write_to_file, timeout_in_seconds + 0.001)))
     queries = await asyncio.gather(*tasks)
+    print(f'All requested finished at {time.time() - exp_start_time} s, got {len(queries)} responses')
     dur_s = time.time() - start_time
     mean_token_latency = np.mean(m._per_token_latencies)
     mean_e2e_latency = np.mean(m._request_latencies)
@@ -1209,4 +1211,6 @@ def main():
 
 
 if __name__ == '__main__':
+    exp_start_time = time.time()
     main()
+    print(f'Experiment finished at {time.time() - exp_start_time} s')
