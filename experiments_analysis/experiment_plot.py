@@ -12,16 +12,17 @@ import shutil
 import pandas as pd
 from scipy.ndimage import gaussian_filter1d
 
-experiment_name_replacement = {"min latency": "Block", "min infass load": "INFaaS++",
+experiment_name_replacement = {"min new request latency": "Block", "min infass load": "INFaaS++",
                                "request per seconds": "Instance-QPM"}
-scheduler_name_ordered = ['Round Robin', 'random', 'INFaaS++', 'Instance-QPM', 'Block*', 'Block']
+scheduler_name_ordered = ['random', 'Round Robin', 'INFaaS++', 'Instance-QPM', 'Block*', 'Block']
 
 
 def directory_name_parser(directory_name):
     directory_name = directory_name.split("_")
     qps = directory_name[1]
     n = directory_name[6]
-    return qps, n
+    use_length_estimation = True if directory_name[15] == "true" else False
+    return qps, n, use_length_estimation
 
 
 def extract_data_from_log_file(log_file):
@@ -338,6 +339,8 @@ def plot_per_qps(experiments_set, output_dir, min_qps=18, max_qps=30):
             for key in experiment_name_replacement.keys():
                 if key in experiment_name:
                     experiment_name = experiment_name.replace(key, experiment_name_replacement[key])
+                if experiment_name == "Block" and not experiment["use_length_estimation"]:
+                    experiment_name += "*"
             map_from_name_exp[experiment_name] = experiment
         ordered_key = []
         if len(sorted_keys) == 0:
@@ -451,12 +454,11 @@ def plot_per_qps(experiments_set, output_dir, min_qps=18, max_qps=30):
     plot_linear_for_multiple_qps(axs_for_var_free_gpu, var_free_gpu_per_node, "Free GPU Blocks Var",
                                  sigma=20)
     plot_linear_for_multiple_qps(axs_for_num_preemption, num_total_preemption, "Total Preemption Count",
-                                    sigma=10)
+                                 sigma=10)
     fig.tight_layout()
     fig.subplots_adjust(hspace=0.2, wspace=0.3)
     fig.set_size_inches(16, 10)
     fig.savefig(f"{qps_output_dir}/linear.png", bbox_inches='tight')
-
 
 
 def main():
@@ -480,9 +482,10 @@ def main():
                     continue
                 record = {"scheduler_name": scheduler_name}
                 experiments_set.append(record)
-                qps, n = directory_name_parser(directory)
+                qps, n, use_length_est = directory_name_parser(directory)
                 record["qps"] = float(qps)
                 record["n"] = int(n)
+                record["use_length_estimation"] = use_length_est
                 for experiments_trace in os.listdir(scheduler_dir + "/" + directory):
                     if experiments_trace.endswith("logs.txt"):
                         metrics = extract_data_from_log_file(scheduler_dir + "/" + directory + "/" + experiments_trace)

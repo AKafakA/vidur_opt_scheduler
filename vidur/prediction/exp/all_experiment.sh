@@ -31,14 +31,16 @@ ENABLE_CHUNKED_PREFILL="true"
 
 MODEL="meta-llama/Llama-2-7b-hf"
 DATASET_NAMES="sharegpt"
-SCHEDULER_NAME="min_new_request_latency"
-QPS="24"
+SCHEDULER_NAME="min_new_request_latency random round_robin min_infass_load request_per_seconds"
+QPS="36"
 #SCHEDULER_NAME="random"
 #QPS="24"
 PROFILING_SAMPLE_RATE=0.000
 USE_FOR_PROFILING_ONLY=false
 NUM_REQUEST=10000
 KEEP_ALL_METRICS=false
+USE_LENGTH_ESTIMATION="false"
+N_SELECTED="12"
 
 
 for model in $MODEL; do
@@ -57,11 +59,10 @@ for model in $MODEL; do
     fi
     for scheduler in $SCHEDULER_NAME; do
       if [ "$scheduler" = "min_new_request_latency" ]; then
-        USE_LENGTH_ESTIMATION="false"
-        N_SELECTED="2 12"
-      else
-        USE_LENGTH_ESTIMATION="false"
-        N_SELECTED="12"
+        QPS="18 24 30 36"
+        USE_LENGTH_ESTIMATION="true"
+      elif [ "$scheduler" = "min_infass_load" ]; then
+        QPS="18 24 30 36"
       fi
       for enable_chunked_prefill in $ENABLE_CHUNKED_PREFILL; do
         for qps in $QPS; do
