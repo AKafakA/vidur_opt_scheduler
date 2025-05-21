@@ -1030,6 +1030,9 @@ def main():
 
     args = parser.parse_args()
 
+    print(f"running experiment for dataset {args.dataset_type} with backend {args.backend} and qps {args.qps} "
+          f"and use_estimated_response_lens {args.use_estimated_response_lens} ")
+
     args.output_dir = "experiment_output/" + args.output_dir
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir)
