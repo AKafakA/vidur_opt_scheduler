@@ -148,6 +148,7 @@ class SimulatePredictor(Predictor):
             print(f"current_gpu_blocks: {current_gpu_blocks}")
             print(f"current_total_requests: {current_total_requests}")
             target_metric = (current_total_requests / current_gpu_blocks) * (-1)
+            print(f"target_metric: {target_metric}")
         else:
             target_metric = random.randint(0, 100)
         metrics["target_metric"] = target_metric
