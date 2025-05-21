@@ -27,7 +27,6 @@ async def health() -> Response:
     """Health check."""
     return Response(status_code=200)
 
-
 @app.post("/predict")
 async def predict(request: Request) -> Response:
     """Predict completion for the request. """

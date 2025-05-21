@@ -126,7 +126,6 @@ class SimulatePredictor(Predictor):
                         // NUM_FIELD_PER_REQUEST)
         if self._need_to_predict:
             if len(response_data) > 0:
-                start_predict = time.time()
                 replica_scheduler = self.get_replica_scheduler_with_backend_response(response_data)
                 loop = asyncio.get_event_loop()
                 target_metric = await loop.run_in_executor(
@@ -146,6 +145,8 @@ class SimulatePredictor(Predictor):
             target_metric = current_total_requests
         elif self._config.target_metric == "min_infass_load":
             current_gpu_blocks = max(current_gpu_blocks, 1)
+            print(f"current_gpu_blocks: {current_gpu_blocks}")
+            print(f"current_total_requests: {current_total_requests}")
             target_metric = (current_total_requests / current_gpu_blocks) * (-1)
         else:
             target_metric = random.randint(0, 100)
