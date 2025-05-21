@@ -144,11 +144,7 @@ class SimulatePredictor(Predictor):
         elif self._config.target_metric == "min_current_requests":
             target_metric = current_total_requests
         elif self._config.target_metric == "min_infass_load":
-            current_gpu_blocks = max(current_gpu_blocks, 1)
-            print(f"current_gpu_blocks: {current_gpu_blocks}")
-            print(f"current_total_requests: {current_total_requests}")
-            target_metric = (current_total_requests / current_gpu_blocks) * (-1)
-            print(f"target_metric: {target_metric}")
+            target_metric = (max(current_gpu_blocks, 1) / max(current_gpu_blocks, 1)) * (-1)
         else:
             target_metric = random.randint(0, 100)
         metrics["target_metric"] = target_metric
