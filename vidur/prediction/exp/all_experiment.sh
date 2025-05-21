@@ -64,7 +64,7 @@ for model in $MODEL; do
             for n_selected in $N_SELECTED; do
               for use_estimation_len in $USE_LENGTH_ESTIMATION; do
                 if [ "$use_estimation_len" = "true" ]; then
-                  dataset_path="~/data/$dataset_name/generated/$MODEL_TYPE"
+                  dataset_path="~/data/$dataset_name/generate/$MODEL_TYPE"
                 else
                   dataset_path="~/data/$dataset_name"
                 fi
