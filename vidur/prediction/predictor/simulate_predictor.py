@@ -96,6 +96,7 @@ class SimulatePredictor(Predictor):
         self._request_timeline_predictor.use_estimated_time = config.enable_batch_time_estimation
         self._request_timeline_predictor.threshold_batch_size_for_time_estimation = \
             config.threshold_batch_size_for_time_estimation
+        print(f"SimulatePredictor: {self._request_timeline_predictor.threshold_batch_size_for_time_estimation}")
         self._port = port
         self._start_time = time.time()
         if self._need_to_predict:
