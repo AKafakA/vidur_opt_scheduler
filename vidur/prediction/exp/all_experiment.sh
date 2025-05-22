@@ -31,15 +31,12 @@ ENABLE_CHUNKED_PREFILL="true"
 
 MODEL="meta-llama/Llama-2-7b-hf"
 DATASET_NAMES="sharegpt"
-SCHEDULER_NAME="min_new_request_latency"
+SCHEDULER_NAME="min_new_request_latency random round_robin min_infass_load request_per_seconds"
 QPS="30 24 18"
-#SCHEDULER_NAME="random"
-#QPS="24"
 PROFILING_SAMPLE_RATE=0.000
 USE_FOR_PROFILING_ONLY=false
 NUM_REQUEST=10000
 KEEP_ALL_METRICS=false
-USE_LENGTH_ESTIMATION="true"
 N_SELECTED="12"
 
 
@@ -51,16 +48,17 @@ for model in $MODEL; do
   fi
   for dataset_name in $DATASET_NAMES; do
     for scheduler in $SCHEDULER_NAME; do
+      if [ "$scheduler" = "min_new_request_latency" ]; then
+        USE_LENGTH_ESTIMATION="false true"
+      else
+        ENABLE_TIME_ESTIMATION="false"
+      fi
       for enable_chunked_prefill in $ENABLE_CHUNKED_PREFILL; do
         for use_estimation_len in $USE_LENGTH_ESTIMATION; do
           for batch_size_cut in $BATCH_SIZE_THRESHOLD_FOR_TIME_ESTIMATION; do
             for n_selected in $N_SELECTED; do
-              if [ "$use_estimation_len" = "true" ]; then
-                  dataset_path="~/data/$dataset_name/generate/$MODEL_TYPE"
-              else
-                  dataset_path="~/data/$dataset_name"
-              fi
               for qps in $QPS; do
+                dataset_path="~/data/$dataset_name/generate/$MODEL_TYPE"
                 echo "Running experiment with scheduler: $scheduler, model: $model, dataset: $dataset_name, qps: $qps, batch_size_cut: $batch_size_cut enable_chunked_prefill: $enable_chunked_prefill use_for_profiling_only: $USE_FOR_PROFILING_ONLY predictor timeout: $PREDICTOR_TIMEOUT_IN_SECONDS"
                 sh vidur/prediction/exp/experiment.sh $scheduler $NUM_REQUEST $RESTART_VLLM  $BATCH_CAP $dataset_name $dataset_path $dataset_name true $KEEP_ALL_METRICS $START_INDEX $model $MODEL_TYPE $MAX_MODEL_LENGTH $TARGET_HOST $enable_chunked_prefill $PREDICTOR_WORKERS $GLOBAL_SCHEDULER_WORKERS $BACKEND_WORKERS $CHUNK_SIZE $qps $BRANCH_NAME $batch_size_cut $n_selected $PROFILING_SAMPLE_RATE $TIMEOUT_IN_SECONDS $USE_FOR_PROFILING_ONLY $PREDICTOR_TIMEOUT_IN_SECONDS $USE_PROCESS_FOR_FRONTEND $UPDATE_VIDUR_CODE $UPDATE_VLLM_CODE $RUN_EXP $use_estimation_len
               done
