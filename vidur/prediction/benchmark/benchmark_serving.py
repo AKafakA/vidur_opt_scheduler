@@ -937,7 +937,7 @@ def sample_requests(
             prompt_lens.append(prompt_len)
             max_response_lens.append(completion_len)
             estimated_response_lens.append(
-                min(max_seqlen - prompt_len - 1, int(data.get("predicted_length", completion_len)))
+                min(max_seqlen - prompt_len - 1, max(1, int(data.get("predicted_length", completion_len))))
                 if use_estimated_response_lens else completion_len
             )
 

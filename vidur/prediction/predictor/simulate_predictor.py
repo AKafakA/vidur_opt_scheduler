@@ -50,7 +50,11 @@ def convert_list_to_request_infos(raw: list) -> list:
             "seq_prompts_length": raw[i + 3],
             "seq_computed_length": raw[i + 4],
             "is_prefill": raw[i + 5] == 1,
-            "seq_expected_decoded_length": raw[i + 6]
+            # when use the estimated length, when the length underestimate the length, use the real generated length
+            # when the length overestimate the length, use the estimated length + 10 indicating the case,
+            # response will end soon
+            "seq_expected_decoded_length": raw[i + 6] if raw[i + 6] + raw[i + 3] > raw[i + 2] else
+            (raw[i + 2] - raw[i + 3]) + 10
         })
         if not (raw[i + 5] == 1 or raw[i + 5] == 0):
             raise ValueError(f"Invalid value for is_prefill: {raw[i + 5]}")
