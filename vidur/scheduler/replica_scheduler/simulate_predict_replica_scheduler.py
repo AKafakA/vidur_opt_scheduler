@@ -140,8 +140,8 @@ class SimulatePredictReplicaScheduler:
                     closest_batch_size = min(self._batch_execution_time_caching_map.keys(),
                                              key=lambda x: abs(x - batch_size))
                 # randomly select one results from caching map
-                first_request_id = self._batch_execution_time_caching_map[closest_batch_size].keys()[-1]
-                last_request_id = self._batch_execution_time_caching_map[closest_batch_size][first_request_id].keys()[-1]
+                first_request_id = list(self._batch_execution_time_caching_map[closest_batch_size].keys())[-1]
+                last_request_id = list(self._batch_execution_time_caching_map[closest_batch_size][first_request_id].keys())[-1]
                 print(f"Error in getting real execution time: {e} with batch size {batch_size} and stage id {stage_id}",
                       f"using cached execution time for batch size {closest_batch_size} instead")
                 return self._batch_execution_time_caching_map[closest_batch_size][first_request_id][last_request_id]
