@@ -51,7 +51,7 @@ for model in $MODEL; do
       if [ "$scheduler" = "min_new_request_latency" ]; then
         USE_LENGTH_ESTIMATION="false true"
       else
-        ENABLE_TIME_ESTIMATION="false"
+        USE_LENGTH_ESTIMATION="false"
       fi
       for enable_chunked_prefill in $ENABLE_CHUNKED_PREFILL; do
         for use_estimation_len in $USE_LENGTH_ESTIMATION; do
