@@ -111,7 +111,7 @@ class SimulatePredictReplicaScheduler:
                 if catch_time is not None:
                     return catch_time
                 else:
-                    batch_execution_time = self._execution_time_predictor.get_execution_time(batch, stage_id).total_time
+                    batch_execution_time = self.get_real_execution_time(batch, stage_id)
                     # self._batch_execution_time_catching_map[batch_size][first_request_id][last_request_id] = \
                     #     batch_execution_time
                     if self._batch_execution_time_caching_map.get(batch_size) is None:
@@ -122,9 +122,33 @@ class SimulatePredictReplicaScheduler:
                         batch_execution_time
                     return batch_execution_time
             else:
-                return self._execution_time_predictor.get_execution_time(batch, stage_id).total_time
+                return self.get_real_execution_time(batch, stage_id)
         else:
             return self._default_execution_time
+
+    def get_real_execution_time(self, batch: Batch, stage_id: int):
+        try:
+            return self._execution_time_predictor.get_execution_time(batch, stage_id).total_time
+        except Exception as e:
+            batch_size = batch.size
+            # find the batch size in the batch execution time caching map closest to the current batch size
+            # and use its execution time as a fallback
+            if self._batch_execution_time_caching_map is not None:
+                if batch_size in self._batch_execution_time_caching_map:
+                    closest_batch_size = batch_size
+                else:
+                    closest_batch_size = min(self._batch_execution_time_caching_map.keys(),
+                                             key=lambda x: abs(x - batch_size))
+                # randomly select one results from caching map
+                first_request_id = self._batch_execution_time_caching_map[closest_batch_size].keys()[-1]
+                last_request_id = self._batch_execution_time_caching_map[closest_batch_size][first_request_id].keys()[-1]
+                print(f"Error in getting real execution time: {e} with batch size {batch_size} and stage id {stage_id}",
+                      f"using cached execution time for batch size {closest_batch_size} instead")
+                return self._batch_execution_time_caching_map[closest_batch_size][first_request_id][last_request_id]
+            else:
+                print(f"Error in getting real execution time: {e} with batch size {batch_size} and stage id {stage_id}",
+                      f"using default execution time {self._default_execution_time} instead")
+                return self._default_execution_time
 
     def get_target_request_batches(self, request_id):
         return [selected_batch for selected_batch in self._all_request_batch_info

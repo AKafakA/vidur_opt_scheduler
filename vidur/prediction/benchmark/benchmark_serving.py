@@ -928,14 +928,17 @@ def sample_requests(
         prompt_token_ids = tokenizer(prompt).input_ids
         completion_token_ids = tokenizer(res).input_ids
 
-        if (len(prompt_token_ids) > 0 and len(completion_token_ids) > 0
-                and max_seqlen > len(prompt_token_ids) + len(completion_token_ids)):
+        prompt_len = len(prompt_token_ids)
+        completion_len = len(completion_token_ids)
+
+        if (prompt_len > 0 and completion_len > 0
+                and max_seqlen > prompt_len + completion_len):
             prompts.append(prompt)
-            prompt_lens.append(len(prompt_token_ids))
-            max_response_lens.append(len(completion_token_ids))
+            prompt_lens.append(prompt_len)
+            max_response_lens.append(completion_len)
             estimated_response_lens.append(
-                int(data.get("predicted_length", len(completion_token_ids)))
-                if use_estimated_response_lens else len(completion_token_ids)
+                min(max_seqlen - prompt_len - 1, int(data.get("predicted_length", completion_len)))
+                if use_estimated_response_lens else completion_len
             )
 
         if len(prompts) > num_requests:

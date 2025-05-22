@@ -31,15 +31,15 @@ ENABLE_CHUNKED_PREFILL="true"
 
 MODEL="meta-llama/Llama-2-7b-hf"
 DATASET_NAMES="sharegpt"
-SCHEDULER_NAME="min_new_request_latency min_infass_load request_per_seconds random round_robin"
-QPS="36"
+SCHEDULER_NAME="min_new_request_latency"
+QPS="30 24 18"
 #SCHEDULER_NAME="random"
 #QPS="24"
 PROFILING_SAMPLE_RATE=0.000
 USE_FOR_PROFILING_ONLY=false
 NUM_REQUEST=10000
 KEEP_ALL_METRICS=false
-USE_LENGTH_ESTIMATION="false"
+USE_LENGTH_ESTIMATION="true"
 N_SELECTED="12"
 
 
@@ -51,23 +51,12 @@ for model in $MODEL; do
   fi
   for dataset_name in $DATASET_NAMES; do
     for scheduler in $SCHEDULER_NAME; do
-      if [ "$scheduler" = "min_new_request_latency" ]; then
-        USE_LENGTH_ESTIMATION="true false"
-        QPS="36"
-      elif [ "$scheduler" = "min_infass_load" ]; then
-        QPS="18 24 30 36"
-        USE_LENGTH_ESTIMATION="false"
-      else
-        QPS="36"
-        USE_LENGTH_ESTIMATION="false"
-      fi
       for enable_chunked_prefill in $ENABLE_CHUNKED_PREFILL; do
         for use_estimation_len in $USE_LENGTH_ESTIMATION; do
           for batch_size_cut in $BATCH_SIZE_THRESHOLD_FOR_TIME_ESTIMATION; do
             for n_selected in $N_SELECTED; do
               if [ "$use_estimation_len" = "true" ]; then
                   dataset_path="~/data/$dataset_name/generate/$MODEL_TYPE"
-                  QPS="18 24 30 36"
               else
                   dataset_path="~/data/$dataset_name"
               fi
