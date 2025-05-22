@@ -5,3 +5,7 @@ class GlobalSchedulerType(BaseIntEnum):
     RANDOM = 1
     ROUND_ROBIN = 2
     LOR = 3
+    LODT = 4
+    # opt global scheduler name
+    OPT = 5
+    MIN_MEMORY = 6

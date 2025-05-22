@@ -154,7 +154,7 @@ def get_max_num_blocks(
     block_size: int,
     dtype: torch.dtype,
     gpu_memory_utilization: float = 0.9,
-    max_pipeline_parallel_size: int = 8,
+    max_pipeline_parallel_size: int = 4,
 ):
     element_size = torch.randn(1, dtype=dtype).element_size()
     block_memory_size = (

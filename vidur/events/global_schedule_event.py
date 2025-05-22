@@ -23,6 +23,7 @@ class GlobalScheduleEvent(BaseEvent):
 
         self._replica_set = set()
         self._request_mapping = scheduler.schedule()
+        scheduler.num_scheduled_requests += len(self._request_mapping)
 
         for replica_id, request in self._request_mapping:
             self._replica_set.add(replica_id)

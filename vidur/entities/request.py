@@ -27,17 +27,27 @@ def check_completed(func):
 
 class Request(BaseEntity):
     def __init__(
-        self,
-        arrived_at: float,
-        num_prefill_tokens: int,
-        num_decode_tokens: int,
-        num_processed_tokens: int = 0,
+            self,
+            arrived_at: float,
+            num_prefill_tokens: int,
+            num_decode_tokens: int,
+            num_processed_tokens: int = 0,
+            num_predicted_decode_tokens: int = -1,
     ):
         self._id = Request.generate_id()
         self._arrived_at = arrived_at
         self._num_prefill_tokens = num_prefill_tokens
         self._num_decode_tokens = num_decode_tokens
         self._num_processed_tokens = num_processed_tokens
+
+        self._inital_num_prefill_tokens = num_prefill_tokens
+        self._inital_num_decode_tokens = num_decode_tokens
+        self._inital_num_processed_tokens = num_processed_tokens
+
+        if num_predicted_decode_tokens == -1:
+            self.num_predicted_decode_tokens = num_decode_tokens
+        else:
+            self.num_predicted_decode_tokens = num_predicted_decode_tokens
 
         self._scheduled_at = 0
         self._execution_time = 0
@@ -58,10 +68,19 @@ class Request(BaseEntity):
         self._is_prefill_complete = False
 
         self._num_restarts = 0
+        self.source = None
+        self.loading_tokens =0
+
+    def set_id(self, id: int):
+        self._id = id
 
     @property
     def size(self) -> Tuple[int, int]:
         return (self._num_prefill_tokens, self._num_decode_tokens)
+
+    @property
+    def id(self) -> int:
+        return self._id
 
     @property
     @check_scheduled
@@ -188,6 +207,12 @@ class Request(BaseEntity):
         return self._completed
 
     @property
+    def end_to_end_time(self) -> float:
+        if self._completed_at == 0:
+            raise ValueError("Request has not been completed yet")
+        return self._completed_at - self._arrived_at
+
+    @property
     def num_restarts(self) -> int:
         return self._num_restarts
 
@@ -200,12 +225,12 @@ class Request(BaseEntity):
         return self._num_processed_tokens > self._num_prefill_tokens + 1
 
     def on_batch_schedule(
-        self,
-        time: float,
+            self,
+            time: float,
     ) -> None:
         self._latest_iteration_scheduled_at = time
         self._latest_iteration_scheduling_delay = (
-            time - self._latest_iteration_completed_at
+                time - self._latest_iteration_completed_at
         )
 
         if self._scheduled:
@@ -220,14 +245,20 @@ class Request(BaseEntity):
         self._scheduled = True
 
     def on_batch_end(
-        self,
-        time: float,
-        num_tokens_processed: int,
+            self,
+            time: float,
+            num_tokens_processed: int,
     ) -> None:
         self._num_processed_tokens += num_tokens_processed
         self._latest_iteration_completed_at = time
 
-        assert self._num_processed_tokens <= self.total_tokens
+        # print("request_id " + str(self.id))
+        # print("prefilled token")
+        # print(self._num_prefill_tokens)
+        # print("decode token")
+        # print(self._num_decode_tokens)
+        # print("generated token")
+        # print(self._num_processed_tokens)
 
         if self._num_processed_tokens == self._num_prefill_tokens:
             self._is_prefill_complete = True
@@ -244,11 +275,10 @@ class Request(BaseEntity):
         if self._num_processed_tokens == self.total_tokens:
             self._completed_at = time
             self._completed = True
-            logger.debug(f"Request {self._id} completed at {self._completed_at}")
 
     def on_batch_stage_schedule(
-        self,
-        time: float,
+            self,
+            time: float,
     ) -> None:
         self._latest_stage_scheduled_at = time
         if self._latest_stage_completed_at == 0:
@@ -258,10 +288,10 @@ class Request(BaseEntity):
         self._preempted = False
 
     def on_batch_stage_end(
-        self,
-        time: float,
-        execution_time: float,
-        model_execution_time: float,
+            self,
+            time: float,
+            execution_time: float,
+            model_execution_time: float,
     ) -> None:
         self._execution_time += execution_time
         self._model_execution_time += model_execution_time

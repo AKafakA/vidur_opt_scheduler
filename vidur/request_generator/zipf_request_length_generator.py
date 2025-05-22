@@ -20,10 +20,10 @@ class ZipfRequestLengthGenerator(BaseRequestLengthGenerator):
             config.seed,
         )
 
-    def get_next_num_tokens(self) -> Tuple[float, float]:
+    def get_next_num_tokens(self) -> Tuple[float, float, float]:
         total_tokens = self.zipf_generator.next()
 
         decode_tokens = total_tokens / (1 + self.config.prefill_to_decode_ratio)
         prefill_tokens = total_tokens - decode_tokens
 
-        return prefill_tokens, decode_tokens
+        return prefill_tokens, decode_tokens, -1.0

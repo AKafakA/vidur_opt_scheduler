@@ -20,11 +20,11 @@ logger = init_logger(__name__)
 
 class CapacitySearch:
     def __init__(
-        self,
-        job_config: JobConfig,
-        args: argparse.Namespace,
-        cpu_core_assignment_manager: CpuAssignmentManager = None,
-        cpu_core_id: int = None,
+            self,
+            job_config: JobConfig,
+            args: argparse.Namespace,
+            cpu_core_assignment_manager: CpuAssignmentManager = None,
+            cpu_core_id: int = None,
     ):
         self.node_ip = get_ip()
         self.cpu_core_id = None
@@ -45,8 +45,8 @@ class CapacitySearch:
         )
 
     def _generate_run_command(
-        self,
-        scheduler_config: SimulationConfig,
+            self,
+            scheduler_config: SimulationConfig,
     ):
         cpu_affinity_command = ""
         if self.cpu_core_id is not None and platform.system() != "Darwin":
@@ -76,7 +76,7 @@ class CapacitySearch:
             self.args.scheduling_delay_slo_quantile
         )
         is_under_scheduling_delay_sla = (
-            scheduling_delay <= self.args.scheduling_delay_slo_value
+                scheduling_delay <= self.args.scheduling_delay_slo_value
         )
 
         logger.info(
@@ -113,7 +113,7 @@ class CapacitySearch:
 
             result_file = self._get_result_file(run_dir)
             assert (
-                result_file is not None
+                    result_file is not None
             ), f"Result file not found for {simulator_config.to_human_readable_name()}"
             return self._is_under_sla(result_file, simulator_config)
         except Exception as e:
@@ -134,7 +134,7 @@ class CapacitySearch:
         right = self.job_config.start_qps * 2
         qps = 0
         max_qps_under_sla = None
-        min_qps_over_sla = 2**32
+        min_qps_over_sla = 2 ** 32
 
         for _ in range(self.args.max_iterations):
             # stopping condition - we have reached the minimum granularity

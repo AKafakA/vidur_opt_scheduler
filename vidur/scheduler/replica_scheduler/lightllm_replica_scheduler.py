@@ -12,7 +12,6 @@ class LightLLMReplicaScheduler(BaseReplicaScheduler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self._preempted_requests: List[Request] = []
         self._num_running_batches = 0
         self._max_micro_batch_size = self._config.batch_size_cap // self._num_stages
         assert (

@@ -20,6 +20,8 @@ from vidur.types import (
     RequestIntervalGeneratorType,
     RequestLengthGeneratorType,
 )
+from vidur.types.optimal_global_scheduler_target_metric import TargetMetric
+from vidur.types.request_timeline_predictor_type import RequestTimelinePredictorType
 
 logger = init_logger(__name__)
 
@@ -198,6 +200,22 @@ class BaseRequestGeneratorConfig(BasePolyConfig):
 
 
 @dataclass
+class DummyRequestGeneratorConfig(BaseRequestGeneratorConfig):
+    seed: int = field(
+        default=42,
+        metadata={"help": "Seed for the random number generator."},
+    )
+    max_tokens: int = field(
+        default=4096,
+        metadata={"help": "Maximum tokens for the Request Generator."},
+    )
+
+    @staticmethod
+    def get_type():
+        return RequestGeneratorType.DUMMY
+
+
+@dataclass
 class SyntheticRequestGeneratorConfig(BaseRequestGeneratorConfig):
     length_generator_config: BaseRequestLengthGeneratorConfig = field(
         default_factory=FixedRequestLengthGeneratorConfig,
@@ -255,7 +273,7 @@ class TraceRequestGeneratorConfig(BaseRequestGeneratorConfig):
 @dataclass
 class BaseReplicaSchedulerConfig(BasePolyConfig):
     batch_size_cap: int = field(
-        default=128,
+        default=256,
         metadata={"help": "Maximum batch size cap."},
     )
     block_size: int = field(
@@ -416,12 +434,17 @@ class MetricsConfig:
         default="cache",
         metadata={"help": "Cache directory."},
     )
+    create_output_dir: bool = field(
+        default=True,
+        metadata={"help": "Whether to create output directory."},
+    )
 
     def __post_init__(self):
-        self.output_dir = (
-            f"{self.output_dir}/{datetime.now().strftime('%Y-%m-%d_%H-%M-%S-%f')}"
-        )
-        os.makedirs(self.output_dir, exist_ok=True)
+        if self.create_output_dir:
+            self.output_dir = (
+                f"{self.output_dir}/{datetime.now().strftime('%Y-%m-%d_%H-%M-%S-%f')}"
+            )
+            os.makedirs(self.output_dir, exist_ok=True)
 
 
 @dataclass
@@ -465,6 +488,18 @@ class ReplicaConfig:
 
 
 @dataclass
+class BaseRequestTimelinePredictorConfig(BasePolyConfig):
+    pass
+
+
+@dataclass
+class SimulationRequestTimelinePredictorConfig(BaseRequestTimelinePredictorConfig):
+    @staticmethod
+    def get_type():
+        return RequestTimelinePredictorType.SIMULATE
+
+
+@dataclass
 class BaseGlobalSchedulerConfig(BasePolyConfig):
     pass
 
@@ -488,6 +523,30 @@ class LORGlobalSchedulerConfig(BaseGlobalSchedulerConfig):
     @staticmethod
     def get_type():
         return GlobalSchedulerType.LOR
+
+
+@dataclass
+class MinMemoryGlobalSchedulerConfig(BaseGlobalSchedulerConfig):
+    @staticmethod
+    def get_type():
+        return GlobalSchedulerType.MIN_MEMORY
+
+
+@dataclass
+class LengthAwareOptimalSchedulerConfig(BaseGlobalSchedulerConfig):
+    target_metric: str = field(
+        default=str(TargetMetric.MIN_SCHEDULING_DELAY),
+        metadata={"help": "Target metric for Length Aware Optimal Scheduler."},
+    )
+
+    request_timeline_predictor_config: BaseRequestTimelinePredictorConfig = field(
+        default_factory=SimulationRequestTimelinePredictorConfig,
+        metadata={"help": "Request timeline predictor config."},
+    )
+
+    @staticmethod
+    def get_type():
+        return GlobalSchedulerType.OPT
 
 
 @dataclass

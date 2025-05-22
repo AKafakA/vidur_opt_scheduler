@@ -38,16 +38,26 @@ class SyntheticRequestGenerator(BaseRequestGenerator):
         (
             prefill_tokens,
             decode_tokens,
+            predicted_length,
         ) = self.request_length_generator.get_next_num_tokens()
 
         if prefill_tokens is None or decode_tokens is None:
             return None
+        if predicted_length is not None and predicted_length > 0:
+            return Request(
+                arrived_at=arrived_at,
+                num_prefill_tokens=int(prefill_tokens),
+                num_decode_tokens=int(decode_tokens),
+                num_predicted_decode_tokens=predicted_length,
+            )
+        else:
+            return Request(
+                arrived_at=arrived_at,
+                num_prefill_tokens=int(prefill_tokens),
+                num_decode_tokens=int(decode_tokens),
+            )
 
-        return Request(
-            arrived_at=arrived_at,
-            num_prefill_tokens=int(prefill_tokens),
-            num_decode_tokens=int(decode_tokens),
-        )
+
 
     def _generate_requests(self) -> List[Request]:
         requests = []
