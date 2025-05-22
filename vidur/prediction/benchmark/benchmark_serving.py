@@ -906,8 +906,6 @@ def sample_requests(
             )
         ]
 
-    random.shuffle(dataset)
-
     for data in dataset:
         if task == 'chat':
             if "conversations" in data:
