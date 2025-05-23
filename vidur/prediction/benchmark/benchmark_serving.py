@@ -744,10 +744,6 @@ async def benchmark(
                                                        m._global_scheduling_overhead,
                                                        log_latencies,
                                                        fail_on_response_failure)
-    calculate_cdf(m._request_latencies)
-    plot_latency_cdf(m._request_latencies, m._prefill_token_latencies, m._decode_token_latencies, m._waiting_latencies,
-                     m._global_scheduling_overhead, log_filename, backend=backend, output_dir=output_dir)
-    save_all_decode_token_latencies_npy(m._all_token_latencies, log_filename, output_dir=output_dir)
     timestamps = [int((x - start_time)) for x in m._requested_timestamps]
     # if len(timestamps) == len(m._avg_gpu_blocks):
     #     # data = {'timestamp': m._requested_timestamps, 'metric': m._avg_gpu_blocks}
@@ -1167,9 +1163,6 @@ def main():
             generate_lens_files(csv_file_name, prompt_lens, sampled_responses_length)
 
     if args.keep_all_metrics:
-        plot_len_cdf(prompt_lens, max_response_lens, total_tokens, args.log_filename,
-                     estimated_length=estimated_response_lens,
-                     output_dir=args.output_dir)
         data = {
             "Throughput": np.float32(throughput),
             "prefill_token_latencies": np.array(prefill_token_latencies),
@@ -1188,31 +1181,6 @@ def main():
             "request_timestamps_in_ms": np.array(request_timestamps),
         }
         np.savez(args.output_dir + '/' + os.path.splitext(args.log_filename)[0] + f"_all_metrics.npz", **data)
-
-        results = []
-        file_name = args.output_dir + '/' + os.path.splitext(args.log_filename)[0] + "_latency_info.json"
-        try:
-            with open(file_name, 'r') as f:
-                results = json.load(f)
-        except json.decoder.JSONDecodeError:
-            pass
-        except FileNotFoundError:
-            os.mknod(file_name)
-        with open(file_name, 'w') as f:
-            results.append({"qps": args.qps,
-                            "burstiness": args.burstiness,
-                            "request_ids": request_ids,
-                            "request_lens": request_lens,
-                            "request_latencies": request_latencies,
-                            "prefill_token_latencies": prefill_token_latencies,
-                            "decode_token_latencies": decode_token_latencies,
-                            "decode_sum_latencies": decode_sum_latencies,
-                            "all_decode_token_latencies": all_decode_token_latencies,
-                            "inference_latencies": inference_latencies,
-                            "scheduling_overhead": scheduling_overhead,
-                            "throughput": throughput,
-                            "instance_num": avg_instance_num})
-            json.dump(results, f)
 
 
 if __name__ == '__main__':
