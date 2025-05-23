@@ -285,13 +285,6 @@ def calculate_throughput(queries,
         print(responses)
         raise
 
-    if naive_hf_lens:
-        print(f'naive_hf_lens {list(sorted(naive_hf_lens))}')
-    print(f'prompt_lens {list(sorted(prompt_lens))}')
-    print(f'response_lens {list(sorted(response_lens))}')
-    if ray_gen_lens:
-        print(f'ray_gen_lens {list(sorted(ray_gen_lens))}')
-
     prompt_token_count = sum(prompt_lens)
     response_token_count = sum(response_lens)
 
