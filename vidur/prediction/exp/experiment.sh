@@ -68,7 +68,7 @@ if [ "$RESTART_VLLM" = "true" ]; then
   nohup sh vidur/prediction/exp/run_exp_vllm.sh $BATCH_CAP $MODEL $UPDATE_VLLM_CODE $VLLM_VERSION $MAX_MODEL_LENGTH $ENABLE_CHUNKED_PREFILL $BACKEND_WORKERS $MAX_NUM_BATCHED_TOKEN > /dev/null 2>&1 &
   if [ "$UPDATE_VIDUR_CODE" = "true" ]; then
     parallel-ssh -t 0 -h vidur/prediction/config/hosts "cd vidur_opt_scheduler && git checkout $BRANCH_NAME && git pull"
-    parallel-ssh -t 0 -h vidur/prediction/config/hosts "cd vidur_opt_scheduler && git reset --hard HEAD~20 && git pull"
+    parallel-ssh -t 0 -h vidur/prediction/config/hosts "cd vidur_opt_scheduler && git add -u . && git stash && git reset --hard HEAD~20 && git pull"
   fi
   script_base="vidur/prediction/exp/run_exp_predictor"
   suffix_range=$(seq 1 7)
