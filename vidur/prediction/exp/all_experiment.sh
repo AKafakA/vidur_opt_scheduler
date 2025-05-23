@@ -13,7 +13,7 @@ BRANCH_NAME="single_predictor_evaluation"
 USE_PROCESS_FOR_FRONTEND=true
 UPDATE_VIDUR_CODE=true
 UPDATE_VLLM_CODE=true
-RUN_EXP=true
+RUN_EXP=false
 RESTART_VLLM=true
 
 # Config for end to end experiment
@@ -29,12 +29,12 @@ ENABLE_CHUNKED_PREFILL="true"
 
 # Config for single predictor experiment
 
-MODEL="meta-llama/Llama-2-7b-hf"
+MODEL="Qwen/Qwen-7B"
 DATASET_NAMES="sharegpt"
 #SCHEDULER_NAME="min_new_request_latency random round_robin min_infass_load request_per_seconds"
-SCHEDULER_NAME="min_new_request_latency round_robin random min_infass_load request_per_seconds"
+SCHEDULER_NAME="request_per_seconds"
 #QPS="30 24 18"
-QPS="32"
+QPS="18"
 PROFILING_SAMPLE_RATE=0.000
 USE_FOR_PROFILING_ONLY=false
 NUM_REQUEST=10000

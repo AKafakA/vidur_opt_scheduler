@@ -18,13 +18,13 @@ RESTART_VLLM=true
 
 ENABLE_CHUNKED_PREFILL="true"
 
-MODEL="meta-llama/Llama-2-7b-hf Qwen/Qwen-7B"
+MODEL="meta-llama/Llama-2-7b-hf"
 SCHEDULER_NAME="min_new_request_latency round_robin"
 #QPS="30 24 18"
 QPS="30"
 PROFILING_SAMPLE_RATE=0.000
 USE_FOR_PROFILING_ONLY=false
-NUM_REQUEST=100
+NUM_REQUEST=10000
 KEEP_ALL_METRICS=false
 N_SELECTED="12"
 OUTPUT_DIR_PREFIX="extension"
