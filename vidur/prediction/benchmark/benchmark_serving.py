@@ -1166,19 +1166,13 @@ def main():
         data = {
             "Throughput": np.float32(throughput),
             "prefill_token_latencies": np.array(prefill_token_latencies),
-            "decode_token_latencies": np.array(decode_token_latencies),
             "decode_sum_latencies": np.array(decode_sum_latencies),
-            "inference_latencies": np.array(inference_latencies),
             "request_latencies": np.array(request_latencies),
-            "waiting_latency": np.array(waiting_latency),
             "scheduling_overhead": np.array(scheduling_overhead),
             "actual_qps": np.float32(actual_qps),
             "avg_gpu_blocks": np.array(avg_gpu_blocks),
             "var_gpu_blocks": np.array(var_gpu_blocks),
-            "avg_num_waiting_requests": np.array(avg_num_waiting_requests),
-            "var_num_waiting_requests": np.array(var_num_waiting_requests),
-            "num_preempted": np.array(num_preempted),
-            "request_timestamps_in_ms": np.array(request_timestamps),
+            "num_preempted": np.array(num_preempted)
         }
         np.savez(args.output_dir + '/' + os.path.splitext(args.log_filename)[0] + f"_all_metrics.npz", **data)
 
