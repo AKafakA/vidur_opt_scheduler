@@ -13,7 +13,7 @@ BRANCH_NAME="single_predictor_evaluation"
 USE_PROCESS_FOR_FRONTEND=true
 UPDATE_VIDUR_CODE=true
 UPDATE_VLLM_CODE=true
-RUN_EXP=true
+RUN_EXP=false
 RESTART_VLLM=true
 
 # Config for end to end experiment

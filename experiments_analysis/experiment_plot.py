@@ -278,7 +278,7 @@ def plot_per_scheduler(experiments_set, output_dir, scheduler_excluded="round_ro
     fig.savefig(f"{output_dir}/scheduler.png", bbox_inches='tight')
 
 
-def plot_per_qps(experiments_set, output_dir, min_qps=18, max_qps=30):
+def plot_per_qps(experiments_set, output_dir, min_qps=24, max_qps=30):
     qps_output_dir = output_dir + "/qps"
     if os.path.exists(qps_output_dir):
         shutil.rmtree(qps_output_dir)
@@ -352,6 +352,7 @@ def plot_per_qps(experiments_set, output_dir, min_qps=18, max_qps=30):
             sorted_keys = sorted_keys + ordered_key
         for index_name in sorted_keys:
             experiments = map_from_name_exp[index_name]
+            print(experiments)
             token_s_data.append(float(experiments['token_throughput']))
             requests_throughput_data.append(float(experiments['request_throughput']))
             average_ttft_data.append(int(np.mean(experiments['ttft'])) * 1.0 / 1000)
@@ -463,7 +464,7 @@ def plot_per_qps(experiments_set, output_dir, min_qps=18, max_qps=30):
 
 def main():
     parser = argparse.ArgumentParser(description='Plot the results of the experiments')
-    parser.add_argument("--experiments-dir", type=str, default="/experiments_analysis/experiment_output/sharegpt")
+    parser.add_argument("--experiments-dir", type=str, default="/experiment_output/sharegpt")
     parser.add_argument("--output-dir", type=str, default="./experiments_analysis/exp_plots")
     parser.add_argument("--plot-per-qps", type=bool, default=True)
     parser.add_argument("--plot-per-scheduler", type=bool, default=True)

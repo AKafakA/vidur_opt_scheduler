@@ -694,17 +694,16 @@ async def benchmark(
 
     if distribution == "burst":
         qps = float('inf')
-
+    start_time = time.time()
     print(
         f'Starting with backend={backend}, num_prompts={len(prompts)}')
-    print(f'traffic distribution={distribution}, qps={qps}, burstiness={burstiness}')
+    print(f'traffic distribution={distribution}, qps={qps}, burstiness={burstiness} at {time.time()}')
 
     total_requests = len(prompts)
 
     async_prompts = async_request_gen(
         iter(prompts), qps=qps, distribution=distribution, burstiness=burstiness)
 
-    start_time = time.time()
     tasks = []
     async for prompt in async_prompts:
         # add small extra timeout to avoid conflict with downstream
@@ -1068,20 +1067,6 @@ def main():
             print(f'truncating long prompt+gen_len {prompt_len=} {gen_len=}')
             gen_len = args.max_request_len - prompt_len
         max_response_lens[i] = gen_len
-
-    if args.print_generation_lens_and_exit:
-        print(f'{prompt_lens=}')
-        print(f'{max_response_lens=}')
-        print('Exiting...')
-        return
-
-    if args.verbose or True:
-        print('prompt lens', sorted(list(prompt_lens)))
-        print('response lens', sorted(list(max_response_lens)))
-        total_tokens = []
-        for i, (prompt_len, gen_len) in enumerate(zip(prompt_lens, max_response_lens)):
-            total_tokens.append(prompt_len + gen_len)
-        print('total tokens', sorted(list(total_tokens)))
 
     prompts = list(zip(prompts, prompt_lens, max_response_lens, estimated_response_lens, range(len(prompt_lens))))
 
