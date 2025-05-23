@@ -16,38 +16,27 @@ UPDATE_VLLM_CODE=true
 RUN_EXP=true
 RESTART_VLLM=true
 
-# Config for end to end experiment
-#SCHEDULER_NAME="min_new_request_latency random round_robin min_infass_load request_per_seconds"
-#MODEL="meta-llama/Llama-2-7b-hf Qwen/Qwen-7B"
-#DATASET_NAMES="sharegpt lmsys"
-#QPS="24"
-#N_SELECTED="12 2"
-#PROFILING_SAMPLE_RATE="0.0 0.1"
-#USE_FOR_PROFILING_ONLY="false"
-#NUM_REQUEST=10000
 ENABLE_CHUNKED_PREFILL="true"
 
-# Config for single predictor experiment
-
-MODEL="meta-llama/Llama-2-7b-hf"
-DATASET_NAMES="sharegpt"
-#SCHEDULER_NAME="min_new_request_latency random round_robin min_infass_load request_per_seconds"
-SCHEDULER_NAME="min_new_request_latency round_robin random min_infass_load request_per_seconds"
+MODEL="meta-llama/Llama-2-7b-hf Qwen/Qwen-7B"
+SCHEDULER_NAME="min_new_request_latency round_robin"
 #QPS="30 24 18"
-QPS="32"
+QPS="30"
 PROFILING_SAMPLE_RATE=0.000
 USE_FOR_PROFILING_ONLY=false
 NUM_REQUEST=10000
 KEEP_ALL_METRICS=false
 N_SELECTED="12"
-OUTPUT_DIR_PREFIX="main"
+OUTPUT_DIR_PREFIX="extension"
 
 
 for model in $MODEL; do
   if [ "$model" = "meta-llama/Llama-2-7b-hf" ]; then
     MODEL_TYPE="llama"
+    DATASET_NAMES="lmsys"
   elif [ "$model" = "Qwen/Qwen-7B" ]; then
     MODEL_TYPE="qwen"
+    DATASET_NAMES="sharegpt"
   fi
   for dataset_name in $DATASET_NAMES; do
     for scheduler in $SCHEDULER_NAME; do

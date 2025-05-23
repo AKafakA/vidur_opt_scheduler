@@ -33,6 +33,9 @@ correct_flags = []
 average_gaps = []
 random_assigned = []
 
+sampled_mean_error_ratios = []
+sampled_predict_accuracies = []
+
 
 def print_instance_errors():
     errors = []
@@ -51,21 +54,12 @@ def print_instance_errors():
         count = count + 1
 
     predict_accuracy = (1.0 * sum(correct_flags)) / len(correct_flags)
-    averages = [x["average"] for x in average_gaps if x is not None]
-    mins = [x["min"] for x in average_gaps if x is not None]
-    randoms = [x["random"] for x in average_gaps if x is not None]
-
-    print(f"average serving {total_s / count} and average predicted {total_p / count}")
-    print(f"Mean of Prediction error ratio {np.mean(error_ratios)}")
-    print(f"P50 of Prediction error ratio {np.percentile(error_ratios, 50)}")
-    print(f"Mean of Prediction error {np.mean(errors)}")
-    print(f"P50 of Prediction error {np.percentile(errors, 50)}")
-    print(f"underestimated errors (s > p) {len([error for error in errors if error > 0])} in {len(errors)} in error")
-    print(f"Percentage of A-0.1 {len([error for error in errors if error < 0.1]) / len(errors)}")
-    print(f"Percentage of A-1 {len([error for error in errors if error < 1]) / len(errors)}")
-    print(f"Average error {np.mean(errors)}")
-    print(f"Average gap: {np.mean(averages)}, Min gap: {np.mean(mins)}, Random gap: {np.mean(randoms)}")
-    print(f"Predict accuracy: {predict_accuracy} for compare")
+    #
+    # print(f"average serving {total_s / count} and average predicted {total_p / count}")
+    # print(f"Mean of Prediction error ratio {np.mean(error_ratios)}")
+    # print(f"P50 of Prediction error ratio {np.percentile(error_ratios, 50)}")
+    # print(f"Predict accuracy: {predict_accuracy} for compare")
+    return predict_accuracy, np.mean(error_ratios)
 
 
 @app.post("/generate_benchmark")
@@ -158,7 +152,12 @@ async def generate_benchmark(request: Request) -> Response:
             correct_flags.append(False)
         average_gaps.append(gap_info)
         response = random.choice(responses)
-        print_instance_errors()
+        global sampled_mean_error_ratios, sampled_predict_accuracies
+        sampled_error_ratio, sampled_predict_accuracy = print_instance_errors()
+        sampled_mean_error_ratios.append(sampled_error_ratio)
+        sampled_predict_accuracies.append(sampled_predict_accuracy)
+        response["sampled_mean_error_ratio"] = sampled_error_ratio
+        response["sampled_predict_accuracy"] = sampled_predict_accuracy
     else:
         if metrics_type.startswith("min") or metrics_type.startswith("max"):
             # if current in metrics means all node need to be queried and select the one with min/max

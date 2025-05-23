@@ -562,6 +562,8 @@ class MeasureLatency:
         self._var_num_waiting_requests = []
         self._requested_timestamps = []
         self._num_preempted = []
+        self._sampled_mean_error_ratios = []
+        self._sampled_predict_accuracies = []
 
     def measure(self, f):
         async def measured(*args, **kwargs):
@@ -636,6 +638,10 @@ class MeasureLatency:
                 self._global_scheduling_overhead.append(None)
                 self._global_scheduling_overhead_ratio.append(None)
             self._requested_timestamps.append(start)
+            if 'sampled_mean_error_ratio' in output:
+                self._sampled_mean_error_ratios.append(output['sampled_mean_error_ratio'])
+            if 'sampled_predict_accuracy' in output:
+                self._sampled_predict_accuracies.append(output['sampled_predict_accuracy'])
             return prompt, output
 
         return measured
@@ -794,6 +800,8 @@ async def benchmark(
         m._avg_num_waiting_requests, \
         m._var_num_waiting_requests, \
         m._num_preempted, \
+        m._sampled_mean_error_ratios, \
+        m._sampled_predict_accuracies, \
         timestamps, \
         msg
 
@@ -1108,6 +1116,8 @@ def main():
      avg_num_waiting_requests,
      var_num_waiting_requests,
      num_preempted,
+     sampled_mean_error_ratios,
+     sampled_predict_accuracies,
      request_timestamps,
      messages) = asyncio.run(benchmark(
         backend,
@@ -1159,6 +1169,10 @@ def main():
             "var_gpu_blocks": np.array(var_gpu_blocks),
             "num_preempted": np.array(num_preempted)
         }
+        if sampled_predict_accuracies:
+            data["sampled_predict_accuracies"] = np.array(sampled_predict_accuracies)
+        if sampled_mean_error_ratios:
+            data["sampled_mean_error_ratios"] = np.array(sampled_mean_error_ratios)
         np.savez(args.output_dir + '/' + os.path.splitext(args.log_filename)[0] + f"_all_metrics.npz", **data)
 
 
