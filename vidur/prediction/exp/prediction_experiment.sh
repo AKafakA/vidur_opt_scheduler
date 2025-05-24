@@ -16,13 +16,13 @@ UPDATE_VLLM_CODE=true
 RUN_EXP=true
 RESTART_VLLM=true
 
-ENABLE_CHUNKED_PREFILL="true"
+ENABLE_CHUNKED_PREFILL="true false"
 
 MODEL="meta-llama/Llama-2-7b-hf"
 SCHEDULER_NAME="min_new_request_latency"
-#QPS="30 24 32"
-QPS="30"
-PROFILING_SAMPLE_RATE=0.001
+QPS="30 24 32"
+#QPS="30"
+PROFILING_SAMPLE_RATE=0.01
 USE_FOR_PROFILING_ONLY=true
 NUM_REQUEST=10000
 KEEP_ALL_METRICS=false
@@ -41,7 +41,7 @@ for model in $MODEL; do
     for scheduler in $SCHEDULER_NAME; do
       for enable_chunked_prefill in $ENABLE_CHUNKED_PREFILL; do
         if [ "$enable_chunked_prefill" = "true" ]; then
-          USE_LENGTH_ESTIMATION="false true"
+          USE_LENGTH_ESTIMATION="false"
         else
           USE_LENGTH_ESTIMATION="false"
         fi

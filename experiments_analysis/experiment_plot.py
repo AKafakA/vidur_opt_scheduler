@@ -499,6 +499,7 @@ def main():
                         record['avg_gpu_blocks'] = b['avg_gpu_blocks']
                         record['var_gpu_blocks'] = b['var_gpu_blocks']
                         record['num_preempted'] = b['num_preempted']
+                        record['prediction_overhead'] = b['scheduling_overhead']
     if args.plot_per_qps:
         plot_per_qps(experiments_set, args.output_dir)
 
