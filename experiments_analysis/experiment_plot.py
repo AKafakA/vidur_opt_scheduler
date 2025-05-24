@@ -299,6 +299,8 @@ def plot_per_qps(experiments_set, output_dir, min_qps=24, max_qps=32):
     avg_free_gpu = {}
     var_free_gpu_per_node = {}
     num_total_preemption = {}
+    scheduling_overhead_ratio = {}
+    scheduling_overhead = {}
 
     qps_set = sorted(set([record["qps"] for record in experiments_set]))
     if min_qps > 0:
@@ -329,10 +331,14 @@ def plot_per_qps(experiments_set, output_dir, min_qps=24, max_qps=32):
         # num_total_preemption = {}
         var_free_gpu_per_node_per_qps = {}
         num_total_preemption_per_qps = {}
+        scheduling_overhead_ratio_per_qps = {}
+        scheduling_overhead_per_qps = {}
 
         avg_free_gpu[qps] = avg_free_gpu_per_qps
         var_free_gpu_per_node[qps] = var_free_gpu_per_node_per_qps
         num_total_preemption[qps] = num_total_preemption_per_qps
+        scheduling_overhead_ratio[qps] = scheduling_overhead_ratio_per_qps
+        scheduling_overhead[qps] = scheduling_overhead_per_qps
 
         for experiment in qps_experiments:
             experiment_name = f"{experiment['scheduler_name']}".replace("_", " ")
@@ -368,6 +374,15 @@ def plot_per_qps(experiments_set, output_dir, min_qps=24, max_qps=32):
             num_preempted_list = (experiments['num_preempted'] - experiments['num_preempted'][0]).tolist()
             num_preempted = np.asarray([max(0, preempted) for preempted in num_preempted_list])
             num_total_preemption_per_qps[index_name] = num_preempted
+
+            current_prediction_overhead = experiments['scheduling_overhead']
+            end_to_end_latencies = experiments['e2e']
+            scheduling_overhead_ratio_per_qps[index_name] = [(100.0 * overhead / latency)
+                                                             for overhead, latency
+                                                             in
+                                                             zip(current_prediction_overhead, end_to_end_latencies)
+                                                             if latency > 0]
+            scheduling_overhead_per_qps[index_name] = current_prediction_overhead
 
         token_throughput.append(token_s_data)
         requests_throughput.append(requests_throughput_data)
@@ -460,6 +475,26 @@ def plot_per_qps(experiments_set, output_dir, min_qps=24, max_qps=32):
     fig.set_size_inches(16, 10)
     fig.savefig(f"{qps_output_dir}/linear.png", bbox_inches='tight')
 
+    fig, axs = plt.subplots(2, 3)
+    i = 0
+    axs_for_scheduling_overhead_ratio = {}
+    axs_for_scheduling_overhead = {}
+    for qps in qps_set:
+        axs_for_scheduling_overhead_ratio[qps] = axs[0, i]
+        axs_for_scheduling_overhead[qps] = axs[1, i]
+        i += 1
+    plot_linear_for_multiple_qps(axs_for_scheduling_overhead_ratio, scheduling_overhead_ratio,
+                                 "Scheduling Overhead Ratio (%)", sigma=80,
+                                 enable_legend_at_middle=True, x_label="Query ID: ",
+                                 legend_anchor=(1.1, 1.25), title_fontsize=10)
+    plot_linear_for_multiple_qps(axs_for_scheduling_overhead, scheduling_overhead,
+                                 "Scheduling Overhead (ms)", sigma=80,
+                                 enable_legend_at_middle=False, x_label="Query ID: ",
+                                 legend_anchor=(1.1, 1.25), title_fontsize=10)
+    fig.tight_layout()
+    fig.set_size_inches(18, 10)
+    fig.savefig(f"{qps_output_dir}/overhead.png", bbox_inches='tight')
+
 
 def main():
     parser = argparse.ArgumentParser(description='Plot the results of the experiments')
@@ -499,7 +534,7 @@ def main():
                         record['avg_gpu_blocks'] = b['avg_gpu_blocks']
                         record['var_gpu_blocks'] = b['var_gpu_blocks']
                         record['num_preempted'] = b['num_preempted']
-                        record['prediction_overhead'] = b['scheduling_overhead']
+                        record['scheduling_overhead'] = b['scheduling_overhead']
     if args.plot_per_qps:
         plot_per_qps(experiments_set, args.output_dir)
 

@@ -170,7 +170,6 @@ def main():
                     record['request_latencies'] = b['request_latencies']
                     record['prediction_errors'] = b['sampled_predict_accuracies']
                     record['compare_error_rate'] = b['sampled_mean_error_ratios']
-                    print(record['compare_error_rate'])
 
     plot_per_qps(experiments_set, args.output_dir)
 
