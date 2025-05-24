@@ -218,7 +218,7 @@ class Qwen72BModelConfig(QwenModelConfig):
 class Qwen7BModelConfig(QwenModelConfig):
     num_layers: int = 32
     num_q_heads: int = 32
-    num_kv_heads: int = 32
+    num_kv_heads: int = 4
     embedding_dim: int = 4096
     mlp_hidden_dim: int = 22016
     rope_theta: Optional[float] = 1000000
