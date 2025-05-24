@@ -82,8 +82,9 @@ async def generate_benchmark(request: Request) -> Response:
     #     is_sampled_for_compare = request_id % num_sampled_requests == 0
     # else:
     #     is_sampled_for_compare = False
+    global profiling_sampling_rate
     random_flag = random.uniform(0, 1)
-    is_sampled_for_compare = random_flag < profiling_sampling_rate
+    is_sampled_for_compare = random_flag <= profiling_sampling_rate
     random_selected_instances = random.sample(instances, min(num_probed_instance, len(instances)))
     for instance in random_selected_instances:
         predict_tasks.append(instance.query_predictor(
