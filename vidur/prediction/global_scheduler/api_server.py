@@ -79,7 +79,10 @@ async def generate_benchmark(request: Request) -> Response:
     _ = request_dict.pop("stream", False)
     predict_tasks = []
     num_sampled_requests = 10000 * profiling_sampling_rate
-    is_sampled_for_compare = request_id % num_sampled_requests == 0
+    if num_sampled_requests > 0:
+        is_sampled_for_compare = request_id % num_sampled_requests == 0
+    else:
+        is_sampled_for_compare = False
     random_selected_instances = random.sample(instances, min(num_probed_instance, len(instances)))
     for instance in random_selected_instances:
         predict_tasks.append(instance.query_predictor(
