@@ -11,7 +11,7 @@ PREDICTOR_TIMEOUT_IN_SECONDS=1000
 BATCH_SIZE_THRESHOLD_FOR_TIME_ESTIMATION="0"
 BRANCH_NAME="single_predictor_evaluation"
 USE_PROCESS_FOR_FRONTEND=true
-UPDATE_VIDUR_CODE=true
+UPDATE_VIDUR_CODE=false
 UPDATE_VLLM_CODE=true
 RUN_EXP=true
 RESTART_VLLM=true
@@ -21,21 +21,20 @@ ENABLE_CHUNKED_PREFILL="false true"
 MODEL="meta-llama/Llama-2-7b-hf"
 SCHEDULER_NAME="min_new_request_latency"
 QPS="30 24 32"
-PROFILING_SAMPLE_RATE=0.01
-USE_FOR_PROFILING_ONLY=false
+PROFILING_SAMPLE_RATE=0.001
+USE_FOR_PROFILING_ONLY=true
 NUM_REQUEST=10000
 KEEP_ALL_METRICS=false
 N_SELECTED="12"
 OUTPUT_DIR_PREFIX="prediction"
+DATASET_NAMES="sharegpt"
 
 
 for model in $MODEL; do
   if [ "$model" = "meta-llama/Llama-2-7b-hf" ]; then
     MODEL_TYPE="llama"
-    DATASET_NAMES="lmsys"
   elif [ "$model" = "Qwen/Qwen-7B" ]; then
     MODEL_TYPE="qwen"
-    DATASET_NAMES="sharegpt"
   fi
   for dataset_name in $DATASET_NAMES; do
     for scheduler in $SCHEDULER_NAME; do

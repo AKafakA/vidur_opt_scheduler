@@ -27,26 +27,10 @@ def directory_name_parser(directory_name):
     return qps, n, chunked
 
 
-def extract_prediction_errors(log_file):
-    average_prediction_errors = []
-    average_prediction_errors_ratio = []
-    compare_error_rate = []
-    with open(log_file, 'r') as f:
-        lines = f.readlines()
-        for line in lines:
-            if "Average error" in line:
-                match = re.search(r"Average error (\d+\.\d+)", line)
-                if match:
-                    average_prediction_errors.append(float(match.group(1)))
-            elif "Mean of Prediction error ratio" in line:
-                match = re.search(r"Mean of Prediction error ratio (\d+\.\d+)", line)
-                if match:
-                    average_prediction_errors_ratio.append(float(match.group(1)))
-            elif "requests for compare" in line:
-                match = re.search(r"predict_accuracy = (\d+\.\d+) with \d+ requests for compare", line)
-                if match:
-                    compare_error_rate.append(float(match.group(1)))
-    return average_prediction_errors, average_prediction_errors_ratio, compare_error_rate
+def extract_prediction_errors(experiment):
+    average_prediction_errors_ratio = experiment['prediction_errors']
+    compare_error_rate = experiment['compare_error_rate']
+    return average_prediction_errors_ratio, compare_error_rate
 
 
 def plot_per_qps(experiments_set, output_dir, min_qps=1, max_qps=3):
@@ -160,7 +144,7 @@ def plot_per_qps(experiments_set, output_dir, min_qps=1, max_qps=3):
 
 def main():
     parser = argparse.ArgumentParser(description='Plot the results of the experiments')
-    parser.add_argument("--experiments-dir", type=str, default="/experiments_analysis/single_node_experiment_output")
+    parser.add_argument("--experiments-dir", type=str, default="/experiments_analysis/single_node_experiment_output/lmsys")
     parser.add_argument("--output-dir", type=str, default="./experiments_analysis/single_node_exp_plots")
     parser.add_argument("--plot-per-qps", type=bool, default=True)
     # parser.add_argument("--output-dir", type=str, required=True)
@@ -184,11 +168,10 @@ def main():
                     b = np.load(scheduler_dir + "/" + directory + "/" + experiments_trace)
                     record['prediction_overhead'] = b['scheduling_overhead']
                     record['request_latencies'] = b['request_latencies']
-            global_scheduler_name = scheduler_dir + "/" + directory + "/running_logs/global_scheduler.log"
-            prediction_errors, errors_rate, compare_error_rate = extract_prediction_errors(global_scheduler_name)
-            record['prediction_errors'] = prediction_errors
-            record['prediction_errors_rate'] = errors_rate
-            record['compare_error_rate'] = compare_error_rate
+                    record['prediction_errors'] = b['sampled_predict_accuracies']
+                    record['compare_error_rate'] = b['sampled_predict_accuracies']
+                    print(record['prediction_errors'])
+
     plot_per_qps(experiments_set, args.output_dir)
 
     # if args.plot_per_scheduler:
