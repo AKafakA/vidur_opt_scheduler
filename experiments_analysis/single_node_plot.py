@@ -23,7 +23,7 @@ def directory_name_parser(directory_name):
     directory_name = directory_name.split("_")
     qps = directory_name[1]
     n = directory_name[6]
-    chunked = directory_name[9]
+    chunked = directory_name[8]
     return qps, n, chunked
 
 
@@ -33,7 +33,7 @@ def extract_prediction_errors(experiment):
     return average_prediction_errors_ratio, compare_error_rate
 
 
-def plot_per_qps(experiments_set, output_dir, min_qps=30, max_qps=30):
+def plot_per_qps(experiments_set, output_dir, min_qps=24, max_qps=32):
     qps_output_dir = output_dir + "/qps"
     if os.path.exists(qps_output_dir):
         shutil.rmtree(qps_output_dir)
@@ -106,7 +106,7 @@ def plot_per_qps(experiments_set, output_dir, min_qps=30, max_qps=30):
         #             y_dim_appendix="%")
         # plot_linear(compare_errors, "Compare Error rate", qps_output_dir, qps=qps, sigma=20,
         #             y_dim_appendix="%")
-    fig, axs = plt.subplots(3, len(qps_set))
+    fig, axs = plt.subplots(2, len(qps_set))
     # axs_for_prediction_overhead = {}
     axs_for_prediction_overhead_ratio = {}
     axs_for_prediction_errors_rate = {}
@@ -114,25 +114,19 @@ def plot_per_qps(experiments_set, output_dir, min_qps=30, max_qps=30):
 
     for i, qps_value in enumerate(qps_set):
         # axs_for_prediction_overhead[qps_value] = axs[0][i]
-        axs_for_prediction_overhead_ratio[qps_value] = axs[0]
-        axs_for_prediction_errors_rate[qps_value] = axs[1]
-        axs_for_compare_errors_rate[qps_value] = axs[2]
+        axs_for_prediction_errors_rate[qps_value] = axs[0][i]
+        axs_for_compare_errors_rate[qps_value] = axs[1][i]
 
     # plot_linear_for_multiple_qps(axs_for_prediction_overhead, prediction_overhead, "Overhead (ms)",
     #                              sigma=10,
     #                              enable_legend_at_middle=True, legend_anchor=(1.1, 1.25),
     #                              title_fontsize=10)
-    plot_linear_for_multiple_qps(axs_for_prediction_overhead_ratio, prediction_overhead_ratio,
-                                 "Overhead Rate (%)", sigma=10,
-                                 enable_legend_at_middle=True,
-                                 legend_anchor=(1.1, 1.25),
-                                 title_fontsize=10)
     plot_linear_for_multiple_qps(axs_for_prediction_errors_rate, prediction_errors,
-                                 "Error Rate (%)", sigma=10,
+                                 "Error Rate (%)", sigma=1,
                                  enable_legend_at_middle=False,
                                  title_fontsize=10)
     plot_linear_for_multiple_qps(axs_for_compare_errors_rate, compare_errors,
-                                 "Prediction Accuracy (%)", sigma=10,
+                                 "Prediction Accuracy (%)", sigma=1,
                                  enable_legend_at_middle=False,
                                  title_fontsize=10)
     fig.tight_layout()
@@ -168,8 +162,8 @@ def main():
                     b = np.load(scheduler_dir + "/" + directory + "/" + experiments_trace)
                     record['prediction_overhead'] = b['scheduling_overhead']
                     record['request_latencies'] = b['request_latencies']
-                    record['prediction_errors'] = b['sampled_predict_accuracies']
-                    record['compare_error_rate'] = b['sampled_mean_error_ratios']
+                    record['prediction_errors'] = b['sampled_mean_error_ratios']
+                    record['compare_error_rate'] = b['sampled_predict_accuracies']
 
     plot_per_qps(experiments_set, args.output_dir)
 

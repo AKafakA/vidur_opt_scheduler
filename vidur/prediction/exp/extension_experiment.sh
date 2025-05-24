@@ -18,7 +18,7 @@ RESTART_VLLM=true
 
 ENABLE_CHUNKED_PREFILL="true"
 
-MODEL="meta-llama/Llama-2-7b-hf"
+MODEL="Qwen/Qwen-7B"
 SCHEDULER_NAME="min_new_request_latency round_robin"
 #QPS="30 24 18"
 QPS="30"
@@ -41,7 +41,7 @@ for model in $MODEL; do
   for dataset_name in $DATASET_NAMES; do
     for scheduler in $SCHEDULER_NAME; do
       if [ "$scheduler" = "min_new_request_latency" ]; then
-        USE_LENGTH_ESTIMATION="true"
+        USE_LENGTH_ESTIMATION="false true"
       else
         USE_LENGTH_ESTIMATION="false"
       fi
