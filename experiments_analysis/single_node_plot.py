@@ -144,7 +144,7 @@ def plot_per_qps(experiments_set, output_dir, min_qps=1, max_qps=3):
 
 def main():
     parser = argparse.ArgumentParser(description='Plot the results of the experiments')
-    parser.add_argument("--experiments-dir", type=str, default="/experiments_analysis/single_node_experiment_output/lmsys")
+    parser.add_argument("--experiments-dir", type=str, default="experiments_analysis/single_node_experiment_output/sharegpt")
     parser.add_argument("--output-dir", type=str, default="./experiments_analysis/single_node_exp_plots")
     parser.add_argument("--plot-per-qps", type=bool, default=True)
     # parser.add_argument("--output-dir", type=str, required=True)

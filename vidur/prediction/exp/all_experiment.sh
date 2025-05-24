@@ -29,7 +29,7 @@ ENABLE_CHUNKED_PREFILL="true"
 
 # Config for single predictor experiment
 
-MODEL="Qwen/Qwen-7B"
+MODEL="meta-llama/Llama-2-7b-hf"
 DATASET_NAMES="sharegpt"
 #SCHEDULER_NAME="min_new_request_latency random round_robin min_infass_load request_per_seconds"
 SCHEDULER_NAME="request_per_seconds"
