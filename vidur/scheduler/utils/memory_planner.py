@@ -46,6 +46,7 @@ class MemoryPlanner:
         ), (f"Not enough memory to store even a single request, "
             f"available_memory for kv: {memory_for_kv_cache}, "
             f"parameter_memory_per_device: {parameter_memory_per_device}, "
+            f"kv_cache_memory_per_device_per_request: {kv_cache_memory_per_device_per_request}, "
             f"initial memory: {available_memory}")
 
         return number_of_requests
