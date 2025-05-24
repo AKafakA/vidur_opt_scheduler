@@ -116,7 +116,7 @@ def write_single_res(
             writer.write('\n')
 
 
-async def query_model_block(prompt, verbose, ip_ports, write_to_file='', timeout_in_seconds=10 * 60):
+async def query_model_block(prompt, verbose, ip_ports, write_to_file='', timeout_in_seconds=10 * 6):
     prompt, prompt_len, max_response_len, estimated_response_len, request_id = prompt
     global server_num_requests
     global_scheduler_ip_port = ip_ports[0]
@@ -149,8 +149,8 @@ async def query_model_block(prompt, verbose, ip_ports, write_to_file='', timeout
                 else:
                     output['response_len'] = 0
                 print("num_finised_requests: {}".format(num_finished_requests))
-                if len(write_to_file) > 0 and 'generated_text' in output:
-                    write_single_res(request_id, write_to_file, prompt, output['generated_text'])
+                # if len(write_to_file) > 0 and 'generated_text' in output:
+                #     write_single_res(request_id, write_to_file, prompt, output['generated_text'])
                 return prompt, output
         except asyncio.TimeoutError:
             print(f"Timeout when connecting to {global_scheduler_ip_port}")
@@ -717,12 +717,6 @@ async def benchmark(
     sampled_prompts = []
     sampled_responses = []
     sampled_responses_length = []
-    if output_gen_lens:
-        for prompt, output in queries:
-            if 'generated_text' in output:
-                sampled_prompts.append(prompt)
-                sampled_responses.append(output['generated_text'])
-                sampled_responses_length = get_tok_id_lens(tokenizer, sampled_responses)
 
     m.fill_missing_metrics()
 
@@ -1130,6 +1124,8 @@ def main():
         args.timeout_in_seconds,
     )
     )
+    print(f'Experiment finished with throughput={throughput:.2f} tokens/s, at time={time.time() - exp_start_time:.2f} s'
+          f'')
 
     with open(args.output_dir + '/' + os.path.splitext(args.log_filename)[0] + "_logs.txt", 'w') as f:
         f.write(messages)
@@ -1151,6 +1147,7 @@ def main():
             generate_lens_files(csv_file_name, prompt_lens, sampled_responses_length)
 
     if args.keep_all_metrics:
+        storage_start_time = time.time()
         data = {
             "Throughput": np.float32(throughput),
             "prefill_token_latencies": np.array(prefill_token_latencies),
@@ -1167,6 +1164,7 @@ def main():
         if sampled_mean_error_ratios:
             data["sampled_mean_error_ratios"] = np.array(sampled_mean_error_ratios)
         np.savez(args.output_dir + '/' + os.path.splitext(args.log_filename)[0] + f"_all_metrics.npz", **data)
+        print(f'Storage of all metrics finished at {time.time() - storage_start_time} s')
 
 
 if __name__ == '__main__':
