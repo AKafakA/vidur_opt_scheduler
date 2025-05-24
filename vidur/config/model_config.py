@@ -220,8 +220,9 @@ class Qwen7BModelConfig(QwenModelConfig):
     num_q_heads: int = 32
     num_kv_heads: int = 32
     embedding_dim: int = 4096
-    mlp_hidden_dim: int = 28672
+    mlp_hidden_dim: int = 22016
     rope_theta: Optional[float] = 1000000
+    max_position_embeddings: int = 32768
 
     @staticmethod
     def get_name():
