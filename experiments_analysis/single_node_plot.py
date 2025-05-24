@@ -23,7 +23,7 @@ def directory_name_parser(directory_name):
     directory_name = directory_name.split("_")
     qps = directory_name[1]
     n = directory_name[6]
-    chunked = directory_name[-1]
+    chunked = directory_name[9]
     return qps, n, chunked
 
 
@@ -33,7 +33,7 @@ def extract_prediction_errors(experiment):
     return average_prediction_errors_ratio, compare_error_rate
 
 
-def plot_per_qps(experiments_set, output_dir, min_qps=1, max_qps=3):
+def plot_per_qps(experiments_set, output_dir, min_qps=30, max_qps=30):
     qps_output_dir = output_dir + "/qps"
     if os.path.exists(qps_output_dir):
         shutil.rmtree(qps_output_dir)
@@ -95,7 +95,6 @@ def plot_per_qps(experiments_set, output_dir, min_qps=1, max_qps=3):
                                                                  zip(current_prediction_overhead, end_to_end_latencies)
                                                                  if latency > 0]
                 prediction_errors_per_qps[index_name] = experiments['prediction_errors']
-                prediction_errors_rate_per_qps[index_name] = experiments['prediction_errors_rate']
                 compare_errors_per_qps[index_name] = experiments['compare_error_rate']
         # plot_linear(prediction_overhead, "Prediction Overhead", qps_output_dir, qps=qps, sigma=10,
         #             y_dim_appendix=" (ms)")
@@ -115,9 +114,9 @@ def plot_per_qps(experiments_set, output_dir, min_qps=1, max_qps=3):
 
     for i, qps_value in enumerate(qps_set):
         # axs_for_prediction_overhead[qps_value] = axs[0][i]
-        axs_for_prediction_overhead_ratio[qps_value] = axs[0][i]
-        axs_for_prediction_errors_rate[qps_value] = axs[1][i]
-        axs_for_compare_errors_rate[qps_value] = axs[2][i]
+        axs_for_prediction_overhead_ratio[qps_value] = axs[0]
+        axs_for_prediction_errors_rate[qps_value] = axs[1]
+        axs_for_compare_errors_rate[qps_value] = axs[2]
 
     # plot_linear_for_multiple_qps(axs_for_prediction_overhead, prediction_overhead, "Overhead (ms)",
     #                              sigma=10,
@@ -128,23 +127,24 @@ def plot_per_qps(experiments_set, output_dir, min_qps=1, max_qps=3):
                                  enable_legend_at_middle=True,
                                  legend_anchor=(1.1, 1.25),
                                  title_fontsize=10)
-    plot_linear_for_multiple_qps(axs_for_prediction_errors_rate, prediction_errors_rate,
-                                 "Real Errors (%)", sigma=10,
+    plot_linear_for_multiple_qps(axs_for_prediction_errors_rate, prediction_errors,
+                                 "Error Rate (%)", sigma=10,
                                  enable_legend_at_middle=False,
                                  title_fontsize=10)
     plot_linear_for_multiple_qps(axs_for_compare_errors_rate, compare_errors,
-                                 "Compare Errors (%)", sigma=10,
+                                 "Prediction Accuracy (%)", sigma=10,
                                  enable_legend_at_middle=False,
                                  title_fontsize=10)
     fig.tight_layout()
-    fig.set_size_inches(11, 6)
+    fig.set_size_inches(8, 6)
     fig.subplots_adjust(hspace=0.2, wspace=0.35)
     plt.savefig(qps_output_dir + "/all_qps.png", bbox_inches='tight')
 
 
 def main():
     parser = argparse.ArgumentParser(description='Plot the results of the experiments')
-    parser.add_argument("--experiments-dir", type=str, default="experiments_analysis/single_node_experiment_output/sharegpt")
+    parser.add_argument("--experiments-dir", type=str,
+                        default="experiments_analysis/single_node_experiment_output/sharegpt")
     parser.add_argument("--output-dir", type=str, default="./experiments_analysis/single_node_exp_plots")
     parser.add_argument("--plot-per-qps", type=bool, default=True)
     # parser.add_argument("--output-dir", type=str, required=True)
@@ -169,8 +169,8 @@ def main():
                     record['prediction_overhead'] = b['scheduling_overhead']
                     record['request_latencies'] = b['request_latencies']
                     record['prediction_errors'] = b['sampled_predict_accuracies']
-                    record['compare_error_rate'] = b['sampled_predict_accuracies']
-                    print(len(record['prediction_errors']))
+                    record['compare_error_rate'] = b['sampled_mean_error_ratios']
+                    print(record['compare_error_rate'])
 
     plot_per_qps(experiments_set, args.output_dir)
 

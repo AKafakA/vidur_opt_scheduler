@@ -55,10 +55,10 @@ def print_instance_errors():
 
     predict_accuracy = (1.0 * sum(correct_flags)) / len(correct_flags)
     #
-    # print(f"average serving {total_s / count} and average predicted {total_p / count}")
-    # print(f"Mean of Prediction error ratio {np.mean(error_ratios)}")
-    # print(f"P50 of Prediction error ratio {np.percentile(error_ratios, 50)}")
-    # print(f"Predict accuracy: {predict_accuracy} for compare")
+    print(f"average serving {total_s / count} and average predicted {total_p / count}")
+    print(f"Mean of Prediction error ratio {np.mean(error_ratios)}")
+    print(f"P50 of Prediction error ratio {np.percentile(error_ratios, 50)}")
+    print(f"Predict accuracy: {predict_accuracy} for compare")
     return predict_accuracy, np.mean(error_ratios)
 
 
@@ -158,7 +158,7 @@ async def generate_benchmark(request: Request) -> Response:
         average_gaps.append(gap_info)
         response = random.choice(responses)
         global sampled_mean_error_ratios, sampled_predict_accuracies
-        sampled_error_ratio, sampled_predict_accuracy = print_instance_errors()
+        sampled_predict_accuracy, sampled_error_ratio = print_instance_errors()
         sampled_mean_error_ratios.append(sampled_error_ratio)
         sampled_predict_accuracies.append(sampled_predict_accuracy)
         response["sampled_mean_error_ratio"] = sampled_error_ratio
