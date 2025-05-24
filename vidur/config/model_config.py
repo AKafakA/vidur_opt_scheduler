@@ -234,7 +234,6 @@ class Qwen2_7BModelConfig(QwenModelConfig):
     num_q_heads: int = 28
     num_kv_heads: int = 4
     embedding_dim: int = 3584
-    max_position_embeddings: int = 131072
     mlp_hidden_dim: int = 18944
     rope_theta: Optional[float] = 1000000
 
