@@ -11,7 +11,7 @@
 		"max_tokens_in_batch": 4096,
 		"batch_size_cap": 48,
 		"chunk_size": 512,
-		"num_blocks": 1052
+		"num_blocks": 781
 	},
 	"target_metric": "min_new_request_latency",
 	"disable_batch_time_estimation": false
