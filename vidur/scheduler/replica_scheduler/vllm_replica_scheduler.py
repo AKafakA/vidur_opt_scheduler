@@ -111,11 +111,11 @@ class VLLMReplicaScheduler(BaseReplicaScheduler):
                     victim_request = self._preempted_requests.pop()
                     victim_request.restart()
                     self.free(victim_request.id)
-                    self._request_queue = self._request_queue.appendleft(victim_request)
+                    self._request_queue.appendleft(victim_request)
                 else:
                     request.restart()
                     self.free(request.id)
-                    self._request_queue = self._request_queue.appendleft(request)
+                    self._request_queue.appendleft(request)
                     break
             else:
                 self._allocate_request(request)

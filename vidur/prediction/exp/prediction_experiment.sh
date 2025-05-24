@@ -16,7 +16,7 @@ UPDATE_VLLM_CODE=true
 RUN_EXP=true
 RESTART_VLLM=true
 
-ENABLE_CHUNKED_PREFILL="false true"
+ENABLE_CHUNKED_PREFILL="true"
 
 MODEL="meta-llama/Llama-2-7b-hf"
 SCHEDULER_NAME="min_new_request_latency"
