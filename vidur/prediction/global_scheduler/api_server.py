@@ -15,7 +15,7 @@ from vidur.prediction.server_utils import serve_http
 import resource
 import logging
 
-profiling_sampling_rate = 0.1
+profiling_sampling_rate = 0.001
 TIMEOUT_KEEP_ALIVE = 5  # seconds.
 app = FastAPI()
 instances = []
@@ -78,11 +78,12 @@ async def generate_benchmark(request: Request) -> Response:
     arrived_at = time.time() - start_time
     _ = request_dict.pop("stream", False)
     predict_tasks = []
-    num_sampled_requests = 10000 * profiling_sampling_rate
-    if num_sampled_requests > 0:
-        is_sampled_for_compare = request_id % num_sampled_requests == 0
-    else:
-        is_sampled_for_compare = False
+    # if num_sampled_requests > 0:
+    #     is_sampled_for_compare = request_id % num_sampled_requests == 0
+    # else:
+    #     is_sampled_for_compare = False
+    random_flag = random.uniform(0, 1)
+    is_sampled_for_compare = random_flag < profiling_sampling_rate
     random_selected_instances = random.sample(instances, min(num_probed_instance, len(instances)))
     for instance in random_selected_instances:
         predict_tasks.append(instance.query_predictor(
@@ -285,7 +286,7 @@ if __name__ == "__main__":
     parser.add_argument("-n", "--num_query_predictor", type=int, default=1)
     parser.add_argument("-m", "--num_required_predictor", type=int, default=1)
     parser.add_argument("--debugging_logs", type=bool, default=True)
-    parser.add_argument("--profiling_sampling_rate", type=float, default=0.1)
+    parser.add_argument("--profiling_sampling_rate", type=float, default=0.001)
     parser.add_argument("--num_predictor_ports", type=int, default=-1)
     parser.add_argument("--predictor_timeout", type=int, default=10)
     parser.add_argument("--backend_timeout", type=int, default=1800)

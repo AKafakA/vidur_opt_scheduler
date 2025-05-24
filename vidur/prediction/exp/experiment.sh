@@ -101,7 +101,7 @@ if [ "$RUN_EXP" = "true" ]; then
             USE_ESTIMATION_LEN=$USE_ESTIMATION_LEN
           else
             N="12"
-            USE_ESTIMATION_LEN="false"
+            USE_ESTIMATION_LEN=$USE_ESTIMATION_LEN
           fi
           for n in $N; do
               for use_estimation_len in $USE_ESTIMATION_LEN; do
