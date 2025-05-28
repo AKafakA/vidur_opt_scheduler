@@ -922,7 +922,8 @@ def sample_requests(
         elif task == "splitwise":
             input_len = int(data[1])
             output_len = int(data[2])
-            prompt = [(i + j) % vocab_size for j in range(input_len)]
+            prompt_ids = [(i + j) % vocab_size for j in range(input_len)]
+            prompt = tokenizer.decode(prompt_ids)
             res = "a" * output_len
         else:
             raise ValueError(f"Unknown task {task}")
