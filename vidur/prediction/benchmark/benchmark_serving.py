@@ -919,6 +919,11 @@ def sample_requests(
             output_len = int(data[3])
             prompt = [(i + j) % vocab_size for j in range(input_len)]
             res = "a" * output_len
+        elif task == "splitwise":
+            input_len = int(data[1])
+            output_len = int(data[2])
+            prompt = [(i + j) % vocab_size for j in range(input_len)]
+            res = "a" * output_len
         else:
             raise ValueError(f"Unknown task {task}")
 
@@ -1052,7 +1057,7 @@ def main():
             args.data_start_index,
             task='chat'
         )
-    elif args.dataset_type == "arxiv":
+    elif args.dataset_type == "arxiv" or args.dataset_type == "burstgpt" or args.dataset_type == "splitwise":
         prompts, prompt_lens, max_response_lens, estimated_response_lens = sample_requests(
             args.dataset_path,
             args.num_sampled_requests,
@@ -1060,17 +1065,7 @@ def main():
             args.max_request_len,
             args.use_estimated_response_lens,
             args.data_start_index,
-            task='arxiv'
-        )
-    elif args.dataset_type == "burstgpt":
-        prompts, prompt_lens, max_response_lens, estimated_response_lens = sample_requests(
-            args.dataset_path,
-            args.num_sampled_requests,
-            tokenizer,
-            args.max_request_len,
-            args.use_estimated_response_lens,
-            args.data_start_index,
-            task='burstgpt'
+            task=args.dataset_type
         )
     else:
         raise ValueError(f"Unknown dataset type {args.dataset_type}")
