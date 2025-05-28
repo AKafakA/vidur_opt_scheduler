@@ -53,7 +53,7 @@ def parse_args():
         "--num_tensor_parallel_workers",
         type=int,
         nargs="+",
-        default=[1, 2, 4, 8],
+        default=[1],
         help="Number of tensor parallel workers to profile",
     )
     parser.add_argument(
@@ -77,7 +77,7 @@ def parse_args():
     parser.add_argument(
         "--max_batch_size",
         type=int,
-        default=128,
+        default=48,
         help="Maximum decode batch size",
     )
     parser.add_argument(
