@@ -64,8 +64,9 @@ esac
 if [ "$RESTART_VLLM" = "true" ]; then
   parallel-ssh --host $TARGET_HOST "cd vidur_opt_scheduler && rm experiment_output/logs/*"
   sh vidur/prediction/exp/reset.sh
-  sleep 10
+  sleep 60
   nohup sh vidur/prediction/exp/run_exp_vllm.sh $BATCH_CAP $MODEL $UPDATE_VLLM_CODE $VLLM_VERSION $MAX_MODEL_LENGTH $ENABLE_CHUNKED_PREFILL $BACKEND_WORKERS $MAX_NUM_BATCHED_TOKEN > /dev/null 2>&1 &
+  sleep 60
   if [ "$UPDATE_VIDUR_CODE" = "true" ]; then
     parallel-ssh -t 0 -h vidur/prediction/config/hosts "cd vidur_opt_scheduler && git checkout $BRANCH_NAME"
     parallel-ssh -t 0 -h vidur/prediction/config/hosts "cd vidur_opt_scheduler && git add . && git stash && git reset --hard HEAD~20 && git pull"

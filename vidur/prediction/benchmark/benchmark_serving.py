@@ -899,7 +899,6 @@ def sample_requests(
             )
         ]
     vocab_size = tokenizer.vocab_size
-    prompt_ids = None
     for i in range(len(dataset)):
         data = dataset[i]
         if task == 'chat':
