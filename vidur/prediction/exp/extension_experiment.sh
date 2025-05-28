@@ -36,7 +36,7 @@ for model in $MODEL; do
     DATASET_NAMES="lmsys"
   elif [ "$model" = "Qwen/Qwen2-7B" ]; then
     MODEL_TYPE="qwen"
-    DATASET_NAMES="sharegpt"
+    DATASET_NAMES="burstgpt"
   fi
   for dataset_name in $DATASET_NAMES; do
     for scheduler in $SCHEDULER_NAME; do

@@ -1019,7 +1019,8 @@ def main():
     parser.add_argument('--fail_on_response_failure', type=bool, default=False,
                         help="Whether or not to fail the benchmarking script if any request fails")
     group = parser.add_mutually_exclusive_group(required=True)
-    group.add_argument('--dataset_type', type=str, choices=['sharegpt', 'arxiv', 'lmsys'], default='sharegpt')
+    group.add_argument('--dataset_type', type=str,
+                       choices=['sharegpt', 'arxiv', 'lmsys', 'burstgpt', 'splitwise'], default='sharegpt')
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument('--dataset_path', type=str)
     parser.add_argument('--print_generation_lens_and_exit',
