@@ -10,8 +10,8 @@ config_output_path = "vidur/prediction/config"
 def generate_config(ip_address, predictor_port, backend_port):
     config = {
         "ip_address": ip_address,
-        "predictor_port": predictor_port,
-        "backend_ports": backend_port
+        "predictor_ports": predictor_port,
+        "backend_port": backend_port
     }
     return config
 
