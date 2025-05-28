@@ -863,6 +863,9 @@ def get_dataset_list(dataset_path: str, start_idx: int = 0, num_samples: int = 1
                 dataset_list.extend(json.load(f))
         elif path.endswith('.parquet'):
             dataset_list.extend(pd.read_parquet(path).to_dict(orient='records'))
+        elif path.endswith('.csv'):
+            raw_data_list = pd.read_csv(path).values.tolist()
+            dataset_list.extend(raw_data_list)
     end_idx = min(len(dataset_list), start_idx + num_samples)
     if start_idx >= len(dataset_list):
         raise ValueError(f"start_idx {start_idx} is out of range for dataset with {len(dataset_list)} samples.")
@@ -895,8 +898,10 @@ def sample_requests(
                     ("conversation" in data and len(data["conversation"]) >= 2)
             )
         ]
+    vocab_size = tokenizer.vocab_size
 
-    for data in dataset:
+    for i in range(len(dataset)):
+        data = dataset[i]
         if task == 'chat':
             if "conversations" in data:
                 prompt = data["conversations"][0]["value"]
@@ -909,9 +914,13 @@ def sample_requests(
         elif task == 'arxiv':
             prompt = "Summarize this paper: " + data["article"]
             res = data["abstract"]
-            print(f"response: {res}")
+        elif task == 'burstgpt':
+            input_len = int(data[2])
+            output_len = int(data[3])
+            prompt = [(i + j) % vocab_size for j in range(input_len)]
+            res = "a" * output_len
         else:
-            raise ValueError(f"Unknown task: {task}")
+            raise ValueError(f"Unknown task {task}")
 
         prompt_token_ids = tokenizer(prompt).input_ids
         completion_token_ids = tokenizer(res).input_ids
@@ -1053,8 +1062,18 @@ def main():
             args.data_start_index,
             task='arxiv'
         )
+    elif args.dataset_type == "burstgpt":
+        prompts, prompt_lens, max_response_lens, estimated_response_lens = sample_requests(
+            args.dataset_path,
+            args.num_sampled_requests,
+            tokenizer,
+            args.max_request_len,
+            args.use_estimated_response_lens,
+            args.data_start_index,
+            task='burstgpt'
+        )
     else:
-        raise ValueError("unknown dataset type")
+        raise ValueError(f"Unknown dataset type {args.dataset_type}")
 
     for i, (prompt_len, gen_len) in enumerate(zip(prompt_lens, max_response_lens)):
         total = prompt_len + gen_len
