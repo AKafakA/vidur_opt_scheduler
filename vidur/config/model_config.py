@@ -213,22 +213,6 @@ class Qwen72BModelConfig(QwenModelConfig):
     def get_name():
         return "Qwen/Qwen-72B"
 
-
-@dataclass
-class Qwen7BModelConfig(QwenModelConfig):
-    num_layers: int = 32
-    num_q_heads: int = 32
-    num_kv_heads: int = 32
-    embedding_dim: int = 4096
-    mlp_hidden_dim: int = 11008
-    rope_theta: Optional[float] = 1000000
-    max_position_embeddings: int = 32768
-
-    @staticmethod
-    def get_name():
-        return "Qwen/Qwen-7B"
-
-
 @dataclass
 class Qwen2_7BModelConfig(QwenModelConfig):
     num_layers: int = 28

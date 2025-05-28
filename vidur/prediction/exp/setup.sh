@@ -8,5 +8,5 @@ parallel-ssh -t 0 -h vidur/prediction/config/hosts "sudo dpkg --configure -a && 
 parallel-ssh -t 0 -h vidur/prediction/config/hosts "echo 'export PATH=$PATH:/usr/local/cuda-12.6/bin:$PATH' >> ~/.bashrc && echo 'export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda-12.6/lib64:$LD_LIBRARY_PATH' >> ~/.bashrc && source ~/.bashrc"
 parallel-ssh -t 0 -h vidur/prediction/config/hosts "sudo nvidia-smi -mig 0"
 parallel-ssh -t 0 -h vidur/prediction/config/hosts "git clone https://github.com/AKafakA/vllm.git && cd vllm && sudo VLLM_USE_PRECOMPILED=1 pip install --editable ."
-parallel-ssh -t 0 -h vidur/prediction/config/hosts "git clone https://github.com/AKafakA/vidur_opt_scheduler.git && cd vidur_opt_scheduler && git checkout exp && pip install -r requirements.txt"
+parallel-ssh -t 0 -h vidur/prediction/config/hosts "git clone https://github.com/AKafakA/vidur_opt_scheduler.git && cd vidur_opt_scheduler && git checkout single_predictor_evaluation  && pip install -r requirements.txt"
 parallel-ssh -t 0 -h vidur/prediction/config/hosts "pip install flashinfer-python"

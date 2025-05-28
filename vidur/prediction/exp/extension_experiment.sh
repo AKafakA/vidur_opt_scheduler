@@ -1,7 +1,7 @@
 START_INDEX=0
 BATCH_CAP=48
 TARGET_HOST='asdwb@d7525-10s10309.wisc.cloudlab.us'
-PREDICTOR_WORKERS=16
+PREDICTOR_WORKERS=1
 GLOBAL_SCHEDULER_WORKERS=2
 BACKEND_WORKERS=4
 MAX_MODEL_LENGTH=4096
@@ -11,20 +11,20 @@ PREDICTOR_TIMEOUT_IN_SECONDS=1000
 BATCH_SIZE_THRESHOLD_FOR_TIME_ESTIMATION="0"
 BRANCH_NAME="single_predictor_evaluation"
 USE_PROCESS_FOR_FRONTEND=true
-UPDATE_VIDUR_CODE=true
-UPDATE_VLLM_CODE=true
-RUN_EXP=true
+UPDATE_VIDUR_CODE=false
+UPDATE_VLLM_CODE=false
+RUN_EXP=false
 RESTART_VLLM=true
 
 ENABLE_CHUNKED_PREFILL="true"
 
-MODEL="Qwen/Qwen-7B"
-SCHEDULER_NAME="min_new_request_latency round_robin"
+MODEL="Qwen/Qwen2-7B"
+SCHEDULER_NAME="min_new_request_latency"
 #QPS="30 24 18"
-QPS="30"
+QPS="1"
 PROFILING_SAMPLE_RATE=0.000
 USE_FOR_PROFILING_ONLY=false
-NUM_REQUEST=10000
+NUM_REQUEST=100
 KEEP_ALL_METRICS=false
 N_SELECTED="12"
 OUTPUT_DIR_PREFIX="extension"
@@ -34,14 +34,14 @@ for model in $MODEL; do
   if [ "$model" = "meta-llama/Llama-2-7b-hf" ]; then
     MODEL_TYPE="llama"
     DATASET_NAMES="lmsys"
-  elif [ "$model" = "Qwen/Qwen-7B" ]; then
+  elif [ "$model" = "Qwen/Qwen2-7B" ]; then
     MODEL_TYPE="qwen"
     DATASET_NAMES="sharegpt"
   fi
   for dataset_name in $DATASET_NAMES; do
     for scheduler in $SCHEDULER_NAME; do
       if [ "$scheduler" = "min_new_request_latency" ]; then
-        USE_LENGTH_ESTIMATION="false true"
+        USE_LENGTH_ESTIMATION="false"
       else
         USE_LENGTH_ESTIMATION="false"
       fi

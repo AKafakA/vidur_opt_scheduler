@@ -71,17 +71,20 @@ if [ "$RESTART_VLLM" = "true" ]; then
     parallel-ssh -t 0 -h vidur/prediction/config/hosts "cd vidur_opt_scheduler && git add . && git stash && git reset --hard HEAD~20 && git pull"
   fi
   script_base="vidur/prediction/exp/run_exp_predictor"
-  suffix_range=$(seq 1 7)
-  for suffix in $suffix_range; do
-    echo "${script_base}_${suffix}.sh $PREDICTOR_CONFIG_PATH $SCHEDULER_METRIC_TYPE $ENABLE_TIME_ESTIMATION $BATCH_CAP $ENABLE_CHUNKED_PREFILL $PREDICTOR_WORKERS $BRANCH_NAME $BATCH_SIZE_THRESHOLD_FOR_TIME_ESTIMATION $PREDICTOR_TIMEOUT_IN_SECONDS"
-    nohup sh "${script_base}_${suffix}.sh" $PREDICTOR_CONFIG_PATH $SCHEDULER_METRIC_TYPE $ENABLE_TIME_ESTIMATION $BATCH_CAP $ENABLE_CHUNKED_PREFILL $PREDICTOR_WORKERS $BRANCH_NAME $BATCH_SIZE_THRESHOLD_FOR_TIME_ESTIMATION $PREDICTOR_TIMEOUT_IN_SECONDS > /dev/null 2>&1 &
-  done
-  sleep 10
-  suffix_range=$(seq 8 $PREDICTOR_WORKERS)
-  for suffix in $suffix_range; do
-    nohup sh "${script_base}_${suffix}.sh" $PREDICTOR_CONFIG_PATH $SCHEDULER_METRIC_TYPE $ENABLE_TIME_ESTIMATION $BATCH_CAP $ENABLE_CHUNKED_PREFILL $PREDICTOR_WORKERS $BRANCH_NAME $BATCH_SIZE_THRESHOLD_FOR_TIME_ESTIMATION $PREDICTOR_TIMEOUT_IN_SECONDS > /dev/null 2>&1 &
-  done
-  sleep 60
+  if [ "$PREDICTOR_WORKERS" -eq 1 ]; then
+    nohup sh "${script_base}_1.sh" $PREDICTOR_CONFIG_PATH $SCHEDULER_METRIC_TYPE $ENABLE_TIME_ESTIMATION $BATCH_CAP $ENABLE_CHUNKED_PREFILL $PREDICTOR_WORKERS $BRANCH_NAME $BATCH_SIZE_THRESHOLD_FOR_TIME_ESTIMATION $PREDICTOR_TIMEOUT_IN_SECONDS > /dev/null 2>&1 &
+  else
+    suffix_range=$(seq 1 7)
+    for suffix in $suffix_range; do
+      nohup sh "${script_base}_${suffix}.sh" $PREDICTOR_CONFIG_PATH $SCHEDULER_METRIC_TYPE $ENABLE_TIME_ESTIMATION $BATCH_CAP $ENABLE_CHUNKED_PREFILL $PREDICTOR_WORKERS $BRANCH_NAME $BATCH_SIZE_THRESHOLD_FOR_TIME_ESTIMATION $PREDICTOR_TIMEOUT_IN_SECONDS > /dev/null 2>&1 &
+    done
+    sleep 10
+    suffix_range=$(seq 8 $PREDICTOR_WORKERS)
+    for suffix in $suffix_range; do
+      nohup sh "${script_base}_${suffix}.sh" $PREDICTOR_CONFIG_PATH $SCHEDULER_METRIC_TYPE $ENABLE_TIME_ESTIMATION $BATCH_CAP $ENABLE_CHUNKED_PREFILL $PREDICTOR_WORKERS $BRANCH_NAME $BATCH_SIZE_THRESHOLD_FOR_TIME_ESTIMATION $PREDICTOR_TIMEOUT_IN_SECONDS > /dev/null 2>&1 &
+    done
+    sleep 60
+  fi
 fi
 
 if [ "$RUN_EXP" = "true" ]; then

@@ -1,6 +1,6 @@
 {
 	"replica_config": {
-		"model_name": "Qwen/Qwen-7B",
+		"model_name": "Qwen/Qwen-2-7B",
 		"memory_margin_fraction": 0.1,
 		"num_pipeline_stages": 1,
 		"tensor_parallel_size": 1,
@@ -11,7 +11,7 @@
 		"max_tokens_in_batch": 4096,
 		"batch_size_cap": 48,
 		"chunk_size": 512,
-		"num_blocks": 781
+		"num_blocks": 7289
 	},
 	"target_metric": "min_new_request_latency",
 	"disable_batch_time_estimation": false
