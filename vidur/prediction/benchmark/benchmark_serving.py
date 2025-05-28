@@ -899,7 +899,7 @@ def sample_requests(
             )
         ]
     vocab_size = tokenizer.vocab_size
-
+    prompt_ids = None
     for i in range(len(dataset)):
         data = dataset[i]
         if task == 'chat':
@@ -917,7 +917,8 @@ def sample_requests(
         elif task == 'burstgpt':
             input_len = int(data[2])
             output_len = int(data[3])
-            prompt = [(i + j) % vocab_size for j in range(input_len)]
+            prompt_ids = [(i + j) % vocab_size for j in range(input_len)]
+            prompt = tokenizer.decode(prompt_ids)
             res = "a" * output_len
         elif task == "splitwise":
             input_len = int(data[1])
