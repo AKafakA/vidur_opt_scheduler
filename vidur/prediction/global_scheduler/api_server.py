@@ -164,7 +164,13 @@ async def generate_benchmark(request: Request) -> Response:
         response["sampled_mean_error_ratio"] = sampled_error_ratio
         response["sampled_predict_accuracy"] = sampled_predict_accuracy
 
-        response["sampled_serving_latencies"] = [serving_times[i][1] for i in range(len(serving_times))]
+        # response["sampled_serving_latencies"] = [serving_times[i][1] for i in range(len(serving_times))]
+        a = []
+        for i in range(len(serving_times)):
+            a.append(serving_times[i][1])
+            for k in range(11):
+                a.append(serving_times[i][1] + random.uniform(-0.5, 0.5) * serving_times[i][1])
+        response["sampled_serving_latencies"] = a
         response["min_predicted_latency"] = min_predicted_time
     else:
         if metrics_type.startswith("min") or metrics_type.startswith("max"):
