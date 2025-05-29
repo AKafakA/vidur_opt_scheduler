@@ -163,6 +163,9 @@ async def generate_benchmark(request: Request) -> Response:
         sampled_predict_accuracies.append(sampled_predict_accuracy)
         response["sampled_mean_error_ratio"] = sampled_error_ratio
         response["sampled_predict_accuracy"] = sampled_predict_accuracy
+
+        response["sampled_serving_latencies"] = [serving_times[i][1] for i in range(len(serving_times))]
+        response["min_predicted_latency"] = min_predicted_time
     else:
         if metrics_type.startswith("min") or metrics_type.startswith("max"):
             # if current in metrics means all node need to be queried and select the one with min/max

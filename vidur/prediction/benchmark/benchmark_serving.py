@@ -557,6 +557,8 @@ class MeasureLatency:
         self._num_preempted = []
         self._sampled_mean_error_ratios = []
         self._sampled_predict_accuracies = []
+        self._sampled_serving_latencies = []
+        self._min_predicted_latency = []
 
     def measure(self, f):
         async def measured(*args, **kwargs):
@@ -635,6 +637,11 @@ class MeasureLatency:
                 self._sampled_mean_error_ratios.append(output['sampled_mean_error_ratio'])
             if 'sampled_predict_accuracy' in output:
                 self._sampled_predict_accuracies.append(output['sampled_predict_accuracy'])
+            if 'sampled_serving_latencies' in output:
+                self._sampled_serving_latencies.append(output['sampled_serving_latencies'])
+            if 'min_predicted_latency' in output:
+                self._min_predicted_latency.append(output['min_predicted_latency'])
+
             return prompt, output
 
         return measured
