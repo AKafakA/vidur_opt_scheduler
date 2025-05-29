@@ -33,6 +33,39 @@ def extract_prediction_errors(experiment):
     return average_prediction_errors_ratio, compare_error_rate
 
 
+def plot_line_scatter_mixed(ax, scatter_y, linea_y):
+    """
+    Plot a line and scatter mixed plot on the given axes.
+    :param ax: The axes to plot on.
+    :param scatter_y: The y-values for the scatter plot.
+    :param linea_y: The y-values for the line plot.
+    """
+    assert len(scatter_y) == len(linea_y), "Scatter and line data must have the same length"
+    # scatter is a 2 dimensional np array, x is the index of first column
+    # ax.scatter(x, scatter_y, color='blue', label='Scatter Data', s=10)
+    # ax.plot(x, linea_y, color='red', label='Line Data')
+    x = np.arange(len(scatter_y))
+    ax.scatter(x, scatter_y, color='blue', label='Scatter Data', s=10)
+    ax.plot(x, np.mean(scatter_y), color='red', label='Line Data', s=10)
+    ax.plot(x, linea_y, color='green', label='Line Data', s=10)
+    ax.plot(x, np.min(scatter_y), color='black', label='Min Data', s=10)
+    ax.plot(x, np.max(scatter_y), color='orange', label='Max Data', s=10)
+
+
+def plot_linea_scatter_for_multiple_qps(axes, linear_data, scatter_data,
+                                        title_fontsize=10):
+    """
+    Plot multiple line and scatter mixed plots for different QPS values.
+    """
+    assert len(scatter_data) == len(linear_data), "Scatter and line data must have the same length"
+    for qps in linear_data.keys():
+        ax = axes.get(qps)
+        qps_linear_data = linear_data[qps]
+        qps_scatter_data = scatter_data[qps]
+        plot_line_scatter_mixed(ax, qps_scatter_data, qps_linear_data)
+        ax.set_title(f"{qps} QPS", fontsize=title_fontsize)
+
+
 def plot_per_qps(experiments_set, output_dir, min_qps=24, max_qps=32):
     qps_output_dir = output_dir + "/qps"
     if os.path.exists(qps_output_dir):
@@ -54,23 +87,30 @@ def plot_per_qps(experiments_set, output_dir, min_qps=24, max_qps=32):
     prediction_errors = {}
     compare_errors = {}
     prediction_errors_rate = {}
+    sampled_predict_latency = {}
+    sampled_serving_latencies = {}
     for qps in qps_set:
         prediction_overhead_per_qps = {}
         prediction_overhead_ratio_per_qps = {}
         prediction_errors_per_qps = {}
         prediction_errors_rate_per_qps = {}
         compare_errors_per_qps = {}
+        sampled_predict_latency_per_qps = {}
+        sampled_serving_latencies_per_qps = {}
         prediction_overhead[qps] = prediction_overhead_per_qps
         prediction_overhead_ratio[qps] = prediction_overhead_ratio_per_qps
         prediction_errors[qps] = prediction_errors_per_qps
         prediction_errors_rate[qps] = prediction_errors_rate_per_qps
         compare_errors[qps] = compare_errors_per_qps
+        sampled_predict_latency[qps] = sampled_predict_latency_per_qps
+        sampled_serving_latencies[qps] = sampled_serving_latencies_per_qps
+
         qps_experiments = [record for record in experiments_set if record["qps"] == qps]
         for experiment in qps_experiments:
             if experiment['chunked'] == 'true':
-                experiment_name = "Chunked Prefilled vLLM"
+                experiment_name = "Chunked Prefilled"
             else:
-                experiment_name = "Original vLLM"
+                experiment_name = "Prefilled Prioritized"
             for key in experiment_name_replacement.keys():
                 if key in experiment_name:
                     experiment_name = experiment_name.replace(key, experiment_name_replacement[key])
@@ -96,26 +136,18 @@ def plot_per_qps(experiments_set, output_dir, min_qps=24, max_qps=32):
                                                                  if latency > 0]
                 prediction_errors_per_qps[index_name] = experiments['prediction_errors']
                 compare_errors_per_qps[index_name] = experiments['compare_error_rate']
-        # plot_linear(prediction_overhead, "Prediction Overhead", qps_output_dir, qps=qps, sigma=10,
-        #             y_dim_appendix=" (ms)")
-        # plot_linear(prediction_overhead_ratio, "Prediction Overhead Percentage", qps_output_dir, qps=qps,
-        #             sigma=20, y_dim_appendix="%")
-        # plot_linear(prediction_errors, "Prediction Errors", qps_output_dir, qps=qps, sigma=20,
-        #             y_dim_appendix=" (s)")
-        # plot_linear(prediction_errors_rate, "Prediction Errors Rate", qps_output_dir, qps=qps, sigma=20,
-        #             y_dim_appendix="%")
-        # plot_linear(compare_errors, "Compare Error rate", qps_output_dir, qps=qps, sigma=20,
-        #             y_dim_appendix="%")
+                if index_name == "Chunked Prefilled":
+                    sampled_predict_latency_per_qps[index_name] = experiments['min_predicted_latency']
+                    sampled_serving_latencies_per_qps[index_name] = experiments['serving_latencies']
+
     fig, axs = plt.subplots(2, len(qps_set))
-    # axs_for_prediction_overhead = {}
     axs_for_prediction_overhead_ratio = {}
     axs_for_prediction_errors_rate = {}
-    axs_for_compare_errors_rate = {}
 
     for i, qps_value in enumerate(qps_set):
         # axs_for_prediction_overhead[qps_value] = axs[0][i]
         axs_for_prediction_errors_rate[qps_value] = axs[0][i]
-        axs_for_compare_errors_rate[qps_value] = axs[1][i]
+        axs_for_prediction_overhead_ratio[qps_value] = axs[1][i]
 
     # plot_linear_for_multiple_qps(axs_for_prediction_overhead, prediction_overhead, "Overhead (ms)",
     #                              sigma=10,
@@ -125,10 +157,11 @@ def plot_per_qps(experiments_set, output_dir, min_qps=24, max_qps=32):
                                  "Error Rate (%)", sigma=1,
                                  enable_legend_at_middle=False,
                                  title_fontsize=10)
-    plot_linear_for_multiple_qps(axs_for_compare_errors_rate, compare_errors,
-                                 "Prediction Accuracy (%)", sigma=1,
-                                 enable_legend_at_middle=False,
-                                 title_fontsize=10)
+
+    plot_linea_scatter_for_multiple_qps(axs_for_prediction_overhead_ratio,
+                                        sampled_predict_latency,
+                                        sampled_serving_latencies)
+
     fig.tight_layout()
     fig.set_size_inches(8, 6)
     fig.subplots_adjust(hspace=0.2, wspace=0.35)
@@ -164,6 +197,8 @@ def main():
                     record['request_latencies'] = b['request_latencies']
                     record['prediction_errors'] = b['sampled_mean_error_ratios']
                     record['compare_error_rate'] = b['sampled_predict_accuracies']
+                    record['serving_latencies'] = b['sampled_serving_latencies']
+                    record['min_predicted_latency'] = b['sampled_predict_latency']
 
     plot_per_qps(experiments_set, args.output_dir)
 

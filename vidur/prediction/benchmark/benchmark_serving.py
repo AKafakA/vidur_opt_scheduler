@@ -796,6 +796,8 @@ async def benchmark(
         m._num_preempted, \
         m._sampled_mean_error_ratios, \
         m._sampled_predict_accuracies, \
+        m._sampled_serving_latencies, \
+        m._min_predicted_latency, \
         timestamps, \
         msg
 
@@ -1128,6 +1130,8 @@ def main():
      num_preempted,
      sampled_mean_error_ratios,
      sampled_predict_accuracies,
+     sampled_serving_latencies,
+     sampled_predict_latency,
      request_timestamps,
      messages) = asyncio.run(benchmark(
         backend,
@@ -1186,7 +1190,12 @@ def main():
             data["sampled_predict_accuracies"] = np.array(sampled_predict_accuracies)
         if sampled_mean_error_ratios:
             data["sampled_mean_error_ratios"] = np.array(sampled_mean_error_ratios)
+        if sampled_serving_latencies:
+            data["sampled_serving_latencies"] = np.array(sampled_serving_latencies)
+        if sampled_predict_latency:
+            data["sampled_predict_latency"] = np.array(sampled_predict_latency)
         np.savez(args.output_dir + '/' + os.path.splitext(args.log_filename)[0] + f"_all_metrics.npz", **data)
+
         print(f'Storage of all metrics finished at {time.time() - storage_start_time} s')
 
 
