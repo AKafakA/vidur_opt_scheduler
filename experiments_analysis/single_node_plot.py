@@ -44,29 +44,47 @@ def plot_line_scatter_mixed(ax, scatter_y, linea_y):
     # scatter is a 2 dimensional np array, x is the index of first column
     # ax.scatter(x, scatter_y, color='blue', label='Scatter Data', s=10)
     # ax.plot(x, linea_y, color='red', label='Line Data')
-    x = np.arange(len(scatter_y))
-    ax.scatter(x, scatter_y, color='blue', label='Scatter Data', s=10)
-    ax.plot(x, np.mean(scatter_y), color='red', label='Line Data', s=10)
-    ax.plot(x, linea_y, color='green', label='Line Data', s=10)
-    ax.plot(x, np.min(scatter_y), color='black', label='Min Data', s=10)
-    ax.plot(x, np.max(scatter_y), color='orange', label='Max Data', s=10)
+    for key in scatter_y.keys():
+        x = np.arange(len(scatter_y[key]))
+        for i in range(len(scatter_y[key])):
+            ax.scatter(x, scatter_y[key][:, i], color='blue', s=10)
+            ax.fill_between(x, np.min(scatter_y[key], axis=1), np.max(scatter_y[key], axis=1),
+                            color='blue', alpha=0.01)
+        ax.plot(x, np.mean(scatter_y[key], axis=1), color='green', label='Mean Serving Latency')
+        ax.plot(x, linea_y[key], color='red', label='Predicted Latency')
+        # ax.plot(x, np.min(scatter_y[key], axis=1), color='black', label='Min Serving Latency')
+        # ax.plot(x, np.max(scatter_y[key], axis=1), color='orange', label='Max Serving Latency')
 
 
-def plot_linea_scatter_for_multiple_qps(axes, linear_data, scatter_data,
+def plot_linea_scatter_for_multiple_qps(axes, linear_data, scatter_data, x_label="Sampled Query ID",
+                                        legend_anchor=(0.75, 1.3),
+                                        metric_name="Latency (ms)",
+                                        enable_legend_at_middle=True,
                                         title_fontsize=10):
     """
     Plot multiple line and scatter mixed plots for different QPS values.
     """
     assert len(scatter_data) == len(linear_data), "Scatter and line data must have the same length"
+    enable_label = True
+    i = 0
     for qps in linear_data.keys():
         ax = axes.get(qps)
         qps_linear_data = linear_data[qps]
         qps_scatter_data = scatter_data[qps]
         plot_line_scatter_mixed(ax, qps_scatter_data, qps_linear_data)
-        ax.set_title(f"{qps} QPS", fontsize=title_fontsize)
+        if enable_label:
+            ax.set_xlabel(x_label, fontsize=title_fontsize)
+            ax.set_ylabel(f"{metric_name} \n QPS={qps}", fontsize=title_fontsize)
+            enable_label = False
+        else:
+            ax.set_ylabel("QPS = " + str(qps), fontsize=12)
+        if enable_legend_at_middle and i == len(linear_data) // 2:
+            ax.legend(fancybox=False, shadow=False, ncol=6, fontsize=title_fontsize,
+                      loc='upper right', bbox_to_anchor=legend_anchor)
+        i += 1
 
 
-def plot_per_qps(experiments_set, output_dir, min_qps=24, max_qps=32):
+def plot_per_qps(experiments_set, output_dir, min_qps=1, max_qps=32):
     qps_output_dir = output_dir + "/qps"
     if os.path.exists(qps_output_dir):
         shutil.rmtree(qps_output_dir)
@@ -155,23 +173,24 @@ def plot_per_qps(experiments_set, output_dir, min_qps=24, max_qps=32):
     #                              title_fontsize=10)
     plot_linear_for_multiple_qps(axs_for_prediction_errors_rate, prediction_errors,
                                  "Error Rate (%)", sigma=1,
-                                 enable_legend_at_middle=False,
-                                 title_fontsize=10)
+                                 enable_legend_at_middle=True, legend_anchor=(0.75, 1.3),
+                                 title_fontsize=10, enable_x_labels=False)
 
     plot_linea_scatter_for_multiple_qps(axs_for_prediction_overhead_ratio,
                                         sampled_predict_latency,
-                                        sampled_serving_latencies)
+                                        sampled_serving_latencies,
+                                        legend_anchor=(0.75, 1.2),)
 
     fig.tight_layout()
     fig.set_size_inches(8, 6)
-    fig.subplots_adjust(hspace=0.2, wspace=0.35)
+    fig.subplots_adjust(hspace=0.4, wspace=0.35)
     plt.savefig(qps_output_dir + "/all_qps.png", bbox_inches='tight')
 
 
 def main():
     parser = argparse.ArgumentParser(description='Plot the results of the experiments')
     parser.add_argument("--experiments-dir", type=str,
-                        default="experiments_analysis/single_node_experiment_output/sharegpt")
+                        default="experiments_analysis/single_node_experiment_output/burstgpt")
     parser.add_argument("--output-dir", type=str, default="./experiments_analysis/single_node_exp_plots")
     parser.add_argument("--plot-per-qps", type=bool, default=True)
     # parser.add_argument("--output-dir", type=str, required=True)

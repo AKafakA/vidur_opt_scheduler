@@ -37,7 +37,8 @@ def extract_data_from_log_file(log_file):
 
 def plot_linear_for_multiple_qps(axes, data, metric_name, sigma=-1,
                                  enable_legend_at_middle=False, x_label="Query ID: ", legend_anchor=(2.0, 1.215),
-                                 title_fontsize=12):
+                                 title_fontsize=12,
+                                 enable_x_labels=True):
     i = 0
     enable_label = True
     for qps in data.keys():
@@ -52,8 +53,11 @@ def plot_linear_for_multiple_qps(axes, data, metric_name, sigma=-1,
         # plt.xlabel("Request ID")
         # plt.ylabel(metric_name + " " + y_dim_appendix)
         if enable_label:
-            ax.set_xlabel(x_label, fontsize=title_fontsize)
-            ax.xaxis.set_label_coords(-0.135, -0.025)
+            if enable_x_labels:
+                ax.set_xlabel(x_label, fontsize=title_fontsize)
+                ax.xaxis.set_label_coords(-0.135, -0.025)
+            else:
+                ax.set_xlabel("")
             ax.set_ylabel(f"{metric_name} \n QPS={qps}", fontsize=title_fontsize)
             enable_label = False
         else:
