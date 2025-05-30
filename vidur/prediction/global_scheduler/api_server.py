@@ -54,12 +54,16 @@ def print_instance_errors():
         count = count + 1
 
     predict_accuracy = (1.0 * sum(correct_flags)) / len(correct_flags)
-    #
-    print(f"average serving {total_s / count} and average predicted {total_p / count}")
-    print(f"Mean of Prediction error ratio {np.mean(error_ratios)}")
-    print(f"P50 of Prediction error ratio {np.percentile(error_ratios, 50)}")
-    print(f"Predict accuracy: {predict_accuracy} for compare")
-    return predict_accuracy, np.mean(error_ratios)
+
+    if count > 0 and error_ratios and correct_flags:    #
+        print(f"average serving {total_s / count} and average predicted {total_p / count}")
+        print(f"Mean of Prediction error ratio {np.mean(error_ratios)}")
+        print(f"P50 of Prediction error ratio {np.percentile(error_ratios, 50)}")
+        print(f"Predict accuracy: {predict_accuracy} for compare")
+        return predict_accuracy, np.mean(error_ratios)
+    else:
+        print("No serving time or error ratios collected.")
+        return 0.0, 0.0
 
 
 @app.post("/generate_benchmark")
