@@ -119,15 +119,18 @@ class SimulatePredictor(Predictor):
             current_gpu_blocks = -1
             current_total_requests = -1
             current_num_preempted = -1
+            current_running_request = -1
         else:
             current_gpu_blocks = response_data["free_gpu_blocks"]
             current_num_preempted = response_data["num_preempted"]
-            if "total_requests_count" in response_data:
+            if "total_requests_count" in response_data and "current_running_requests_count" in response_data:
                 current_total_requests = response_data["total_requests_count"]
+                current_running_request = response_data["current_running_requests_count"]
             else:
                 current_total_requests = (
                         (len(response_data["waiting"]) + len(response_data["running"]) + len(response_data["swap"]))
                         // NUM_FIELD_PER_REQUEST)
+                current_running_request = len(response_data["running"]) // NUM_FIELD_PER_REQUEST
         if self._need_to_predict:
             if len(response_data) > 0:
                 replica_scheduler = self.get_replica_scheduler_with_backend_response(response_data)
@@ -148,7 +151,10 @@ class SimulatePredictor(Predictor):
         elif self._config.target_metric == "min_current_requests":
             target_metric = current_total_requests
         elif self._config.target_metric == "min_infass_load":
-            target_metric = (max(current_gpu_blocks, 1) / max(current_gpu_blocks, 1)) * (-1)
+            target_metric = (current_gpu_blocks / max(current_running_request, 1)) * (-1)
+        elif self._config.target_metric == "min_lunmnix_load":
+            adjusted_free_gpu_blocks = response_data.get("adjusted_free_gpu_blocks", current_gpu_blocks)
+            target_metric = (adjusted_free_gpu_blocks / max(current_running_request, 1)) * (-1)
         else:
             target_metric = random.randint(0, 100)
         metrics["target_metric"] = target_metric
