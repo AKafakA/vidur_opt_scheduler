@@ -34,6 +34,8 @@ random_assigned = []
 
 sampled_mean_error_ratios = []
 sampled_predict_accuracies = []
+max_waiting_time_in_seconds = 10
+backfill_instance = []
 
 
 def print_instance_errors():
@@ -113,7 +115,27 @@ async def generate_benchmark(request: Request) -> Response:
               f"current number of randomly assigned requests: {len(random_assigned)} at time {time.time() - start_time}")
         return JSONResponse(response)
 
-    target_metrics = [x['target_metric'] for x in predict_results]
+    target_metrics = [x['target_metric'][0] for x in predict_results]
+    if predict_results and len(predict_results[0]['target_metric']) > 1:
+        # if the target metric is a tuple, we only take the first element for scheduling
+        # and the second element should always be the waiting time used for auto-scaling
+        waiting_time = [x['target_metric'][1] for x in predict_results]
+        max_waiting_time = max(waiting_time)
+        if max_waiting_time >= max_waiting_time_in_seconds:
+            print(f"Max waiting time {max_waiting_time} exceeds the limit of {max_waiting_time_in_seconds} seconds. ")
+            if len(backfill_instance) > 0:
+                selected_backfill_instance = backfill_instance.pop(0)
+                print(f"Assigning request {request_id} to backfill instance and put it into the pool"
+                      f"{selected_backfill_instance._instance_id}")
+                instances.append(selected_backfill_instance)
+                try:
+                    response = await selected_backfill_instance.query_backend(prompt, max_response_len, request_id,
+                                                                              predicted_num_decode_tokens)
+                    return JSONResponse(response)
+                except Exception as e:
+                    print(f"Error during prediction: {e}")
+                    return JSONResponse({"error": "Prediction failed"}, status_code=500)
+
     assert len(target_metrics) == len(predict_results)
 
     if is_sampled_for_compare:
@@ -206,13 +228,15 @@ async def init_app(
         instances_list: Optional[List[Instance]] = None,
 ) -> FastAPI:
     app = build_app(args)
-    global instances, start_time, metrics_type
+    global instances, start_time, metrics_type, max_waiting_time_in_seconds, backfill_instance
     config_path = args.config_path
+    max_waiting_time_in_seconds = args.max_waiting_time_in_seconds
 
     instance_dict = json.load(open(config_path))
     if instances_list is not None:
         instances.extend(instances_list)
     else:
+        k = 0
         for key, value in instance_dict.items():
             ports = []
             if args.num_predictor_ports > 0:
@@ -222,7 +246,10 @@ async def init_app(
             instance = Instance(key, value["ip_address"], ports, value["backend_port"],
                                 query_predictor_timeout=args.predictor_timeout,
                                 query_backend_timeout=args.backend_timeout)
-            instances.append(instance)
+            if k < args.initial_available_instance:
+                instances.append(instance)
+            else:
+                backfill_instance.append(instance)
     start_time = time.time()
     metrics_type = args.metrics_type
     return app
@@ -284,6 +311,8 @@ if __name__ == "__main__":
     parser.add_argument("--num_predictor_ports", type=int, default=-1)
     parser.add_argument("--predictor_timeout", type=int, default=60)
     parser.add_argument("--backend_timeout", type=int, default=1800)
+    parser.add_argument("--max_waiting_time_in_seconds", type=int, default=10)
+    parser.add_argument("--initial_available_instance", type=int, default=6)
     args = parser.parse_args()
     logger.info("Starting server with args: %s", str(args))
     # in case the limited by the number of files

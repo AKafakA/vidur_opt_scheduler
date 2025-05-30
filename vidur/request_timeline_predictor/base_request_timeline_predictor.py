@@ -35,6 +35,13 @@ class BaseRequestTimelinePredictor:
     def predict_request_scheduling_delay(self, replica_scheduler, request):
         raise NotImplementedError("predict method is not implemented")
 
+    def predict_waiting_and_ending_time(self, replica_scheduler: BaseReplicaScheduler, request: Request):
+        """
+        Predict the waiting and ending time for a given request.
+        This method is a placeholder and should be implemented in subclasses.
+        """
+        raise NotImplementedError("predict_waiting_and_ending_time method is not implemented")
+
 
 def get_target_metric_value(target_metric: TargetMetric,
                             replica_scheduler: BaseReplicaScheduler,
@@ -43,7 +50,7 @@ def get_target_metric_value(target_metric: TargetMetric,
     if target_metric == TargetMetric.MIN_LATENCY:
         return request_timeline_predictor.predict_average_latency(replica_scheduler, request)
     elif target_metric == TargetMetric.MIN_NEW_REQUEST_LATENCY:
-        return request_timeline_predictor.predict_request_makespan(replica_scheduler, request)
+        return request_timeline_predictor.predict_waiting_and_ending_time(replica_scheduler, request)
     elif target_metric == TargetMetric.MIN_SCHEDULING_DELAY:
         return request_timeline_predictor.predict_request_scheduling_delay(replica_scheduler, request)
     elif target_metric == TargetMetric.MIN_DECODING_DELAY:
