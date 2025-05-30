@@ -46,7 +46,6 @@ def print_instance_errors():
         errors.extend(instance.predicted_error)
         error_ratios.extend(instance.predicted_error_ratio)
         real_response_serving_time.extend(instance.serving_time)
-    print(real_response_serving_time)
     total_s = 0.0
     total_p = 0.0
     count = 0.0
@@ -213,6 +212,9 @@ def build_app(args: Namespace) -> FastAPI:
     num_min_probed = args.num_required_predictor
     num_probed_instance = args.num_query_predictor
     profiling_sampling_rate = args.profiling_sampling_rate
+
+    assert profiling_sampling_rate <= 0.0 or args.metrics_type == "min_new_request_latency", \
+        "Profiling sampling rate is only supported for min_new_request_latency metrics type"
     app.root_path = args.root_path
     return app
 
