@@ -18,8 +18,8 @@ RESTART_VLLM=true
 
 ENABLE_CHUNKED_PREFILL="true"
 
-MODEL="Qwen/Qwen2-7B"
-SCHEDULER_NAME="min_infass_load min_lunmnix_load"
+MODEL="meta-llama/Llama-2-7b-hf Qwen/Qwen2-7B"
+SCHEDULER_NAME="min_new_request_latency round_robin"
 #QPS="30 24 18"
 QPS="2"
 PROFILING_SAMPLE_RATE=0.0
