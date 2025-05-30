@@ -41,10 +41,12 @@ def print_instance_errors():
     errors = []
     error_ratios = []
     real_response_serving_time = []
+    global instances
     for instance in instances:
         errors.extend(instance.predicted_error)
         error_ratios.extend(instance.predicted_error_ratio)
         real_response_serving_time.extend(instance.serving_time)
+    print(real_response_serving_time)
     total_s = 0.0
     total_p = 0.0
     count = 0.0
