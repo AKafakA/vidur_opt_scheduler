@@ -39,6 +39,8 @@ UPDATE_VLLM_CODE=${30}
 RUN_EXP=${31}
 USE_ESTIMATION_LEN=${32}
 OUTPUT_DIR_PREFIX=${33}
+AVAILABLE_INSTANCE=${34}
+WAITING_TIME_SLO=${35}
 
 if [ "$ENABLE_CHUNKED_PREFILL" = "true" ]; then
   MAX_NUM_BATCHED_TOKEN=$CHUNK_SIZE
@@ -110,7 +112,7 @@ if [ "$RUN_EXP" = "true" ]; then
           for n in $N; do
               for use_estimation_len in $USE_ESTIMATION_LEN; do
                   echo "Running experiment with scheduler: $metric_type, model: $MODEL, dataset: $DATASET_NAME, qps: $qps, batch_size_cut: $BATCH_SIZE_THRESHOLD_FOR_TIME_ESTIMATION enable_chunked_prefill: $ENABLE_CHUNKED_PREFILL use_for_profiling_only: $USE_FOR_PROFILING_ONLY predictor timeout: $PREDICTOR_TIMEOUT_IN_SECONDS Profiling sample rate: $PROFILING_SAMPLE_RATE"
-                  nohup sh vidur/prediction/exp/run_exp_global_scheduler.sh $TARGET_HOST $n $n $metric_type $HOST_CONFIG_PATH $GLOBAL_SCHEDULER_WORKERS $PREDICTOR_WORKERS $PROFILING_SAMPLE_RATE $TIMEOUT_IN_SECONDS $PREDICTOR_TIMEOUT_IN_SECONDS > /dev/null 2>&1 &
+                  nohup sh vidur/prediction/exp/run_exp_global_scheduler.sh $TARGET_HOST $n $n $metric_type $HOST_CONFIG_PATH $GLOBAL_SCHEDULER_WORKERS $PREDICTOR_WORKERS $PROFILING_SAMPLE_RATE $TIMEOUT_IN_SECONDS $PREDICTOR_TIMEOUT_IN_SECONDS $AVAILABLE_INSTANCE $WAITING_TIME_SLO > /dev/null 2>&1 &
                   LOG_FILENAME="benchmark.log"
                   if [ "$OUTPUT_DIR_PREFIX" = "main" ]; then
                     OUTPUT_DIR="${DATASET_TYPE}/${metric_type}/qps_${qps}_num_queries_${num_queries}_n_${n}_chunked_${ENABLE_CHUNKED_PREFILL}_predictor_${PREDICTOR_WORKERS}_global_${GLOBAL_SCHEDULER_WORKERS}_len_estimated_${use_estimation_len}_batch_${BATCH_CAP}_chunk_${CHUNK_SIZE}"

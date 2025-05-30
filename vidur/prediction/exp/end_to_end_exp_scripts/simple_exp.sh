@@ -39,6 +39,11 @@ for model in $MODEL; do
   fi
   for dataset_name in $DATASET_NAMES; do
     for scheduler in $SCHEDULER_NAME; do
+      if [ "$scheduler" = "min_new_request_latency" ]; then
+        USE_LENGTH_ESTIMATION="true"
+      else
+        USE_LENGTH_ESTIMATION="false"
+      fi
       for enable_chunked_prefill in $ENABLE_CHUNKED_PREFILL; do
         if [ "$enable_chunked_prefill" = "true" ]; then
           USE_LENGTH_ESTIMATION="false"
