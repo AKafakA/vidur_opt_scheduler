@@ -60,6 +60,7 @@ def plot_linea_scatter_for_multiple_qps(axes, linear_data, scatter_data, x_label
                                         legend_anchor=(0.75, 1.3),
                                         metric_name="Latency (ms)",
                                         enable_legend_at_middle=True,
+                                        enable_middle_x_label=False,
                                         title_fontsize=10):
     """
     Plot multiple line and scatter mixed plots for different QPS values.
@@ -73,14 +74,14 @@ def plot_linea_scatter_for_multiple_qps(axes, linear_data, scatter_data, x_label
         qps_scatter_data = scatter_data[qps]
         plot_line_scatter_mixed(ax, qps_scatter_data, qps_linear_data)
         if enable_label:
-            ax.set_xlabel(x_label, fontsize=title_fontsize)
-            ax.set_ylabel(f"{metric_name} \n QPS={qps}", fontsize=title_fontsize)
+            ax.set_ylabel(f"{metric_name}", fontsize=title_fontsize)
             enable_label = False
-        else:
-            ax.set_ylabel("QPS = " + str(qps), fontsize=12)
+
         if enable_legend_at_middle and i == len(linear_data) // 2:
             ax.legend(fancybox=False, shadow=False, ncol=6, fontsize=title_fontsize,
                       loc='upper right', bbox_to_anchor=legend_anchor)
+        if enable_middle_x_label and i == len(linear_data) // 2:
+            ax.set_xlabel(x_label, fontsize=title_fontsize)
         i += 1
 
 
@@ -173,18 +174,20 @@ def plot_per_qps(experiments_set, output_dir, min_qps=1, max_qps=32):
     #                              title_fontsize=10)
     plot_linear_for_multiple_qps(axs_for_prediction_errors_rate, prediction_errors,
                                  "Error Rate (%)", sigma=1,
-                                 enable_legend_at_middle=True, legend_anchor=(0.75, 1.3),
-                                 title_fontsize=10, enable_x_labels=False)
+                                 enable_legend_at_middle=True, legend_anchor=(0.8, 1.3),
+                                 title_fontsize=10,
+                                 enable_title_labels=True)
 
     plot_linea_scatter_for_multiple_qps(axs_for_prediction_overhead_ratio,
                                         sampled_predict_latency,
                                         sampled_serving_latencies,
-                                        legend_anchor=(0.75, 1.2),)
+                                        enable_middle_x_label=True,
+                                        legend_anchor=(1.2, 1.2),)
 
     fig.tight_layout()
-    fig.set_size_inches(8, 6)
-    fig.subplots_adjust(hspace=0.4, wspace=0.35)
-    plt.savefig(qps_output_dir + "/all_qps.png", bbox_inches='tight')
+    fig.set_size_inches(18, 6)
+    fig.subplots_adjust(hspace=0.3, wspace=0.18)
+    plt.savefig(qps_output_dir + "/profiling.png", bbox_inches='tight')
 
 
 def main():
