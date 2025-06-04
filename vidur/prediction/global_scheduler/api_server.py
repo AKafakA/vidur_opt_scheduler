@@ -35,7 +35,9 @@ random_assigned = []
 sampled_mean_error_ratios = []
 sampled_predict_accuracies = []
 max_waiting_time_in_seconds = 10
-backfill_instance = []
+back_instances = []
+use_preemptive_provisioning = True
+enable_auto_scaling = True
 
 
 def print_instance_errors():
@@ -98,7 +100,8 @@ async def generate_benchmark(request: Request) -> Response:
                      'sampled_var_gpu_blocks': np.var([x['gpu_blocks'] for x in predict_results]),
                      'sampled_avg_n_request': np.mean([x['num_requests'] for x in predict_results]),
                      'sampled_var_n_request': np.var([x['num_requests'] for x in predict_results]),
-                     'num_preempted': sum([x['num_preempted'] for x in predict_results])}
+                     'num_preempted': sum([x['num_preempted'] for x in predict_results]),
+                     'num_available_instances': len(instances)}
 
     if len(predict_results) == 0:
         selected_index = random.randint(0, len(instances) - 1)
@@ -116,21 +119,25 @@ async def generate_benchmark(request: Request) -> Response:
         return JSONResponse(response)
 
     target_metrics = [x['target_metric'][0] for x in predict_results]
-    if predict_results and len(predict_results[0]['target_metric']) > 1:
+    if (enable_auto_scaling and predict_results and len(predict_results[0]['target_metric']) > 1
+            and use_preemptive_provisioning):
         # if the target metric is a tuple, we only take the first element for scheduling
         # and the second element should always be the waiting time used for auto-scaling
         waiting_time = [x['target_metric'][1] for x in predict_results]
         max_waiting_time = max(waiting_time)
         if max_waiting_time >= max_waiting_time_in_seconds:
             print(f"Max waiting time {max_waiting_time} exceeds the limit of {max_waiting_time_in_seconds} seconds. ")
-            if len(backfill_instance) > 0:
-                selected_backfill_instance = backfill_instance.pop(0)
+            if len(back_instances) > 0:
+                selected_backfill_instance = back_instances.pop(0)
                 print(f"Assigning request {request_id} to backfill instance and put it into the pool"
                       f"{selected_backfill_instance._instance_id}")
                 instances.append(selected_backfill_instance)
                 try:
                     response = await selected_backfill_instance.query_backend(prompt, max_response_len, request_id,
                                                                               predicted_num_decode_tokens)
+                    for key, value in single_metric.items():
+                        response[key] = value
+                    response['num_available_instances'] = response['num_available_instances'] + 1
                     return JSONResponse(response)
                 except Exception as e:
                     print(f"Error during prediction: {e}")
@@ -208,6 +215,14 @@ async def generate_benchmark(request: Request) -> Response:
             return JSONResponse({"error": "Prediction failed"}, status_code=500)
     for key, value in single_metric.items():
         response[key] = value
+    if enable_auto_scaling and 'waiting_latency' in response and not use_preemptive_provisioning:
+        # if not using preemptive provisioning, use normal monitoring waiting latency instead
+        waiting_time = response['waiting_latency']
+        if waiting_time >= max_waiting_time_in_seconds * 1000:
+            back_instance = back_instances.pop()
+            print(f"Waiting time {waiting_time} exceeds the limit of {max_waiting_time_in_seconds * 1000} ms. "
+                  f"Assigning to a back instance. {back_instance._instance_id}")
+            instances.append(back_instance)
     return JSONResponse(response)
 
 
@@ -228,9 +243,12 @@ async def init_app(
         instances_list: Optional[List[Instance]] = None,
 ) -> FastAPI:
     app = build_app(args)
-    global instances, start_time, metrics_type, max_waiting_time_in_seconds, backfill_instance
+    global instances, start_time, metrics_type, max_waiting_time_in_seconds, back_instances, \
+        use_preemptive_provisioning, enable_auto_scaling
     config_path = args.config_path
     max_waiting_time_in_seconds = args.max_waiting_time_in_seconds
+    use_preemptive_provisioning = args.use_preemptive_provisioning
+    enable_auto_scaling = max_waiting_time_in_seconds > 0
 
     instance_dict = json.load(open(config_path))
     if instances_list is not None:
@@ -249,7 +267,7 @@ async def init_app(
             if k < args.initial_available_instance:
                 instances.append(instance)
             else:
-                backfill_instance.append(instance)
+                back_instances.append(instance)
     start_time = time.time()
     metrics_type = args.metrics_type
     return app
@@ -313,6 +331,7 @@ if __name__ == "__main__":
     parser.add_argument("--backend_timeout", type=int, default=1800)
     parser.add_argument("--max_waiting_time_in_seconds", type=int, default=10)
     parser.add_argument("--initial_available_instance", type=int, default=6)
+    parser.add_argument("--use_preemptive_provisioning", type=bool, default=True)
     args = parser.parse_args()
     logger.info("Starting server with args: %s", str(args))
     # in case the limited by the number of files

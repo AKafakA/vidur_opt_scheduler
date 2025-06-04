@@ -366,6 +366,7 @@ class MeasureLatency:
         self._sampled_serving_latencies = []
         self._min_predicted_latency = []
         self._sampled_selected_instance_rank = []
+        self._num_available_instances = []
 
     def measure(self, f):
         async def measured(*args, **kwargs):
@@ -450,6 +451,8 @@ class MeasureLatency:
                 self._min_predicted_latency.append(output['min_predicted_latency'])
             if 'sampled_selected_instance_rank' in output:
                 self._sampled_selected_instance_rank.append(output['sampled_selected_instance_rank'])
+            if 'num_available_instances' in output:
+                self._num_available_instances.append(output['num_available_instances'])
             return prompt, output
 
         return measured
@@ -572,6 +575,7 @@ async def benchmark(
         m._sampled_serving_latencies, \
         m._min_predicted_latency, \
         m._sampled_selected_instance_rank, \
+        m._num_available_instances, \
         timestamps, \
         msg
 
@@ -815,6 +819,7 @@ def main():
      sampled_serving_latencies,
      sampled_predict_latency,
      sampled_selected_instance_rank,
+     num_available_instances,
      request_timestamps,
      messages) = asyncio.run(benchmark(
         backend,
