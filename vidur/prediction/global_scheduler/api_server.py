@@ -29,8 +29,7 @@ logging.basicConfig(level=logging.INFO,
                     filename='experiment_output/logs/predictor_output.log')
 logger = logging.getLogger(__name__)
 
-correct_flags = []
-average_gaps = []
+selected_instance_real_ranking = []
 random_assigned = []
 
 sampled_mean_error_ratios = []
@@ -54,9 +53,10 @@ def print_instance_errors():
         total_p = total_p + predicted
         count = count + 1
 
-    predict_accuracy = (1.0 * sum(correct_flags)) / len(correct_flags)
+    global selected_instance_real_ranking
+    predict_accuracy = 1.0 * len([r for r in real_response_serving_time if r == 1]) / len(selected_instance_real_ranking)
 
-    if count > 0 and error_ratios and correct_flags:    #
+    if count > 0 and error_ratios and selected_instance_real_ranking:    #
         print(f"average serving {total_s / count} and average predicted {total_p / count}")
         print(f"Mean of Prediction error ratio {np.mean(error_ratios)}")
         print(f"P50 of Prediction error ratio {np.percentile(error_ratios, 50)}")
@@ -135,32 +135,13 @@ async def generate_benchmark(request: Request) -> Response:
 
         serving_times = [(response['instance_id'], response["serving_time"]) for response in responses]
 
-        instance_id_with_least_serving_time = min(serving_times, key=lambda x: x[1])[0]
-        instance_id_with_least_predicted_time = min(predicted_sampled_results, key=lambda x: x[1])[0]
         min_predicted_time = min(predicted_sampled_results, key=lambda x: x[1])[1]
 
-        sorted_instances_serving_time = sorted(serving_times, key=lambda x: x[1])
-
-        gap_between_average_serving_time_and_least_predicted_time = \
-            np.mean([x[1] for x in sorted_instances_serving_time]) - min_predicted_time
-
-        gap_between_min_serving_time_and_least_predicted_time = \
-            min([x[1] for x in sorted_instances_serving_time]) - min_predicted_time
-
-        gap_between_random_serving_time_and_least_predicted_time = \
-            random.choice([x[1] for x in sorted_instances_serving_time]) - min_predicted_time
-
-        gap_info = {
-            "average": gap_between_average_serving_time_and_least_predicted_time,
-            "min": gap_between_min_serving_time_and_least_predicted_time,
-            "random": gap_between_random_serving_time_and_least_predicted_time
-        }
-
-        if instance_id_with_least_serving_time == instance_id_with_least_predicted_time:
-            correct_flags.append(True)
-        else:
-            correct_flags.append(False)
-        average_gaps.append(gap_info)
+        sorted_instances_id_by_serving_time = sorted(serving_times[0], key=lambda x: x[1])
+        sorted_instances_predicted_time = sorted(predicted_sampled_results, key=lambda x: x[1])
+        instance_id_with_least_predicted_time = sorted_instances_predicted_time[0][0]
+        selected_instance_rank = sorted_instances_id_by_serving_time.index(instance_id_with_least_predicted_time) + 1
+        selected_instance_real_ranking.append(selected_instance_rank)
         response = random.choice(responses)
         global sampled_mean_error_ratios, sampled_predict_accuracies
         sampled_predict_accuracy, sampled_error_ratio = print_instance_errors()
@@ -171,6 +152,7 @@ async def generate_benchmark(request: Request) -> Response:
 
         response["sampled_serving_latencies"] = [serving_times[i][1] for i in range(len(serving_times))]
         response["min_predicted_latency"] = min_predicted_time
+        response["selected_instance_rank"] = selected_instance_rank
     else:
         if metrics_type.startswith("min") or metrics_type.startswith("max"):
             # if current in metrics means all node need to be queried and select the one with min/max

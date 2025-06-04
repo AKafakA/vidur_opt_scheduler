@@ -267,42 +267,42 @@ def plot_per_scheduler(experiments_set, output_dir, scheduler_excluded="round_ro
     fig, axs = plt.subplots(2, 4)
 
     token_s_df = pd.DataFrame(token_throughput, columns=['Scheduler'] + list(qps_set))
-    plot_bar_chart(axs[0, 0], token_s_df, qps_set, output_dir, "Token Throughput", "Scheduler",
+    plot_bar_chart(axs[0, 0], token_s_df, qps_set, output_dir, "Token Throughput (token/s)", "Scheduler",
                    xt_rotation='horizontal', legend_title="QPS")
     requests_throughput_df = pd.DataFrame(requests_throughput, columns=['Scheduler'] + list(qps_set))
     # plot_bar_chart(requests_throughput_df, qps_set, output_dir, "Request Throughput", "Scheduler",
     #                xt_rotation='horizontal', legend_title="QPS")
-    plot_bar_chart(axs[0, 1], requests_throughput_df, qps_set, output_dir, "Request Throughput", "Scheduler",
+    plot_bar_chart(axs[0, 1], requests_throughput_df, qps_set, output_dir, "Request Throughput (request/s)", "Scheduler",
                    xt_rotation='horizontal', legend_title="QPS")
     average_ttft_df = pd.DataFrame(average_ttft, columns=['Scheduler'] + list(qps_set))
     # plot_bar_chart(average_ttft_df, qps_set, output_dir, "Average TTFT", "Scheduler",
     #                xt_rotation='horizontal', legend_title="QPS")
-    plot_bar_chart(axs[0, 2], average_ttft_df, qps_set, output_dir, "Average TTFT", "Scheduler",
+    plot_bar_chart(axs[0, 2], average_ttft_df, qps_set, output_dir, "Average TTFT (s)", "Scheduler",
                    xt_rotation='horizontal', legend_title="QPS")
     average_tbt_df = pd.DataFrame(average_tbt, columns=['Scheduler'] + list(qps_set))
     # plot_bar_chart(average_tbt_df, qps_set, output_dir, "Average TBT", "Scheduler",
     #                xt_rotation='horizontal', legend_title="QPS")
-    plot_bar_chart(axs[0, 3], average_tbt_df, qps_set, output_dir, "Average TBT", "Scheduler",
+    plot_bar_chart(axs[0, 3], average_tbt_df, qps_set, output_dir, "Average TBT (s)", "Scheduler",
                    xt_rotation='horizontal', legend_title="QPS")
     p99_ttft_df = pd.DataFrame(p99_ttft, columns=['Scheduler'] + list(qps_set))
     # plot_bar_chart(p99_ttft_df, qps_set, output_dir, "TTFT P99", "Scheduler",
     #                xt_rotation='horizontal', legend_title="QPS")
-    plot_bar_chart(axs[1, 0], p99_ttft_df, qps_set, output_dir, "TTFT P99", "Scheduler",
+    plot_bar_chart(axs[1, 0], p99_ttft_df, qps_set, output_dir, "TTFT P99 (s)", "Scheduler",
                    xt_rotation='horizontal', legend_title="QPS")
     p99_tbt_df = pd.DataFrame(p99_tbt, columns=['Scheduler'] + list(qps_set))
     # plot_bar_chart(p99_tbt_df, qps_set, output_dir, "TBT P99", "Scheduler",
     #                xt_rotation='horizontal', legend_title="QPS")
-    plot_bar_chart(axs[1, 1], p99_tbt_df, qps_set, output_dir, "TBT P99", "Scheduler",
+    plot_bar_chart(axs[1, 1], p99_tbt_df, qps_set, output_dir, "TBT P99 (s)", "Scheduler",
                    xt_rotation='horizontal', legend_title="QPS")
     average_e2e_df = pd.DataFrame(average_e2e, columns=['Scheduler'] + list(qps_set))
     # plot_bar_chart(average_e2e_df, qps_set, output_dir, "Request Latency", "Scheduler",
     #                xt_rotation='horizontal', legend_title="QPS")
-    plot_bar_chart(axs[1, 2], average_e2e_df, qps_set, output_dir, "Average Request Latency", "Scheduler",
+    plot_bar_chart(axs[1, 2], average_e2e_df, qps_set, output_dir, "Average Request Latency (s)", "Scheduler",
                    xt_rotation='horizontal', legend_title="QPS")
     p99_e2e_df = pd.DataFrame(p99_e2e, columns=['Scheduler'] + list(qps_set))
     # plot_bar_chart(p99_e2e_df, qps_set, output_dir, "Request Latency P99", "Scheduler",
     #                xt_rotation='horizontal', legend_title="QPS")
-    plot_bar_chart(axs[1, 3], p99_e2e_df, qps_set, output_dir, "Request Latency P99", "Scheduler",
+    plot_bar_chart(axs[1, 3], p99_e2e_df, qps_set, output_dir, "Request Latency P99 (s)", "Scheduler",
                    xt_rotation='horizontal', legend_title="QPS")
 
     fig.tight_layout()
@@ -430,31 +430,31 @@ def plot_per_qps(experiments_set, output_dir, min_qps=18, max_qps=36, num_select
     fig, axs = plt.subplots(2, 3)
 
     token_s_df = pd.DataFrame(token_throughput, columns=['QPS'] + list(index_names))
-    plot_bar_chart(axs[0, 0], token_s_df, index_names, qps_output_dir, "Token Throughput", "QPS",
+    plot_bar_chart(axs[0, 0], token_s_df, index_names, qps_output_dir, "Token Throughput (t/s)", "QPS",
                    keep_x_ticks_labels=False)
 
     requests_throughput_df = pd.DataFrame(requests_throughput, columns=['QPS'] + list(index_names))
-    plot_bar_chart(axs[1, 0], requests_throughput_df, index_names, qps_output_dir, "Request Throughput", "QPS",
+    plot_bar_chart(axs[1, 0], requests_throughput_df, index_names, qps_output_dir, "Request Throughput (r/s)", "QPS",
                    keep_x_ticks_labels=False)
 
     average_ttft_df = pd.DataFrame(average_ttft, columns=['QPS'] + list(index_names))
 
-    plot_bar_chart(axs[0, 1], average_ttft_df, index_names, qps_output_dir, "Average TTFT", "QPS",
+    plot_bar_chart(axs[0, 1], average_ttft_df, index_names, qps_output_dir, "Average TTFT (s)", "QPS",
                    zoom_out=False, y_append=" (s)", keep_legend=True, bbox_to_anchor=(1.9, 1.18))
     # average_tbt_df = pd.DataFrame(average_tbt, columns=['QPS'] + list(index_names))
     # plot_bar_chart(axs[0, 3], average_tbt_df, index_names, qps_output_dir, "Average TBT", "QPS",
     #                zoom_out=False)
     p99_ttft_df = pd.DataFrame(p99_ttft, columns=['QPS'] + list(index_names))
-    plot_bar_chart(axs[1, 1], p99_ttft_df, index_names, qps_output_dir, "TTFT P99", "QPS",
+    plot_bar_chart(axs[1, 1], p99_ttft_df, index_names, qps_output_dir, "TTFT P99 (s)", "QPS",
                    zoom_out=False, y_append=" (s)", keep_x_ticks_labels=True)
     # p99_tbt_df = pd.DataFrame(p99_tbt, columns=['QPS'] + list(index_names))
     # plot_bar_chart(axs[1, 1], p99_tbt_df, index_names, qps_output_dir, "TBT P99", "QPS", zoom_out=False)
     #
     average_e2e_df = pd.DataFrame(average_e2e, columns=['QPS'] + list(index_names))
-    plot_bar_chart(axs[0, 2], average_e2e_df, index_names, qps_output_dir, "Average Request Latency", "QPS",
+    plot_bar_chart(axs[0, 2], average_e2e_df, index_names, qps_output_dir, "Average Request Latency (s)", "QPS",
                    zoom_out=False, y_append=" (s)")
     p99_e2e_df = pd.DataFrame(p99_e2e, columns=['QPS'] + list(index_names))
-    plot_bar_chart(axs[1, 2], p99_e2e_df, index_names, qps_output_dir, "Request Latency P99", "QPS",
+    plot_bar_chart(axs[1, 2], p99_e2e_df, index_names, qps_output_dir, "Request Latency P99 (s)", "QPS",
                    zoom_out=False, y_append=" (s)")
 
     fig.tight_layout()

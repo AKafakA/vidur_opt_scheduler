@@ -32,6 +32,24 @@ def extract_prediction_errors(experiment):
     compare_error_rate = experiment['compare_error_rate']
     return average_prediction_errors_ratio, compare_error_rate
 
+def plot_prediction_hit_histogram(ax, real_serving_latencies, predicted_latencies, qps,
+                                  metric_name="Latency (ms)", title_fontsize=10):
+    """
+    Plot a histogram of prediction hit ratios.
+    :param ax: The axes to plot on.
+    :param real_serving_latencies: The real serving latencies.
+    :param predicted_latencies: The predicted latencies.
+    :param qps: The QPS value for the experiment.
+    :param metric_name: The name of the metric being plotted.
+    :param title_fontsize: Font size for the title.
+    """
+    assert len(real_serving_latencies) == len(predicted_latencies), "Real and predicted latencies must have the same length"
+    hit_ratios = [real / pred if pred > 0 else 0 for real, pred in zip(real_serving_latencies, predicted_latencies)]
+    ax.hist(hit_ratios, bins=50, color='blue', alpha=0.7)
+    ax.set_title(f"Prediction Hit Ratio Histogram (QPS={qps})", fontsize=title_fontsize)
+    ax.set_xlabel(metric_name, fontsize=title_fontsize)
+    ax.set_ylabel("Frequency", fontsize=title_fontsize)
+
 
 def plot_line_scatter_mixed(ax, scatter_y, linea_y):
     """
