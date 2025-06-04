@@ -32,23 +32,40 @@ def extract_prediction_errors(experiment):
     compare_error_rate = experiment['compare_error_rate']
     return average_prediction_errors_ratio, compare_error_rate
 
-def plot_prediction_hit_histogram(ax, real_serving_latencies, predicted_latencies, qps,
-                                  metric_name="Latency (ms)", title_fontsize=10):
-    """
-    Plot a histogram of prediction hit ratios.
-    :param ax: The axes to plot on.
-    :param real_serving_latencies: The real serving latencies.
-    :param predicted_latencies: The predicted latencies.
-    :param qps: The QPS value for the experiment.
-    :param metric_name: The name of the metric being plotted.
-    :param title_fontsize: Font size for the title.
-    """
-    assert len(real_serving_latencies) == len(predicted_latencies), "Real and predicted latencies must have the same length"
-    hit_ratios = [real / pred if pred > 0 else 0 for real, pred in zip(real_serving_latencies, predicted_latencies)]
-    ax.hist(hit_ratios, bins=50, color='blue', alpha=0.7)
-    ax.set_title(f"Prediction Hit Ratio Histogram (QPS={qps})", fontsize=title_fontsize)
-    ax.set_xlabel(metric_name, fontsize=title_fontsize)
-    ax.set_ylabel("Frequency", fontsize=title_fontsize)
+
+def plot_prediction_hit_histogram(ax, selected_ranks,
+                                  x_label,
+                                  y_label,
+                                  title,
+                                  enable_x_label=False,
+                                  enable_y_label=False,
+                                  enable_title=False,
+                                  title_fontsize=10):
+    ax.hist(selected_ranks, bins=np.arange(1, max(selected_ranks)), edgecolor='black', alpha=0.7)
+    if enable_x_label:
+        ax.set_xlabel(x_label, fontsize=title_fontsize)
+    if enable_y_label:
+        ax.set_ylabel(y_label, fontsize=title_fontsize)
+    if enable_title:
+        ax.set_title(title, fontsize=title_fontsize, loc='center')
+
+
+def plot_prediction_hit_histogram_for_multiple_qps(axes, rank_data, x_label, y_label, title,
+                                                   enable_middle_x_label=False,
+                                                   enable_middle_title=False,
+                                                   title_fontsize=10):
+    enable_y_label = True
+    for qps in rank_data.keys():
+        ax = axes.get(qps)
+        selected_ranks = rank_data[qps]
+        enable_title = enable_middle_title and (qps == list(rank_data.keys())[len(rank_data) // 2])
+        enable_x_label = enable_middle_x_label and (qps == list(rank_data.keys())[len(rank_data) // 2])
+        plot_prediction_hit_histogram(ax, selected_ranks, x_label, y_label, title,
+                                      enable_x_label=enable_x_label,
+                                      enable_y_label=enable_y_label,
+                                      enable_title=enable_title,
+                                      title_fontsize=title_fontsize)
+        enable_y_label = False  # Disable y-label for subsequent plots
 
 
 def plot_line_scatter_mixed(ax, scatter_y, linea_y):
@@ -126,6 +143,7 @@ def plot_per_qps(experiments_set, output_dir, min_qps=1, max_qps=32):
     prediction_errors_rate = {}
     sampled_predict_latency = {}
     sampled_serving_latencies = {}
+    sampled_rank_bucket = {}
     for qps in qps_set:
         prediction_overhead_per_qps = {}
         prediction_overhead_ratio_per_qps = {}
@@ -134,6 +152,7 @@ def plot_per_qps(experiments_set, output_dir, min_qps=1, max_qps=32):
         compare_errors_per_qps = {}
         sampled_predict_latency_per_qps = {}
         sampled_serving_latencies_per_qps = {}
+        sampled_rank_bucket_per_qps = {}
         prediction_overhead[qps] = prediction_overhead_per_qps
         prediction_overhead_ratio[qps] = prediction_overhead_ratio_per_qps
         prediction_errors[qps] = prediction_errors_per_qps
@@ -141,6 +160,7 @@ def plot_per_qps(experiments_set, output_dir, min_qps=1, max_qps=32):
         compare_errors[qps] = compare_errors_per_qps
         sampled_predict_latency[qps] = sampled_predict_latency_per_qps
         sampled_serving_latencies[qps] = sampled_serving_latencies_per_qps
+        sampled_rank_bucket[qps] = sampled_rank_bucket_per_qps
 
         qps_experiments = [record for record in experiments_set if record["qps"] == qps]
         for experiment in qps_experiments:
@@ -176,15 +196,18 @@ def plot_per_qps(experiments_set, output_dir, min_qps=1, max_qps=32):
                 if index_name == "Chunked Prefilled":
                     sampled_predict_latency_per_qps[index_name] = experiments['min_predicted_latency']
                     sampled_serving_latencies_per_qps[index_name] = experiments['serving_latencies']
+                    sampled_rank_bucket_per_qps[index_name] = experiments['sampled_selected_instance_rank']
 
-    fig, axs = plt.subplots(2, len(qps_set))
+    fig, axs = plt.subplots(3, len(qps_set))
     axs_for_prediction_overhead_ratio = {}
     axs_for_prediction_errors_rate = {}
+    axs_for_selected_instance_rank_bucket = {}
 
     for i, qps_value in enumerate(qps_set):
         # axs_for_prediction_overhead[qps_value] = axs[0][i]
         axs_for_prediction_errors_rate[qps_value] = axs[0][i]
         axs_for_prediction_overhead_ratio[qps_value] = axs[1][i]
+        axs_for_selected_instance_rank_bucket[qps_value] = axs[2][i]
 
     # plot_linear_for_multiple_qps(axs_for_prediction_overhead, prediction_overhead, "Overhead (ms)",
     #                              sigma=10,
@@ -200,7 +223,16 @@ def plot_per_qps(experiments_set, output_dir, min_qps=1, max_qps=32):
                                         sampled_predict_latency,
                                         sampled_serving_latencies,
                                         enable_middle_x_label=True,
-                                        legend_anchor=(1.2, 1.2),)
+                                        legend_anchor=(1.2, 1.2), )
+
+    plot_prediction_hit_histogram_for_multiple_qps(axs_for_selected_instance_rank_bucket,
+                                                   sampled_rank_bucket,
+                                                   "Instance Rank Bucket",
+                                                   "Count",
+                                                   "Prediction Hit Histogram",
+                                                   enable_middle_x_label=True,
+                                                   enable_middle_title=True,
+                                                   title_fontsize=10)
 
     fig.tight_layout()
     fig.set_size_inches(18, 6)
@@ -239,6 +271,7 @@ def main():
                     record['compare_error_rate'] = b['sampled_predict_accuracies']
                     record['serving_latencies'] = b['sampled_serving_latencies']
                     record['min_predicted_latency'] = b['sampled_predict_latency']
+                    record['sampled_selected_instance_rank'] = b['sampled_selected_instance_rank']
 
     plot_per_qps(experiments_set, args.output_dir)
 

@@ -559,6 +559,7 @@ class MeasureLatency:
         self._sampled_predict_accuracies = []
         self._sampled_serving_latencies = []
         self._min_predicted_latency = []
+        self._sampled_selected_instance_rank = []
 
     def measure(self, f):
         async def measured(*args, **kwargs):
@@ -641,7 +642,8 @@ class MeasureLatency:
                 self._sampled_serving_latencies.append(output['sampled_serving_latencies'])
             if 'min_predicted_latency' in output:
                 self._min_predicted_latency.append(output['min_predicted_latency'])
-
+            if 'sampled_selected_instance_rank' in output:
+                self._sampled_selected_instance_rank.append(output['sampled_selected_instance_rank'])
             return prompt, output
 
         return measured
@@ -798,6 +800,7 @@ async def benchmark(
         m._sampled_predict_accuracies, \
         m._sampled_serving_latencies, \
         m._min_predicted_latency, \
+        m._sampled_selected_instance_rank, \
         timestamps, \
         msg
 
@@ -1132,6 +1135,7 @@ def main():
      sampled_predict_accuracies,
      sampled_serving_latencies,
      sampled_predict_latency,
+     sampled_selected_instance_rank,
      request_timestamps,
      messages) = asyncio.run(benchmark(
         backend,
@@ -1194,6 +1198,8 @@ def main():
             data["sampled_serving_latencies"] = np.array(sampled_serving_latencies)
         if sampled_predict_latency:
             data["sampled_predict_latency"] = np.array(sampled_predict_latency)
+        if sampled_selected_instance_rank:
+            data["sampled_selected_instance_rank"] = np.array(sampled_selected_instance_rank)
         np.savez(args.output_dir + '/' + os.path.splitext(args.log_filename)[0] + f"_all_metrics.npz", **data)
 
         print(f'Storage of all metrics finished at {time.time() - storage_start_time} s')
