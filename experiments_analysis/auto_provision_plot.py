@@ -22,7 +22,7 @@ def directory_name_parser_for_auto_provision(directory_name):
     directory_name = directory_name.split("_")
     qps = directory_name[1]
     n = directory_name[6]
-    enable_preemptive_provision = directory_name[24] == "True"
+    enable_preemptive_provision = directory_name[24] == "true"
     waiting_time_slo = int(directory_name[19])
     enable_auto_scaling = waiting_time_slo > 0
     return qps, n, enable_preemptive_provision, enable_auto_scaling, waiting_time_slo
@@ -32,9 +32,16 @@ def plot_dual_timeline_data(experiments_set, qps):
     """
     Plot two sets of data on the same timeline with different y-axes.
     """
-    plt.figure(figsize=(10, 6))
-    fig, ax1 = plt.subplots()
-    ax2 = ax1.twinx()
+    fig = plt.figure(figsize=(10, 6))
+    ax1 = fig.add_axes([0.1,0.1, 0.8,0.8])
+    ax2 = fig.add_axes([0.1,0.1, 0.8,0.2], facecolor=(0, 0, 0, 0))
+    ax2.yaxis.tick_right()
+    ax2.yaxis.set_label_coords(1.05, 0.0)
+    ax2.yaxis.set_label_position("right")
+    ax1.set_xlim([0, len(experiments_set[0]['request_latencies'])])
+    ax2.set_xlim([0, len(experiments_set[0]['request_latencies'])])
+    ax2.spines['top'].set_visible(False)
+
     for exp in experiments_set:
         enable_preemptive_provision = exp['enable_preemptive_provision']
         enable_auto_scaling = exp['enable_auto_scaling']
@@ -49,15 +56,15 @@ def plot_dual_timeline_data(experiments_set, qps):
             color1 = "red"
         request_latencies = exp['request_latencies']
         available_instances = exp['available_instances']
-        waiting_latencies = exp['waiting_latencies']
         x = np.arange(len(request_latencies))
+        request_latencies = gaussian_filter1d(request_latencies, sigma=20)
         ax1.plot(x, request_latencies, label=label1, color=color1, linewidth=2)
         ax1.set_xlabel("Query ID")
-        ax1.set_ylabel("Request Latencies (ms)")
-        ax2.plot(x, available_instances, label=label1, color=color1, line_style='--', linewidth=2)
+        ax1.set_ylabel("Request Latencies (s)")
+        ax2.plot(x, available_instances, label=label1, color=color1, ls='--', linewidth=2)
         ax2.set_ylabel("Available Instances")
     fig.tight_layout()
-    ax1.legend(loc='auto')
+    ax1.legend(loc='best')
     return fig
 
 
@@ -76,7 +83,7 @@ def plot_per_qps(experiments_set, output_dir, selected_qps):
 def main():
     parser = argparse.ArgumentParser(description='Plot the results of the experiments')
     parser.add_argument("--experiments-dir", type=str,
-                        default="experiments_analysis/single_node_experiment_output/burstgpt")
+                        default="experiments_analysis/auto_provision_experiment_output/sharegpt")
     parser.add_argument("--output-dir", type=str, default="./experiments_analysis/auto_provision_plots")
     parser.add_argument("--plot-per-qps", type=bool, default=True)
     # parser.add_argument("--output-dir", type=str, required=True)
@@ -101,9 +108,9 @@ def main():
             for experiments_trace in os.listdir(scheduler_dir + "/" + directory):
                 if experiments_trace.endswith("npz"):
                     b = np.load(scheduler_dir + "/" + directory + "/" + experiments_trace)
-                    record['request_latencies'] = b['request_latencies']
+                    record['request_latencies'] = b['request_latencies'] / 1000.0  # Convert to seconds
                     record['available_instances'] = b['available_instances']
-                    record['waiting_latencies'] = b['waiting_latencies']
+                    record['waiting_latencies'] = b['waiting_latencies'] / 1000.0  # Convert to seconds
 
     for qps in set([experiment['qps'] for experiment in experiments_set]):
         plot_per_qps(experiments_set, args.output_dir, qps)
