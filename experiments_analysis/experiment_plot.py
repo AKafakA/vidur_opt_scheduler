@@ -37,10 +37,13 @@ def extract_data_from_log_file(log_file):
 
 def plot_linear_for_multiple_qps(axes, data, metric_name, sigma=-1,
                                  enable_legend_at_middle=False,
-                                 x_label="Query ID", legend_anchor=(2.0, 1.315),
+                                 x_label="Query ID",
+                                 legend_anchor=(2.0, 1.315),
                                  title_fontsize=12,
                                  enable_y_labels=True,
                                  enable_x_label_at_middle=False,
+                                 enable_x_label_at_left_corner=False,
+                                 x_label_coords=(-0.285, -0.105),
                                  enable_title_labels=False):
     i = 0
     enable_label = True
@@ -52,8 +55,13 @@ def plot_linear_for_multiple_qps(axes, data, metric_name, sigma=-1,
             if sigma > 0:
                 value = gaussian_filter1d(value, sigma)
             ax.plot(value, label=key)
+
         if enable_x_label_at_middle and i == len(data) // 2:
+            assert enable_x_label_at_left_corner is False, "Cannot enable both x_label at middle and left corner"
             ax.set_xlabel(x_label, fontsize=title_fontsize, loc='center')
+        elif enable_x_label_at_left_corner and i == 0:
+            ax.set_xlabel(x_label, fontsize=title_fontsize, loc='left')
+            ax.xaxis.set_label_coords(*x_label_coords)
         else:
             ax.set_xlabel("")
 

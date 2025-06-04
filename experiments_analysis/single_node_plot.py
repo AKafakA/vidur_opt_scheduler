@@ -58,14 +58,16 @@ def plot_prediction_hit_histogram_for_multiple_qps(axes, rank_data, x_label, y_l
     for qps in rank_data.keys():
         ax = axes.get(qps)
         selected_ranks = rank_data[qps]
-        enable_title = enable_middle_title and (qps == list(rank_data.keys())[len(rank_data) // 2])
-        enable_x_label = enable_middle_x_label and (qps == list(rank_data.keys())[len(rank_data) // 2])
-        plot_prediction_hit_histogram(ax, selected_ranks, x_label, y_label, title,
-                                      enable_x_label=enable_x_label,
-                                      enable_y_label=enable_y_label,
-                                      enable_title=enable_title,
-                                      title_fontsize=title_fontsize)
-        enable_y_label = False  # Disable y-label for subsequent plots
+        for feature in selected_ranks.keys():
+            selected_rank = selected_ranks[feature]
+            enable_title = enable_middle_title and (qps == list(rank_data.keys())[len(rank_data) // 2])
+            enable_x_label = enable_middle_x_label and (qps == list(rank_data.keys())[len(rank_data) // 2])
+            plot_prediction_hit_histogram(ax, selected_rank, x_label, y_label, title,
+                                          enable_x_label=enable_x_label,
+                                          enable_y_label=enable_y_label,
+                                          enable_title=enable_title,
+                                          title_fontsize=title_fontsize)
+            enable_y_label = False  # Disable y-label for subsequent plots
 
 
 def plot_line_scatter_mixed(ax, scatter_y, linea_y):
@@ -86,16 +88,18 @@ def plot_line_scatter_mixed(ax, scatter_y, linea_y):
             ax.fill_between(x, np.min(scatter_y[key], axis=1), np.max(scatter_y[key], axis=1),
                             color='blue', alpha=0.01)
         ax.plot(x, np.mean(scatter_y[key], axis=1), color='green', label='Mean Serving Latency')
-        ax.plot(x, linea_y[key], color='red', label='Predicted Latency')
+        ax.plot(x, linea_y[key], color='red', label='Selected Instance Latency')
         # ax.plot(x, np.min(scatter_y[key], axis=1), color='black', label='Min Serving Latency')
         # ax.plot(x, np.max(scatter_y[key], axis=1), color='orange', label='Max Serving Latency')
 
 
 def plot_linea_scatter_for_multiple_qps(axes, linear_data, scatter_data, x_label="Sampled Query ID",
-                                        legend_anchor=(0.75, 1.3),
+                                        legend_anchor=(1.05, 1.3),
                                         metric_name="Latency (ms)",
                                         enable_legend_at_middle=True,
                                         enable_middle_x_label=False,
+                                        enable_x_label_at_left_corner=False,
+                                        x_label_coords=(-0.3, -0.105),
                                         title_fontsize=10):
     """
     Plot multiple line and scatter mixed plots for different QPS values.
@@ -117,6 +121,9 @@ def plot_linea_scatter_for_multiple_qps(axes, linear_data, scatter_data, x_label
                       loc='upper right', bbox_to_anchor=legend_anchor)
         if enable_middle_x_label and i == len(linear_data) // 2:
             ax.set_xlabel(x_label, fontsize=title_fontsize)
+        elif enable_x_label_at_left_corner and i == 0:
+            ax.set_xlabel(x_label, fontsize=title_fontsize)
+            ax.xaxis.set_label_coords(*x_label_coords)
         i += 1
 
 
@@ -215,15 +222,20 @@ def plot_per_qps(experiments_set, output_dir, min_qps=1, max_qps=32):
     #                              title_fontsize=10)
     plot_linear_for_multiple_qps(axs_for_prediction_errors_rate, prediction_errors,
                                  "Error Rate (%)", sigma=1,
-                                 enable_legend_at_middle=True, legend_anchor=(0.8, 1.3),
+                                 enable_legend_at_middle=True, legend_anchor=(0.8, 1.5),
                                  title_fontsize=10,
-                                 enable_title_labels=True)
+                                 enable_title_labels=True,
+                                 enable_x_label_at_left_corner=True,
+                                 x_label="Sample ID: ",
+                                 x_label_coords=(-0.32, -0.105))
 
     plot_linea_scatter_for_multiple_qps(axs_for_prediction_overhead_ratio,
                                         sampled_predict_latency,
                                         sampled_serving_latencies,
-                                        enable_middle_x_label=True,
-                                        legend_anchor=(1.2, 1.2), )
+                                        enable_x_label_at_left_corner=True,
+                                        legend_anchor=(1.5, 1.3),
+                                        x_label="Sample ID: ",
+                                        x_label_coords=(-0.15, -0.105))
 
     plot_prediction_hit_histogram_for_multiple_qps(axs_for_selected_instance_rank_bucket,
                                                    sampled_rank_bucket,
@@ -236,7 +248,7 @@ def plot_per_qps(experiments_set, output_dir, min_qps=1, max_qps=32):
 
     fig.tight_layout()
     fig.set_size_inches(18, 6)
-    fig.subplots_adjust(hspace=0.3, wspace=0.18)
+    fig.subplots_adjust(hspace=0.5, wspace=0.28)
     plt.savefig(qps_output_dir + "/profiling.png", bbox_inches='tight')
 
 
@@ -271,7 +283,6 @@ def main():
                     record['compare_error_rate'] = b['sampled_predict_accuracies']
                     record['serving_latencies'] = b['sampled_serving_latencies']
                     record['min_predicted_latency'] = b['sampled_predict_latency']
-                    record['sampled_selected_instance_rank'] = b['sampled_selected_instance_rank']
 
     plot_per_qps(experiments_set, args.output_dir)
 

@@ -151,7 +151,8 @@ async def generate_benchmark(request: Request) -> Response:
         response["sampled_predict_accuracy"] = sampled_predict_accuracy
 
         response["sampled_serving_latencies"] = [serving_times[i][1] for i in range(len(serving_times))]
-        response["min_predicted_latency"] = min_predicted_time
+        response["min_predicted_latency"] = [serving_times[i][1] for i in range(len(serving_times)) if
+                                             serving_times[i][0] == instance_id_with_least_predicted_time][0]
         response["sampled_selected_instance_rank"] = selected_instance_rank
     else:
         if metrics_type.startswith("min") or metrics_type.startswith("max"):
