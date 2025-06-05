@@ -68,7 +68,8 @@ class SimulatePredictReplicaScheduler:
                 "batch_size": batch.size,
                 "num_allocated_blocks": num_allocated_blocks,
                 "request_ids": batch.request_ids,
-                "completed_time": schedule_time + sum(batch_execution_time)
+                "completed_time": schedule_time + sum(batch_execution_time),
+                "target_request_prefilled": self._target_request.is_prefill_complete
             })
             if self._running_until_target_finished and self._target_request.completed:
                 break
@@ -162,6 +163,13 @@ class SimulatePredictReplicaScheduler:
     def target_request_completed_at(self):
         last_batch = self.get_target_request_batches(self._target_request.id)[-1]
         return last_batch["completed_time"]
+
+    @property
+    def target_request_prefilled_at(self):
+        target_batches = self.get_target_request_batches(self._target_request.id)
+        for batch in target_batches:
+            if batch["target_request_prefilled"]:
+                return batch["completed_time"]
 
     @property
     def target_request_end_to_end(self):

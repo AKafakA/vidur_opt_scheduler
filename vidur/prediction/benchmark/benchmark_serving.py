@@ -412,8 +412,6 @@ class MeasureLatency:
                 self._waiting_latencies.append(output['waiting_latency'])
             if 'ttft' in output:
                 self._engine_ttft.append(output['ttft'])
-                engine_ttft = output['ttft']
-
             if 'sampled_avg_gpu_blocks' in output:
                 self._avg_gpu_blocks.append(output['sampled_avg_gpu_blocks'])
                 self._var_gpu_blocks.append(output['sampled_var_gpu_blocks'])

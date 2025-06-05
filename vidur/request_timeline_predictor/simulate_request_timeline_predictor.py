@@ -107,4 +107,4 @@ class SimulateRequestTimelinePredictor(BaseRequestTimelinePredictor):
         )
         simulate_predict_replica_scheduler.simulate()
         return [simulate_predict_replica_scheduler.target_request_end_to_end,
-                simulate_predict_replica_scheduler.target_request_scheduled_at]
+                simulate_predict_replica_scheduler.target_request_prefilled_at]
