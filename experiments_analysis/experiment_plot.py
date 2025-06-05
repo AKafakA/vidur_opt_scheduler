@@ -95,7 +95,7 @@ def plot_linear_for_multiple_qps(axes, data, metric_name, sigma=-1,
             enable_label = False
 
         if enable_title_labels:
-            ax.set_title(f"QPS={qps}", fontsize=title_fontsize)
+            ax.set_title(f"QPS={qps}", fontsize=title_fontsize * 1.1)
 
         if enable_legend_at_middle and i == len(axes.keys()) // 2:
             ax.legend(fancybox=False, shadow=False, ncol=len(qps_data.keys()), fontsize=title_fontsize,
