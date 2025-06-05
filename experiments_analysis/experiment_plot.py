@@ -15,6 +15,16 @@ from scipy.ndimage import gaussian_filter1d
 experiment_name_replacement = {"min new request latency": "Block", "min infass load": "INFaaS++",
                                "request per seconds": "Instance-QPM"}
 scheduler_name_ordered = ['random', 'Round Robin', 'INFaaS++', 'Instance-QPM', 'Block*', 'Block']
+scheduler_to_color = {
+    'random': 'grey',
+    'round robin': 'green',
+    'INFaaS++': 'orange',
+    'Instance-QPM': 'purple',
+    'Block*': 'black',
+    'Block': 'blue'
+}
+
+ttft_slo = 10  # default value for ttft p99 slo
 
 
 def directory_name_parser(directory_name):
@@ -54,7 +64,7 @@ def plot_linear_for_multiple_qps(axes, data, metric_name, sigma=-1,
             # smooth by guassian 1d
             if sigma > 0:
                 value = gaussian_filter1d(value, sigma)
-            ax.plot(value, label=key)
+            ax.plot(value, label=key, color=scheduler_to_color[key])
 
         if enable_x_label_at_middle and i == len(data) // 2:
             assert enable_x_label_at_left_corner is False, "Cannot enable both x_label at middle and left corner"
@@ -125,13 +135,13 @@ def plot_bar_chart(ax, dataframe, index_names, output_dir, metric_name, x_dim="Q
             x_dims = dataframe[x_dim].values.tolist()
             for i, scheduler in enumerate(scheduler_list):
                 y_values = dataframe[scheduler].values.tolist()
-                ax.plot(x_dims, y_values, label=scheduler)
+                ax.plot(x_dims, y_values, label=scheduler, color=scheduler_to_color[scheduler])
             ax.set_ylabel(metric_name)
             if keep_x_ticks_labels:
                 ax.set_xlabel(x_dim, fontsize=12, loc='center')
             if keep_legend:
                 ax.legend(fancybox=False, shadow=False, ncol=6, fontsize=13,
-                            loc='upper right', bbox_to_anchor=bbox_to_anchor)
+                          loc='upper right', bbox_to_anchor=bbox_to_anchor)
 
 
 def plot_single_cdf(ax, data, qps, metric_name, x_dim_appendix="", y_dim_appendix="", zoom_out=False,
@@ -157,7 +167,7 @@ def plot_single_cdf(ax, data, qps, metric_name, x_dim_appendix="", y_dim_appendi
         ax.ticklabel_format(axis='x', style='sci', scilimits=(0, 0))
     else:
         for key, value in data.items():
-            ax.ecdf(value, label=key)
+            ax.ecdf(value, label=key, color=scheduler_to_color[key])
         # plt.xlabel(metric_name.lower() + x_dim_appendix)
         # plt.ylabel("CDF")
         # plt.legend(fancybox=True, shadow=True, loc='best')
@@ -280,7 +290,8 @@ def plot_per_scheduler(experiments_set, output_dir, scheduler_excluded="round_ro
     requests_throughput_df = pd.DataFrame(requests_throughput, columns=['Scheduler'] + list(qps_set))
     # plot_bar_chart(requests_throughput_df, qps_set, output_dir, "Request Throughput", "Scheduler",
     #                xt_rotation='horizontal', legend_title="QPS")
-    plot_bar_chart(axs[0, 1], requests_throughput_df, qps_set, output_dir, "Request Throughput (request/s)", "Scheduler",
+    plot_bar_chart(axs[0, 1], requests_throughput_df, qps_set, output_dir, "Request Throughput (request/s)",
+                   "Scheduler",
                    xt_rotation='horizontal', legend_title="QPS")
     average_ttft_df = pd.DataFrame(average_ttft, columns=['Scheduler'] + list(qps_set))
     # plot_bar_chart(average_ttft_df, qps_set, output_dir, "Average TTFT", "Scheduler",
@@ -455,6 +466,10 @@ def plot_per_qps(experiments_set, output_dir, min_qps=18, max_qps=36, num_select
     p99_ttft_df = pd.DataFrame(p99_ttft, columns=['QPS'] + list(index_names))
     plot_bar_chart(axs[1, 1], p99_ttft_df, index_names, qps_output_dir, "TTFT P99 (s)", "QPS",
                    zoom_out=False, y_append=" (s)", keep_x_ticks_labels=True)
+
+    ttft_p99_axs = axs[1, 1]
+    ttft_p99_axs.plot([0, len(qps_set) - 1], [ttft_slo, ttft_slo], color='red', linewidth=4, ls='--')
+    ttft_p99_axs.text(0, ttft_slo + 0.5, f"SLO", color='red', fontsize=14)
     # p99_tbt_df = pd.DataFrame(p99_tbt, columns=['QPS'] + list(index_names))
     # plot_bar_chart(axs[1, 1], p99_tbt_df, index_names, qps_output_dir, "TBT P99", "QPS", zoom_out=False)
     #
@@ -547,9 +562,13 @@ def main():
     parser.add_argument("--output-dir", type=str, default="./experiments_analysis/exp_plots")
     parser.add_argument("--plot-per-qps", type=bool, default=True)
     parser.add_argument("--plot-per-scheduler", type=bool, default=True)
+    parser.add_argument("--ttft-p99-slo", type=float, default=10)
     # parser.add_argument("--output-dir", type=str, required=True)
     args = parser.parse_args()
     data_dir = os.getcwd() + "/" + args.experiments_dir
+
+    global ttft_slo
+    ttft_slo = args.ttft_p99_slo
 
     experiments_set = []
     for scheduler_name in os.listdir(data_dir):
