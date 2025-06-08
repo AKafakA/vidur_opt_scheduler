@@ -1193,6 +1193,9 @@ def main():
         if sampled_mean_error_ratios:
             data["sampled_mean_error_ratios"] = np.array(sampled_mean_error_ratios)
         if sampled_serving_latencies:
+            print(f"sampled_serving_latencies: {len(sampled_serving_latencies)}")
+            for lat in sampled_serving_latencies:
+                print(f"sampled_serving_latencies: {len(lat)}")
             data["sampled_serving_latencies"] = np.array(sampled_serving_latencies)
         if sampled_predict_latency:
             data["sampled_predict_latency"] = np.array(sampled_predict_latency)

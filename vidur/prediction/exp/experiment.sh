@@ -86,7 +86,6 @@ if [ "$RESTART_VLLM" = "true" ]; then
     done
     sleep 60
   fi
-  echo "All processes started, waiting for them to be ready..."
 fi
 
 if [ "$RUN_EXP" = "true" ]; then

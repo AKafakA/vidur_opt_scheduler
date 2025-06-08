@@ -125,6 +125,7 @@ async def generate_benchmark(request: Request) -> Response:
             for instance in instances if instance._instance_id in sampled_instanced])
 
         serving_times = [(response['instance_id'], response["serving_time"]) for response in responses]
+        assert len(serving_times) == 12
 
         sorted_instances_id_by_serving_time = sorted(serving_times, key=lambda x: x[1])
         sorted_instances_predicted_time = sorted(predicted_sampled_results, key=lambda x: x[1])
