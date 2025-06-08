@@ -47,7 +47,7 @@ def print_instance_errors():
     global selected_instance_real_ranking
     predict_accuracy = (1.0 * len([r for r in selected_instance_real_ranking if r == 1])
                         / len(selected_instance_real_ranking))
-    if error_ratios and selected_instance_real_ranking:    #
+    if error_ratios and selected_instance_real_ranking:  #
         mean_error_ratio = np.mean(error_ratios)
         print(f"Mean of Prediction error ratio {mean_error_ratio}")
         print(f"P50 of Prediction error ratio {np.percentile(error_ratios, 50)}")
@@ -125,9 +125,6 @@ async def generate_benchmark(request: Request) -> Response:
             for instance in instances if instance._instance_id in sampled_instanced])
 
         serving_times = [(response['instance_id'], response["serving_time"]) for response in responses]
-        assert len(serving_times) == 12, (f"Expected 12 instances with serving times to profiling, "
-                                          f"but got {len(serving_times)}")
-
         sorted_instances_id_by_serving_time = sorted(serving_times, key=lambda x: x[1])
         sorted_instances_predicted_time = sorted(predicted_sampled_results, key=lambda x: x[1])
         instance_id_with_least_predicted_time = sorted_instances_predicted_time[0][0]
@@ -145,9 +142,15 @@ async def generate_benchmark(request: Request) -> Response:
         sampled_mean_error_ratios.append(sampled_error_ratio)
         sampled_predict_accuracies.append(sampled_predict_accuracy)
         response["sampled_mean_error_ratio"] = sampled_error_ratio
+        if not len(serving_times) == 12:
+            print(f"expected 12 sampled instances, got {len(serving_times)} due to timedout, "
+                  f"autofill with max values")
+            autofill_serving_time = max([x[1] for x in serving_times])
+            filled_serving_times = [autofill_serving_time] * (12 - len(serving_times)) + [x[1] for x in serving_times]
+            response["sampled_serving_latencies"] = filled_serving_times
+        else:
+            response["sampled_serving_latencies"] = [serving_times[i][1] for i in range(len(serving_times))]
         response["sampled_predict_accuracy"] = sampled_predict_accuracy
-
-        response["sampled_serving_latencies"] = [serving_times[i][1] for i in range(len(serving_times))]
         response["min_predicted_latency"] = selected_instance_real_serving_time
         response["sampled_selected_instance_rank"] = selected_instance_rank
     else:
@@ -279,7 +282,7 @@ if __name__ == "__main__":
     parser.add_argument("--debugging_logs", type=bool, default=True)
     parser.add_argument("--profiling_sampling_rate", type=float, default=0.001)
     parser.add_argument("--num_predictor_ports", type=int, default=-1)
-    parser.add_argument("--predictor_timeout", type=int, default=10)
+    parser.add_argument("--predictor_timeout", type=int, default=60)
     parser.add_argument("--backend_timeout", type=int, default=1800)
     args = parser.parse_args()
     logger.info("Starting server with args: %s", str(args))
