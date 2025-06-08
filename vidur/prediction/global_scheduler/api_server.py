@@ -39,29 +39,19 @@ sampled_predict_accuracies = []
 def print_instance_errors():
     errors = []
     error_ratios = []
-    real_response_serving_time = []
     global instances
     for instance in instances:
         errors.extend(instance.predicted_error)
         error_ratios.extend(instance.predicted_error_ratio)
-        real_response_serving_time.extend(instance.serving_time)
-    total_s = 0.0
-    total_p = 0.0
-    count = 0.0
-    for serving, predicted in real_response_serving_time:
-        total_s = total_s + serving
-        total_p = total_p + predicted
-        count = count + 1
 
     global selected_instance_real_ranking
-    predict_accuracy = 1.0 * len([r for r in real_response_serving_time if r == 1]) / len(selected_instance_real_ranking)
-
-    if count > 0 and error_ratios and selected_instance_real_ranking:    #
-        print(f"average serving {total_s / count} and average predicted {total_p / count}")
-        print(f"Mean of Prediction error ratio {np.mean(error_ratios)}")
+    predict_accuracy = (1.0 * len([r for r in selected_instance_real_ranking if r == 1])
+                        / len(selected_instance_real_ranking))
+    if error_ratios and selected_instance_real_ranking:    #
+        mean_error_ratio = np.mean(error_ratios)
+        print(f"Mean of Prediction error ratio {mean_error_ratio}")
         print(f"P50 of Prediction error ratio {np.percentile(error_ratios, 50)}")
-        print(f"Predict accuracy: {predict_accuracy} for compare")
-        return predict_accuracy, np.mean(error_ratios)
+        return predict_accuracy, np.mean(mean_error_ratio)
     else:
         print("No serving time or error ratios collected.")
         return 0.0, 0.0
