@@ -64,7 +64,10 @@ def plot_linear_for_multiple_qps(axes, data, metric_name, sigma=-1,
             # smooth by guassian 1d
             if sigma > 0:
                 value = gaussian_filter1d(value, sigma)
-            ax.plot(value, label=key, color=scheduler_to_color[key])
+            if key in scheduler_to_color:
+                ax.plot(value, label=key, color=scheduler_to_color[key])
+            else:
+                ax.plot(value, label=key)
 
         if enable_x_label_at_middle and i == len(data) // 2:
             assert enable_x_label_at_left_corner is False, "Cannot enable both x_label at middle and left corner"

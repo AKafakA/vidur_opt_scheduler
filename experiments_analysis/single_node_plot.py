@@ -1,16 +1,10 @@
 import argparse
 import os
-import re
-from operator import index
-
-from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes, inset_axes
-from mpl_toolkits.axes_grid1.inset_locator import mark_inset
 
 import matplotlib.pyplot as plt
 import numpy as np
 import shutil
-import pandas as pd
-from scipy.ndimage import gaussian_filter1d
+from matplotlib.ticker import PercentFormatter, MaxNLocator
 
 from experiments_analysis.experiment_plot import plot_linear_for_multiple_qps
 
@@ -41,7 +35,10 @@ def plot_prediction_hit_histogram(ax, selected_ranks,
                                   enable_y_label=False,
                                   enable_title=False,
                                   title_fontsize=10):
-    ax.hist(selected_ranks, bins=np.arange(1, max(selected_ranks)), edgecolor='black', alpha=0.7)
+    ax.hist(selected_ranks, bins=np.arange(1, max(selected_ranks)), edgecolor='black', alpha=0.7,
+            weights=np.ones_like(selected_ranks) / len(selected_ranks))
+    ax.set_xlim(1, max(selected_ranks))
+    ax.xaxis.set_major_locator(MaxNLocator(integer=True))
     if enable_x_label:
         ax.set_xlabel(x_label, fontsize=title_fontsize)
     if enable_y_label:
@@ -58,6 +55,7 @@ def plot_prediction_hit_histogram_for_multiple_qps(axes, rank_data, x_label, y_l
     for qps in rank_data.keys():
         ax = axes.get(qps)
         selected_ranks = rank_data[qps]
+        ax.yaxis.set_major_formatter(PercentFormatter(1))
         for feature in selected_ranks.keys():
             selected_rank = selected_ranks[feature]
             enable_title = enable_middle_title and (qps == list(rank_data.keys())[len(rank_data) // 2])
@@ -83,11 +81,14 @@ def plot_line_scatter_mixed(ax, scatter_y, linea_y):
     # ax.plot(x, linea_y, color='red', label='Line Data')
     for key in scatter_y.keys():
         x = np.arange(len(scatter_y[key]))
-        for i in range(len(scatter_y[key])):
-            ax.scatter(x, scatter_y[key][:, i], color='blue', s=10)
+        for i in range(scatter_y[key].shape[1]):
+            if i == 0:
+                ax.scatter(x, scatter_y[key][:, i], color='blue', s=10, alpha=0.15, label='Sampled Real Serving Latency')
+            else:
+                ax.scatter(x, scatter_y[key][:, i], color='blue', s=10, alpha=0.15)
             ax.fill_between(x, np.min(scatter_y[key], axis=1), np.max(scatter_y[key], axis=1),
                             color='blue', alpha=0.01)
-        ax.plot(x, np.mean(scatter_y[key], axis=1), color='green', label='Mean Serving Latency')
+        ax.plot(x, np.mean(scatter_y[key], axis=1), color='black', label='Mean Serving Latency')
         ax.plot(x, linea_y[key], color='red', label='Selected Instance Latency')
         # ax.plot(x, np.min(scatter_y[key], axis=1), color='black', label='Min Serving Latency')
         # ax.plot(x, np.max(scatter_y[key], axis=1), color='orange', label='Max Serving Latency')
@@ -95,7 +96,7 @@ def plot_line_scatter_mixed(ax, scatter_y, linea_y):
 
 def plot_linea_scatter_for_multiple_qps(axes, linear_data, scatter_data, x_label="Sampled Query ID",
                                         legend_anchor=(1.05, 1.3),
-                                        metric_name="Latency (ms)",
+                                        metric_name="Real Latency (s)",
                                         enable_legend_at_middle=True,
                                         enable_middle_x_label=False,
                                         enable_x_label_at_left_corner=False,
@@ -127,7 +128,7 @@ def plot_linea_scatter_for_multiple_qps(axes, linear_data, scatter_data, x_label
         i += 1
 
 
-def plot_per_qps(experiments_set, output_dir, min_qps=1, max_qps=32):
+def plot_per_qps(experiments_set, output_dir, min_qps=1, max_qps=36):
     qps_output_dir = output_dir + "/qps"
     if os.path.exists(qps_output_dir):
         shutil.rmtree(qps_output_dir)
@@ -221,8 +222,8 @@ def plot_per_qps(experiments_set, output_dir, min_qps=1, max_qps=32):
     #                              enable_legend_at_middle=True, legend_anchor=(1.1, 1.25),
     #                              title_fontsize=10)
     plot_linear_for_multiple_qps(axs_for_prediction_errors_rate, prediction_errors,
-                                 "Error Rate (%)", sigma=1,
-                                 enable_legend_at_middle=True, legend_anchor=(0.8, 1.5),
+                                 "Error Rate", sigma=1,
+                                 enable_legend_at_middle=True, legend_anchor=(1.0, 1.5),
                                  title_fontsize=10,
                                  enable_title_labels=True,
                                  enable_x_label_at_left_corner=True,
@@ -233,15 +234,15 @@ def plot_per_qps(experiments_set, output_dir, min_qps=1, max_qps=32):
                                         sampled_predict_latency,
                                         sampled_serving_latencies,
                                         enable_x_label_at_left_corner=True,
-                                        legend_anchor=(1.5, 1.3),
+                                        legend_anchor=(1.8, 1.3),
                                         x_label="Sample ID: ",
                                         x_label_coords=(-0.15, -0.105))
 
     plot_prediction_hit_histogram_for_multiple_qps(axs_for_selected_instance_rank_bucket,
                                                    sampled_rank_bucket,
-                                                   "Instance Rank Bucket",
-                                                   "Count",
-                                                   "Prediction Hit Histogram",
+                                                   "The Selected Instance's Real Latency Position",
+                                                   "Percentage",
+                                                   "Selected Instance Latency Position Distribution",
                                                    enable_middle_x_label=True,
                                                    enable_middle_title=True,
                                                    title_fontsize=10)
@@ -255,7 +256,7 @@ def plot_per_qps(experiments_set, output_dir, min_qps=1, max_qps=32):
 def main():
     parser = argparse.ArgumentParser(description='Plot the results of the experiments')
     parser.add_argument("--experiments-dir", type=str,
-                        default="experiments_analysis/single_node_experiment_output/burstgpt")
+                        default="experiments_analysis/single_node_experiment_output/sharegpt")
     parser.add_argument("--output-dir", type=str, default="./experiments_analysis/single_node_exp_plots")
     parser.add_argument("--plot-per-qps", type=bool, default=True)
     # parser.add_argument("--output-dir", type=str, required=True)
@@ -283,6 +284,7 @@ def main():
                     record['compare_error_rate'] = b['sampled_predict_accuracies']
                     record['serving_latencies'] = b['sampled_serving_latencies']
                     record['min_predicted_latency'] = b['sampled_predict_latency']
+                    record['sampled_selected_instance_rank'] = b['sampled_selected_instance_rank']
 
     plot_per_qps(experiments_set, args.output_dir)
 
