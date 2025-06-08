@@ -135,9 +135,7 @@ async def generate_benchmark(request: Request) -> Response:
 
         serving_times = [(response['instance_id'], response["serving_time"]) for response in responses]
 
-        min_predicted_time = min(predicted_sampled_results, key=lambda x: x[1])[1]
-
-        sorted_instances_id_by_serving_time = sorted(serving_times[0], key=lambda x: x[1])
+        sorted_instances_id_by_serving_time = sorted(serving_times, key=lambda x: x[1])
         sorted_instances_predicted_time = sorted(predicted_sampled_results, key=lambda x: x[1])
         instance_id_with_least_predicted_time = sorted_instances_predicted_time[0][0]
         selected_instance_rank = sorted_instances_id_by_serving_time.index(instance_id_with_least_predicted_time) + 1
