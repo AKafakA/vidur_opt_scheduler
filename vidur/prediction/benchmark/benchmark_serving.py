@@ -1175,8 +1175,6 @@ def main():
                                          f'_lens.csv')
             generate_lens_files(csv_file_name, prompt_lens, sampled_responses_length)
 
-    if args.keep_all_metrics:
-        storage_start_time = time.time()
         data = {
             "Throughput": np.float32(throughput),
             "prefill_token_latencies": np.array(prefill_token_latencies),
@@ -1193,17 +1191,12 @@ def main():
         if sampled_mean_error_ratios:
             data["sampled_mean_error_ratios"] = np.array(sampled_mean_error_ratios)
         if sampled_serving_latencies:
-            print(f"sampled_serving_latencies: {len(sampled_serving_latencies)}")
-            for lat in sampled_serving_latencies:
-                print(f"sampled_serving_latencies: {len(lat)}")
             data["sampled_serving_latencies"] = np.array(sampled_serving_latencies)
         if sampled_predict_latency:
             data["sampled_predict_latency"] = np.array(sampled_predict_latency)
         if sampled_selected_instance_rank:
             data["sampled_selected_instance_rank"] = np.array(sampled_selected_instance_rank)
         np.savez(args.output_dir + '/' + os.path.splitext(args.log_filename)[0] + f"_all_metrics.npz", **data)
-
-        print(f'Storage of all metrics finished at {time.time() - storage_start_time} s')
 
 
 if __name__ == '__main__':
