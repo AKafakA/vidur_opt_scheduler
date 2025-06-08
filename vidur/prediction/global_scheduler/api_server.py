@@ -50,7 +50,7 @@ def print_instance_errors():
     if error_ratios and selected_instance_real_ranking:    #
         mean_error_ratio = np.mean(error_ratios)
         print(f"Mean of Prediction error ratio {mean_error_ratio}")
-        print(f"P50 of Prediction error ratio {np.percentile(error_ratios, 50)}")\
+        print(f"P50 of Prediction error ratio {np.percentile(error_ratios, 50)}")
         print(f"Prediction accuracy: {predict_accuracy}")
         return predict_accuracy, np.mean(mean_error_ratio)
     else:
