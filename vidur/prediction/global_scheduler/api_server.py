@@ -196,7 +196,7 @@ def build_app(args: Namespace) -> FastAPI:
     num_probed_instance = args.num_query_predictor
     profiling_sampling_rate = args.profiling_sampling_rate
 
-    assert profiling_sampling_rate <= 0.0 or args.metrics_type == "min_new_request_latency", \
+    assert profiling_sampling_rate <= 0.0 or args.metrics_type == "random", \
         "Profiling sampling rate is only supported for min_new_request_latency metrics type"
     app.root_path = args.root_path
     return app
