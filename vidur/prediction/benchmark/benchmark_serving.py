@@ -38,6 +38,12 @@ num_finished_requests = 0
 server_num_requests = {}
 exp_start_time = 0
 
+csv_data_prefill_column_locations = {
+    "arxiv": 0,
+    "code": 1,
+    "burstgpt": 2
+}
+
 
 def fill_missing_metrics(metric, fill_strategy="average_of_neighbors"):
     for i in range(len(metric)):
@@ -922,18 +928,10 @@ def sample_requests(
                 res = data["conversation"][1]["content"]
             else:
                 raise ValueError(f"Unknown dataset format: {data.keys()}")
-        elif task == 'arxiv':
-            prompt = "Summarize this paper: " + data["article"]
-            res = data["abstract"]
-        elif task == 'burstgpt':
-            input_len = int(data[2])
-            output_len = int(data[3])
-            prompt_ids = [(i + j) % vocab_size for j in range(input_len)]
-            prompt = tokenizer.decode(prompt_ids)
-            res = "a" * output_len
-        elif task == "splitwise":
-            input_len = int(data[1])
-            output_len = int(data[2])
+        elif task in csv_data_prefill_column_locations.keys():
+            input_len_loc = csv_data_prefill_column_locations[task]
+            input_len = int(data[input_len_loc])
+            output_len = int(data[input_len_loc + 1])
             prompt_ids = [(i + j) % vocab_size for j in range(input_len)]
             prompt = tokenizer.decode(prompt_ids)
             res = "a" * output_len
@@ -1033,7 +1031,7 @@ def main():
                         help="Whether or not to fail the benchmarking script if any request fails")
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument('--dataset_type', type=str,
-                       choices=['sharegpt', 'arxiv', 'lmsys', 'burstgpt', 'splitwise'], default='sharegpt')
+                       choices=['sharegpt', 'arxiv', 'lmsys', 'burstgpt', 'code'], default='sharegpt')
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument('--dataset_path', type=str)
     parser.add_argument('--print_generation_lens_and_exit',
@@ -1071,7 +1069,7 @@ def main():
             args.data_start_index,
             task='chat'
         )
-    elif args.dataset_type == "arxiv" or args.dataset_type == "burstgpt" or args.dataset_type == "splitwise":
+    elif args.dataset_type == "arxiv" or args.dataset_type == "burstgpt" or args.dataset_type == "code":
         prompts, prompt_lens, max_response_lens, estimated_response_lens = sample_requests(
             args.dataset_path,
             args.num_sampled_requests,
