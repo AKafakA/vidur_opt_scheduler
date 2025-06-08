@@ -138,7 +138,9 @@ async def generate_benchmark(request: Request) -> Response:
         sorted_instances_id_by_serving_time = sorted(serving_times, key=lambda x: x[1])
         sorted_instances_predicted_time = sorted(predicted_sampled_results, key=lambda x: x[1])
         instance_id_with_least_predicted_time = sorted_instances_predicted_time[0][0]
-        selected_instance_rank = sorted_instances_id_by_serving_time.index(instance_id_with_least_predicted_time) + 1
+        selected_instance_rank = \
+            [i for i, instance in enumerate(sorted_instances_id_by_serving_time) if
+             instance[0] == instance_id_with_least_predicted_time][0] + 1
         selected_instance_real_ranking.append(selected_instance_rank)
         response = random.choice(responses)
         global sampled_mean_error_ratios, sampled_predict_accuracies
