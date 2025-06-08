@@ -138,9 +138,13 @@ async def generate_benchmark(request: Request) -> Response:
         sorted_instances_id_by_serving_time = sorted(serving_times, key=lambda x: x[1])
         sorted_instances_predicted_time = sorted(predicted_sampled_results, key=lambda x: x[1])
         instance_id_with_least_predicted_time = sorted_instances_predicted_time[0][0]
-        selected_instance_rank = \
-            [i for i, instance in enumerate(sorted_instances_id_by_serving_time) if
-             instance[0] == instance_id_with_least_predicted_time][0] + 1
+        selected_instance_in_serving = \
+            [(i, data[1]) for i, data in enumerate(sorted_instances_id_by_serving_time) if
+                data[0] == instance_id_with_least_predicted_time]
+        assert len(selected_instance_in_serving) == 1, \
+            f"Expected one instance with least predicted time, but got {len(selected_instance_in_serving)}"
+        selected_instance_rank = selected_instance_in_serving[0][0] + 1  # rank starts from 1
+        selected_instance_real_serving_time = selected_instance_in_serving[0][1]
         selected_instance_real_ranking.append(selected_instance_rank)
         response = random.choice(responses)
         global sampled_mean_error_ratios, sampled_predict_accuracies
@@ -151,8 +155,7 @@ async def generate_benchmark(request: Request) -> Response:
         response["sampled_predict_accuracy"] = sampled_predict_accuracy
 
         response["sampled_serving_latencies"] = [serving_times[i][1] for i in range(len(serving_times))]
-        response["min_predicted_latency"] = [serving_times[i][1] for i in range(len(serving_times)) if
-                                             serving_times[i][0] == instance_id_with_least_predicted_time][0]
+        response["min_predicted_latency"] = selected_instance_real_serving_time
         response["sampled_selected_instance_rank"] = selected_instance_rank
     else:
         if metrics_type.startswith("min") or metrics_type.startswith("max"):
