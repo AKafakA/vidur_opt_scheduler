@@ -64,13 +64,13 @@ esac
 if [ "$RESTART_VLLM" = "true" ]; then
   parallel-ssh --host $TARGET_HOST "cd vidur_opt_scheduler && rm experiment_output/logs/*"
   sh vidur/prediction/exp/reset.sh
+  if [ "$UPDATE_VIDUR_CODE" = "true" ]; then
+    parallel-ssh -t 0 -h vidur/prediction/config/hosts "cd vidur_opt_scheduler && git checkout $BRANCH_NAME"
+    parallel-ssh -t 0 -h vidur/prediction/config/hosts "cd vidur_opt_scheduler && git add -u . && git stash && git reset --hard HEAD~20 && git pull"
+  fi
   sleep 60
   nohup sh vidur/prediction/exp/run_exp_vllm.sh $BATCH_CAP $MODEL $UPDATE_VLLM_CODE $VLLM_VERSION $MAX_MODEL_LENGTH $ENABLE_CHUNKED_PREFILL $BACKEND_WORKERS $MAX_NUM_BATCHED_TOKEN > /dev/null 2>&1 &
   sleep 60
-  if [ "$UPDATE_VIDUR_CODE" = "true" ]; then
-    parallel-ssh -t 0 -h vidur/prediction/config/hosts "cd vidur_opt_scheduler && git checkout $BRANCH_NAME"
-    parallel-ssh -t 0 -h vidur/prediction/config/hosts "cd vidur_opt_scheduler && git add . && git stash && git reset --hard HEAD~20 && git pull"
-  fi
   script_base="vidur/prediction/exp/run_exp_predictor"
   if [ "$PREDICTOR_WORKERS" -eq 1 ]; then
     nohup sh "${script_base}_1.sh" $PREDICTOR_CONFIG_PATH $SCHEDULER_METRIC_TYPE $ENABLE_TIME_ESTIMATION $BATCH_CAP $ENABLE_CHUNKED_PREFILL $PREDICTOR_WORKERS $BRANCH_NAME $BATCH_SIZE_THRESHOLD_FOR_TIME_ESTIMATION $PREDICTOR_TIMEOUT_IN_SECONDS > /dev/null 2>&1 &
@@ -86,6 +86,7 @@ if [ "$RESTART_VLLM" = "true" ]; then
     done
     sleep 60
   fi
+  echo "All processes started, waiting for them to be ready..."
 fi
 
 if [ "$RUN_EXP" = "true" ]; then
