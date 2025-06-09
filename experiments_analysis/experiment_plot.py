@@ -1,5 +1,6 @@
 import argparse
 import os
+import random
 import re
 from operator import index
 
@@ -21,7 +22,7 @@ scheduler_to_color = {
     'INFaaS++': 'orange',
     'Instance-QPM': 'purple',
     'Block*': 'black',
-    'Block': 'blue'
+    'Block': 'red'
 }
 
 ttft_slo = 10  # default value for ttft p99 slo
@@ -54,14 +55,19 @@ def plot_linear_for_multiple_qps(axes, data, metric_name, sigma=-1,
                                  enable_x_label_at_middle=False,
                                  enable_x_label_at_left_corner=False,
                                  x_label_coords=(-0.285, -0.105),
-                                 enable_title_labels=False):
+                                 enable_title_labels=False,
+                                 max_num_samples=-1):
     i = 0
     enable_label = True
     for qps in data.keys():
+        if qps not in axes.keys():
+            continue
         ax = axes.get(qps)
         qps_data = data[qps]
         for key, value in qps_data.items():
             # smooth by guassian 1d
+            if 0 < max_num_samples < len(value):
+                value = value[:max_num_samples]
             if sigma > 0:
                 value = gaussian_filter1d(value, sigma)
             if key in scheduler_to_color:
@@ -145,6 +151,7 @@ def plot_bar_chart(ax, dataframe, index_names, output_dir, metric_name, x_dim="Q
             if keep_legend:
                 ax.legend(fancybox=False, shadow=False, ncol=6, fontsize=13,
                           loc='upper right', bbox_to_anchor=bbox_to_anchor)
+            ax.set_xticks(ax.get_xticks()[::2])
 
 
 def plot_single_cdf(ax, data, qps, metric_name, x_dim_appendix="", y_dim_appendix="", zoom_out=False,
@@ -209,6 +216,8 @@ def plot_latency_cdf_per_qps(axes, data, output_dir, metric_name, x_dim_appendix
         output_dir_per_qps = output_dir + f"/{qps}"
         if not os.path.exists(output_dir_per_qps):
             os.makedirs(output_dir_per_qps)
+        if qps not in axes.keys():
+            continue
         ax = axes.get(qps)
         enable_legend = enable_legend_at_middle and i == mid_point
         enable_x_label = enable_x_at_middle and i == mid_point
@@ -332,7 +341,7 @@ def plot_per_scheduler(experiments_set, output_dir, scheduler_excluded="round_ro
     fig.savefig(f"{output_dir}/scheduler.png", bbox_inches='tight')
 
 
-def plot_per_qps(experiments_set, output_dir, min_qps=18, max_qps=36, num_selected_qps_per_figures=4):
+def plot_per_qps(experiments_set, output_dir, min_qps=18, max_qps=32, num_selected_qps_per_figures=4):
     qps_output_dir = output_dir + "/qps"
     if os.path.exists(qps_output_dir):
         shutil.rmtree(qps_output_dir)
