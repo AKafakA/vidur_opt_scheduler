@@ -4,6 +4,8 @@ import random
 import re
 from operator import index
 
+from shapely.geometry import LineString
+
 from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes, inset_axes
 from mpl_toolkits.axes_grid1.inset_locator import mark_inset
 
@@ -91,7 +93,7 @@ def plot_linear_for_multiple_qps(axes, data, metric_name, sigma=-1,
         if enable_title_labels:
             ax.set_title(f"QPS={qps}", fontsize=title_fontsize)
 
-        if enable_legend_at_middle and i == len(data) // 2:
+        if enable_legend_at_middle and i == len(axes.keys()) // 2:
             ax.legend(fancybox=False, shadow=False, ncol=6, fontsize=title_fontsize,
                       loc='upper right', bbox_to_anchor=legend_anchor)
         i += 1
@@ -100,7 +102,7 @@ def plot_linear_for_multiple_qps(axes, data, metric_name, sigma=-1,
 def plot_bar_chart(ax, dataframe, index_names, output_dir, metric_name, x_dim="QPS", stack_data=False, plot_kind='bar',
                    xt_rotation='horizontal', legend_title='', zoom_out=False, y_append=" (per s)", keep_legend=False,
                    keep_x_ticks_labels=False, plot_as_line=True,
-                   bbox_to_anchor=(2.0, 1.215)):
+                   bbox_to_anchor=(2.0, 1.215), slo=-1):
     output_dir = output_dir + "/bar_charts"
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
@@ -142,15 +144,39 @@ def plot_bar_chart(ax, dataframe, index_names, output_dir, metric_name, x_dim="Q
         else:
             scheduler_list = list(index_names)
             x_dims = dataframe[x_dim].values.tolist()
+            capacity_indexes = []
             for i, scheduler in enumerate(scheduler_list):
                 y_values = dataframe[scheduler].values.tolist()
                 ax.plot(x_dims, y_values, label=scheduler, color=scheduler_to_color[scheduler])
+                if slo > 0:
+                    first_line = LineString(np.column_stack((np.array(x_dims), np.array(y_values, dtype=float))))
+                    second_line = LineString(np.column_stack((np.array(x_dims),
+                                                              np.array([slo] * len(y_values), dtype=float))))
+                    intersection = first_line.intersection(second_line)
+                    if intersection.geom_type == 'Point':
+                        capacity_indexes.append((scheduler, intersection.x))
+                    else:
+                        # print(intersection.geoms[-1].x)
+                        capacity_indexes.append((scheduler, intersection.geoms[-1].x))
+
             ax.set_ylabel(metric_name)
             if keep_x_ticks_labels:
                 ax.set_xlabel(x_dim, fontsize=12, loc='center')
             if keep_legend:
                 ax.legend(fancybox=False, shadow=False, ncol=6, fontsize=13,
                           loc='upper right', bbox_to_anchor=bbox_to_anchor)
+            if slo > 0 and len(capacity_indexes) > 0:
+                min_x = float(x_dims[0])
+                adjusted_capacity_indexes = [capacity_x[1] - min_x for capacity_x in capacity_indexes]
+                ax.scatter(adjusted_capacity_indexes, [slo] * len(capacity_indexes), marker='x')
+                # print all capacity x with the scheduler name at left corner
+                initial_x_position = 0.0
+                initial_y_position = 100.0
+                capacity_indexes = sorted(capacity_indexes, key=lambda x: x[1])
+                for scheduler, capacity_x in capacity_indexes:
+                    ax.text(initial_x_position, initial_y_position, f"{scheduler}: {capacity_x:.2f}", fontsize=12)
+                    initial_y_position += 13.0
+                ax.text(initial_x_position, initial_y_position, "Max QPS before Hit SLO", fontsize=12)
             ax.set_xticks(ax.get_xticks()[::2])
 
 
@@ -341,7 +367,7 @@ def plot_per_scheduler(experiments_set, output_dir, scheduler_excluded="round_ro
     fig.savefig(f"{output_dir}/scheduler.png", bbox_inches='tight')
 
 
-def plot_per_qps(experiments_set, output_dir, min_qps=18, max_qps=32, num_selected_qps_per_figures=4):
+def plot_per_qps(experiments_set, output_dir, min_qps=18, max_qps=36, num_selected_qps_per_figures=4):
     qps_output_dir = output_dir + "/qps"
     if os.path.exists(qps_output_dir):
         shutil.rmtree(qps_output_dir)
@@ -477,11 +503,11 @@ def plot_per_qps(experiments_set, output_dir, min_qps=18, max_qps=32, num_select
     #                zoom_out=False)
     p99_ttft_df = pd.DataFrame(p99_ttft, columns=['QPS'] + list(index_names))
     plot_bar_chart(axs[1, 1], p99_ttft_df, index_names, qps_output_dir, "TTFT P99 (s)", "QPS",
-                   zoom_out=False, y_append=" (s)", keep_x_ticks_labels=True)
+                   zoom_out=False, y_append=" (s)", keep_x_ticks_labels=True, slo=10)
 
     ttft_p99_axs = axs[1, 1]
-    ttft_p99_axs.plot([0, len(qps_set) - 1], [ttft_slo, ttft_slo], color='red', linewidth=4, ls='--')
-    ttft_p99_axs.text(0, ttft_slo + 0.5, f"SLO", color='red', fontsize=14)
+    ttft_p99_axs.plot([0, len(qps_set) - 1], [ttft_slo, ttft_slo], linewidth=1, ls='--')
+    ttft_p99_axs.text(0, ttft_slo + 0.8, f"SLO", fontsize=10)
     # p99_tbt_df = pd.DataFrame(p99_tbt, columns=['QPS'] + list(index_names))
     # plot_bar_chart(axs[1, 1], p99_tbt_df, index_names, qps_output_dir, "TBT P99", "QPS", zoom_out=False)
     #
@@ -493,7 +519,7 @@ def plot_per_qps(experiments_set, output_dir, min_qps=18, max_qps=32, num_select
                    zoom_out=False, y_append=" (s)")
 
     fig.tight_layout()
-    fig.subplots_adjust(hspace=0.1, wspace=0.15)
+    fig.subplots_adjust(hspace=0.1, wspace=0.17)
     fig.set_size_inches(16, 8)
     fig.savefig(f"{qps_output_dir}/qps.png", bbox_inches='tight')
 
@@ -509,7 +535,7 @@ def plot_per_qps(experiments_set, output_dir, min_qps=18, max_qps=32, num_select
         i += 1
     plot_latency_cdf_per_qps(axes_dict_for_ttft, ttft_cdfs, qps_output_dir, "TTFT", "Time(s)",
                              enable_legend_at_middle=True, enable_title_label=True,
-                             bbox_to_anchor=(2.0, 1.255))
+                             bbox_to_anchor=(1.75, 1.355))
     # plot_latency_cdf_per_qps(tbt_cdfs, qps_output_dir, "TBT", " (ms)", max_x_range_for_zoom=100000)
     plot_latency_cdf_per_qps(axes_dict_for_e2e,
                              e2e_cdfs, qps_output_dir, "Request Latency", "Time(s)",
@@ -537,7 +563,7 @@ def plot_per_qps(experiments_set, output_dir, min_qps=18, max_qps=32, num_select
         i += 1
     plot_linear_for_multiple_qps(axs_for_avg_free_gpu, avg_free_gpu, "Free GPU Blocks Mean", sigma=20,
                                  enable_legend_at_middle=True, enable_title_labels=True,
-                                 legend_anchor=(3.0, 1.355))
+                                 legend_anchor=(2.0, 1.455))
     plot_linear_for_multiple_qps(axs_for_var_free_gpu, var_free_gpu_per_node, "Free GPU Blocks Var",
                                  sigma=20)
     plot_linear_for_multiple_qps(axs_for_num_preemption, num_total_preemption, "Total Preemption Count",
@@ -558,13 +584,14 @@ def plot_per_qps(experiments_set, output_dir, min_qps=18, max_qps=32, num_select
     plot_linear_for_multiple_qps(axs_for_scheduling_overhead_ratio, scheduling_overhead_ratio,
                                  "Overhead Ratio (%)", sigma=80,
                                  enable_legend_at_middle=True, x_label="Query ID",
-                                 legend_anchor=(2.5, 1.35), title_fontsize=12, enable_title_labels=True)
+                                 legend_anchor=(2.0, 1.40), title_fontsize=12, enable_title_labels=True)
     plot_linear_for_multiple_qps(axs_for_scheduling_overhead, scheduling_overhead,
                                  "Overhead Latency (ms)", sigma=80,
                                  enable_legend_at_middle=False, x_label="Query ID",
                                  legend_anchor=(1.1, 1.35), title_fontsize=12, enable_x_label_at_middle=True)
     fig.tight_layout()
     fig.set_size_inches(18, 6)
+    fig.subplots_adjust(hspace=0.2, wspace=0.2)
     fig.savefig(f"{qps_output_dir}/overhead.png", bbox_inches='tight')
 
 

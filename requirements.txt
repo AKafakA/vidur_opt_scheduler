@@ -24,3 +24,4 @@ dacite
 jsonlines
 certifi
 orjson
+shapely==2.1.1
