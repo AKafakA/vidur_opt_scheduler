@@ -118,10 +118,9 @@ async def generate_benchmark(request: Request) -> Response:
               f"current number of randomly assigned requests: {len(random_assigned)} at time {time.time() - start_time}")
         return JSONResponse(response)
 
-    print(f"Received {len(predict_results)} prediction results for request {request_id} at time {time.time() - start_time}")
     target_metrics = [x['target_metric'][0] for x in predict_results]
-    if (enable_auto_scaling and predict_results and len(predict_results[0]['target_metric']) > 1
-            and use_preemptive_provisioning):
+    if enable_auto_scaling and predict_results and use_preemptive_provisioning:
+        print(len(predict_results[0]['target_metric']))
         # if the target metric is a tuple, we only take the first element for scheduling
         # and the second element should always be the waiting time used for auto-scaling
         predicted_ttft = [x['target_metric'][1] for x in predict_results]
