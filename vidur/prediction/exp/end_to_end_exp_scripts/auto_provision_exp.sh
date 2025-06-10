@@ -21,16 +21,16 @@ ENABLE_CHUNKED_PREFILL="true"
 MODEL="meta-llama/Llama-2-7b-hf"
 DATASET_NAMES="sharegpt"
 SCHEDULER_NAME="min_new_request_latency"
-QPS="8"
+QPS="20"
 PROFILING_SAMPLE_RATE=0.000
 USE_FOR_PROFILING_ONLY=false
-NUM_REQUEST=1000
+NUM_REQUEST=10000
 KEEP_ALL_METRICS=false
 N_SELECTED="12"
 OUTPUT_DIR_PREFIX="auto_provision"
 
 # Config for auto provisioning
-TTFT_SLO="10"
+TTFT_SLO="0 10"
 
 
 for model in $MODEL; do
@@ -56,7 +56,7 @@ for model in $MODEL; do
                     AVAILABLE_INSTANCE="12"
                   else
                     AVAILABLE_INSTANCE="6"
-                    ENABLE_PREEMPTIVE_AUTO_PROVISIONING="false"
+                    ENABLE_PREEMPTIVE_AUTO_PROVISIONING="false true"
                   fi
                   dataset_path="~/vidur_opt_scheduler/data/trace_data/$dataset_name/generate/$MODEL_TYPE"
                   for enable_preemptive_auto_provisioning in $ENABLE_PREEMPTIVE_AUTO_PROVISIONING; do
