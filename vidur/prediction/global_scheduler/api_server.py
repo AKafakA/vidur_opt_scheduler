@@ -221,10 +221,12 @@ async def generate_benchmark(request: Request) -> Response:
         # if not using preemptive provisioning, use normal monitoring waiting latency instead
         measured_ttft = (response['per_token_latency'][0][1] / 1000.0)  # convert to seconds
         if measured_ttft > max_ttft_in_seconds:
-            back_instance = back_instances.pop()
-            print(f"TTFT {measured_ttft} exceeds the limit of {max_ttft_in_seconds * 1000} ms. "
-                  f"Assigning to a back instance. {back_instance._instance_id}")
-            instances.append(back_instance)
+            print(f"Measured TTFT {measured_ttft} exceeds the limit of {max_ttft_in_seconds} seconds. ")
+            if len(back_instances) > 0:
+                back_instance = back_instances.pop()
+                print(f"Assigning request {request_id} to backfill instance and put it into the pool: "
+                      f"{back_instance._instance_id}")
+                instances.append(back_instance)
     return JSONResponse(response)
 
 

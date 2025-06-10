@@ -30,7 +30,7 @@ N_SELECTED="12"
 OUTPUT_DIR_PREFIX="auto_provision"
 
 # Config for auto provisioning
-TTFT_SLO="12"
+TTFT_SLO="12 0"
 
 
 for model in $MODEL; do
@@ -56,7 +56,7 @@ for model in $MODEL; do
                     AVAILABLE_INSTANCE="12"
                   else
                     AVAILABLE_INSTANCE="6"
-                    ENABLE_PREEMPTIVE_AUTO_PROVISIONING="false"
+                    ENABLE_PREEMPTIVE_AUTO_PROVISIONING="false true"
                   fi
                   dataset_path="~/vidur_opt_scheduler/data/trace_data/$dataset_name/generate/$MODEL_TYPE"
                   for enable_preemptive_auto_provisioning in $ENABLE_PREEMPTIVE_AUTO_PROVISIONING; do
