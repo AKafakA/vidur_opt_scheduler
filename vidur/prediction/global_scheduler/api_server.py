@@ -221,6 +221,7 @@ async def generate_benchmark(request: Request) -> Response:
     if enable_auto_scaling and 'per_token_latency' in response and not use_preemptive_provisioning:
         # if not using preemptive provisioning, use normal monitoring waiting latency instead
         measured_ttft = (response['per_token_latency'][0][1] / 1000.0)  # convert to seconds
+        print(f"Measured TTFT for request {request_id} is {measured_ttft} seconds.")
         if measured_ttft > max_ttft_in_seconds:
             print(f"Measured TTFT {measured_ttft} exceeds the limit of {max_ttft_in_seconds} seconds. ")
             if len(back_instances) > 0:
