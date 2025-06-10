@@ -39,8 +39,10 @@ UPDATE_VLLM_CODE=${30}
 RUN_EXP=${31}
 USE_ESTIMATION_LEN=${32}
 OUTPUT_DIR_PREFIX=${33}
+
+# Setting for auto provisioning
 AVAILABLE_INSTANCE=${34}
-WAITING_TIME_SLO=${35}
+TTFT_SLO=${35}
 ENABLE_PREEMPTIVE_AUTO_PROVISIONING=${36}
 
 if [ "$ENABLE_CHUNKED_PREFILL" = "true" ]; then
@@ -113,7 +115,7 @@ if [ "$RUN_EXP" = "true" ]; then
           for n in $N; do
               for use_estimation_len in $USE_ESTIMATION_LEN; do
                   echo "Running experiment with scheduler: $metric_type, model: $MODEL, dataset: $DATASET_NAME, qps: $qps, batch_size_cut: $BATCH_SIZE_THRESHOLD_FOR_TIME_ESTIMATION enable_chunked_prefill: $ENABLE_CHUNKED_PREFILL use_for_profiling_only: $USE_FOR_PROFILING_ONLY predictor timeout: $PREDICTOR_TIMEOUT_IN_SECONDS Profiling sample rate: $PROFILING_SAMPLE_RATE enable preemptive auto provisioning: $ENABLE_PREEMPTIVE_AUTO_PROVISIONING waiting time SLO: $WAITING_TIME_SLO"
-                  nohup sh vidur/prediction/exp/run_exp_global_scheduler.sh $TARGET_HOST $n $n $metric_type $HOST_CONFIG_PATH $GLOBAL_SCHEDULER_WORKERS $PREDICTOR_WORKERS $PROFILING_SAMPLE_RATE $TIMEOUT_IN_SECONDS $PREDICTOR_TIMEOUT_IN_SECONDS $AVAILABLE_INSTANCE $WAITING_TIME_SLO $ENABLE_PREEMPTIVE_AUTO_PROVISIONING > /dev/null 2>&1 &
+                  nohup sh vidur/prediction/exp/run_exp_global_scheduler.sh $TARGET_HOST $n $n $metric_type $HOST_CONFIG_PATH $GLOBAL_SCHEDULER_WORKERS $PREDICTOR_WORKERS $PROFILING_SAMPLE_RATE $TIMEOUT_IN_SECONDS $PREDICTOR_TIMEOUT_IN_SECONDS $AVAILABLE_INSTANCE $TTFT_SLO $ENABLE_PREEMPTIVE_AUTO_PROVISIONING > /dev/null 2>&1 &
                   LOG_FILENAME="benchmark.log"
                   if [ "$OUTPUT_DIR_PREFIX" = "main" ]; then
                     OUTPUT_DIR="${DATASET_TYPE}/${metric_type}/qps_${qps}_num_queries_${num_queries}_n_${n}_chunked_${ENABLE_CHUNKED_PREFILL}_predictor_${PREDICTOR_WORKERS}_global_${GLOBAL_SCHEDULER_WORKERS}_len_estimated_${use_estimation_len}_waiting_time_slo_${WAITING_TIME_SLO}_enable_preemptive_auto_provisioning_${ENABLE_PREEMPTIVE_AUTO_PROVISIONING}_batch_${BATCH_CAP}_chunk_${CHUNK_SIZE}"
