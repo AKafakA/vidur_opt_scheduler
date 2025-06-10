@@ -114,7 +114,7 @@ if [ "$RUN_EXP" = "true" ]; then
           fi
           for n in $N; do
               for use_estimation_len in $USE_ESTIMATION_LEN; do
-                  echo "Running experiment with scheduler: $metric_type, model: $MODEL, dataset: $DATASET_NAME, qps: $qps, batch_size_cut: $BATCH_SIZE_THRESHOLD_FOR_TIME_ESTIMATION enable_chunked_prefill: $ENABLE_CHUNKED_PREFILL use_for_profiling_only: $USE_FOR_PROFILING_ONLY predictor timeout: $PREDICTOR_TIMEOUT_IN_SECONDS Profiling sample rate: $PROFILING_SAMPLE_RATE enable preemptive auto provisioning: $ENABLE_PREEMPTIVE_AUTO_PROVISIONING waiting time SLO: $WAITING_TIME_SLO"
+                  echo "Running experiment with scheduler: $metric_type, model: $MODEL, dataset: $DATASET_NAME, qps: $qps, batch_size_cut: $BATCH_SIZE_THRESHOLD_FOR_TIME_ESTIMATION enable_chunked_prefill: $ENABLE_CHUNKED_PREFILL use_for_profiling_only: $USE_FOR_PROFILING_ONLY predictor timeout: $PREDICTOR_TIMEOUT_IN_SECONDS Profiling sample rate: $PROFILING_SAMPLE_RATE enable preemptive auto provisioning: $ENABLE_PREEMPTIVE_AUTO_PROVISIONING waiting time SLO: $TTFT_SLO"
                   nohup sh vidur/prediction/exp/run_exp_global_scheduler.sh $TARGET_HOST $n $n $metric_type $HOST_CONFIG_PATH $GLOBAL_SCHEDULER_WORKERS $PREDICTOR_WORKERS $PROFILING_SAMPLE_RATE $TIMEOUT_IN_SECONDS $PREDICTOR_TIMEOUT_IN_SECONDS $AVAILABLE_INSTANCE $TTFT_SLO $ENABLE_PREEMPTIVE_AUTO_PROVISIONING > /dev/null 2>&1 &
                   LOG_FILENAME="benchmark.log"
                   if [ "$OUTPUT_DIR_PREFIX" = "main" ]; then
