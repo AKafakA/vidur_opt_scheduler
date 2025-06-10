@@ -22,8 +22,8 @@ def directory_name_parser_for_auto_provision(directory_name):
     directory_name = directory_name.split("_")
     qps = directory_name[1]
     n = directory_name[6]
-    enable_preemptive_provision = directory_name[24] == "true"
-    waiting_time_slo = int(directory_name[19])
+    enable_preemptive_provision = directory_name[-1] == "true"
+    waiting_time_slo = int(directory_name[18])
     enable_auto_scaling = waiting_time_slo > 0
     return qps, n, enable_preemptive_provision, enable_auto_scaling, waiting_time_slo
 
@@ -57,15 +57,15 @@ def plot_dual_timeline_data(experiments_set, font_size=12,
         else:
             label1 = "Full Provisioned"
             color1 = "green"
-        ttft = exp['ttft']
+        latencies = exp['request_latencies']
         available_instances = exp['available_instances']
-        x = np.arange(len(ttft))
+        x = np.arange(len(latencies))
         # ttft = gaussian_filter1d(ttft, sigma=5)
         # ax1.plot(x, ttft, label=label1, color=color1, linewidth=2)
-        ax1.scatter(x, ttft, label=label1, color=color1, s=1)
-        ax1.fill_between(x, ttft, color=color1, alpha=0.01)
+        ax1.scatter(x, latencies, label=label1, color=color1, s=1)
+        ax1.fill_between(x, latencies, color=color1, alpha=0.01)
         ax1.set_xlabel("Query ID", fontsize=font_size)
-        ax1.set_ylabel("TTFT (s)", fontsize=font_size)
+        ax1.set_ylabel("Latency (s)", fontsize=font_size)
         ax2.plot(x, available_instances, label=label1, color=color1, ls='--', linewidth=2)
         ax2.set_ylabel("Available Instances", fontsize=font_size)
     fig.tight_layout()
@@ -117,14 +117,7 @@ def main():
                 if experiments_trace.endswith("npz"):
                     b = np.load(scheduler_dir + "/" + directory + "/" + experiments_trace)
                     record['request_latencies'] = b['request_latencies'] / 1000.0  # Convert to seconds
-                    # record['available_instances'] = b['available_instances']
-                    record['ttft'] = b['prefill_token_latencies'] / 1000.0  # Convert to seconds
-                    if not enable_auto_scaling:
-                        record['available_instances'] = [12] * len(record['ttft'])
-                    elif enable_preemptive_provision:
-                        record['available_instances'] = [6] * (len(record['ttft']) // 2) + [12] * (len(record['ttft']) // 2)
-                    else:
-                        record['available_instances'] = [6] * len(record['ttft'])
+                    record['available_instances'] = b['available_instances'] # Convert to seconds
 
     for qps in set([experiment['qps'] for experiment in experiments_set]):
         plot_per_qps(experiments_set, args.output_dir, qps)

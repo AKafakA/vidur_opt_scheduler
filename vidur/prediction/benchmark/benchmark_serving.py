@@ -863,6 +863,8 @@ def main():
         data["sampled_predict_latency"] = np.array(sampled_predict_latency)
     if sampled_selected_instance_rank:
         data["sampled_selected_instance_rank"] = np.array(sampled_selected_instance_rank)
+    if num_available_instances:
+        data["num_available_instances"] = np.array(num_available_instances)
     np.savez(args.output_dir + '/' + os.path.splitext(args.log_filename)[0] + f"_all_metrics.npz", **data)
 
     if args.generate_csv_files or args.generate_dataset_with_real_response:

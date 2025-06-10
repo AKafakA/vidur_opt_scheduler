@@ -125,9 +125,9 @@ async def generate_benchmark(request: Request) -> Response:
         # and the second element should always be the waiting time used for auto-scaling
         min_target_metric = min(target_metrics)
         if min_target_metric >= max_metrics_in_seconds:
-            print(f"Predicted min metrics {min_target_metric} exceeds the limit of "
-                  f"{max_metrics_in_seconds} seconds. So, no instance within SLO, tried to provision more instances.")
             if len(back_instances) > 0:
+                print(f"Predicted min metrics {min_target_metric} exceeds the limit of "
+                      f"{max_metrics_in_seconds} seconds. So, no instance within SLO, tried to provision more instances.")
                 selected_backfill_instance = back_instances.pop(0)
                 print(f"Assigning request {request_id} to backfill instance and put it into the pool: "
                       f"{selected_backfill_instance._instance_id}")
@@ -225,11 +225,12 @@ async def generate_benchmark(request: Request) -> Response:
             measured_metric = (response['per_token_latency'][0][1] / 1000.0)
             metrics_name = "ttft"
         if measured_metric > max_metrics_in_seconds:
-            print(f"Measured {metrics_name} {measured_metric} exceeds the limit of {max_metrics_in_seconds} seconds. ")
             if len(back_instances) > 0:
+                print(
+                    f"Measured {metrics_name} {measured_metric} exceeds the limit of {max_metrics_in_seconds} seconds. ")
                 back_instance = back_instances.pop()
-                print(f"Assigning request {request_id} to backfill instance and put it into the pool: "
-                      f"{back_instance._instance_id}")
+                print(f"Added backfill instance and put it into the pool: "
+                      f"{back_instance._instance_id} after request {request_id}")
                 instances.append(back_instance)
     return JSONResponse(response)
 
