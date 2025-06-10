@@ -167,9 +167,11 @@ class SimulatePredictReplicaScheduler:
     @property
     def target_request_prefilled_at(self):
         target_batches = self.get_target_request_batches(self._target_request.id)
+        min_prefilled_time = target_batches[-1]["completed_time"]
         for batch in target_batches:
             if batch["target_request_prefilled"]:
-                return batch["completed_time"]
+                min_prefilled_time = min(min_prefilled_time, batch["completed_time"])
+        return min_prefilled_time
 
     @property
     def target_request_end_to_end(self):

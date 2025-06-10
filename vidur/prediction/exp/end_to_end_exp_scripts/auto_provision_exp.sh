@@ -30,7 +30,7 @@ N_SELECTED="12"
 OUTPUT_DIR_PREFIX="auto_provision"
 
 # Config for auto provisioning
-TTFT_SLO="12 0"
+TTFT_SLO="0"
 
 
 for model in $MODEL; do
@@ -54,6 +54,7 @@ for model in $MODEL; do
                 for ttft_slo in $TTFT_SLO; do
                   if [ "$ttft_slo" = "0" ]; then
                     AVAILABLE_INSTANCE="12"
+                    ENABLE_PREEMPTIVE_AUTO_PROVISIONING="false"
                   else
                     AVAILABLE_INSTANCE="6"
                     ENABLE_PREEMPTIVE_AUTO_PROVISIONING="false true"
