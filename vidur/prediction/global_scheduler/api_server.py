@@ -14,6 +14,7 @@ from vidur.prediction.global_scheduler.instance import Instance
 from vidur.prediction.server_utils import serve_http
 import resource
 import logging
+import traceback
 
 profiling_sampling_rate = 0.001
 TIMEOUT_KEEP_ALIVE = 5  # seconds.
@@ -211,6 +212,7 @@ async def generate_benchmark(request: Request) -> Response:
                                                              predicted_num_decode_tokens)
         except Exception as e:
             print(f"Error during querying backend: {e}")
+            traceback.print_exc()
             return JSONResponse({"error": "Prediction failed"}, status_code=500)
     for key, value in single_metric.items():
         response[key] = value
