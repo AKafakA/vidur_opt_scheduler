@@ -20,8 +20,8 @@ RESTART_VLLM=true
 ENABLE_CHUNKED_PREFILL="true"
 MODEL="meta-llama/Llama-2-7b-hf"
 DATASET_NAMES="sharegpt"
-SCHEDULER_NAME="min_new_request_latency random round_robin min_infass_load request_per_seconds min_lunmnix_load"
-QPS="20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36"
+SCHEDULER_NAME="min_new_request_latency min_lunmnix_load min_infass_load round_robin request_per_seconds random"
+#QPS="20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36"
 PROFILING_SAMPLE_RATE=0.000
 USE_FOR_PROFILING_ONLY=false
 NUM_REQUEST=10000
@@ -45,6 +45,22 @@ for model in $MODEL; do
       fi
       for enable_chunked_prefill in $ENABLE_CHUNKED_PREFILL; do
         for use_estimation_len in $USE_LENGTH_ESTIMATION; do
+          if [ "$use_estimation_len" = "true" ]; then
+            # only block for min_new_request_latency scheduler use this flag
+            QPS="31.1 31.2 31.3 31.4 31.5 31.6 31.7 31.8 31.9 32.0"
+          elif [ "$scheduler" = "min_new_request_latency" ]; then
+            QPS="32.1 32.2 32.3 32.4 32.5 32.6 32.7 32.8 32.9"
+          elif [ "$scheduler" = "min_lunmnix_load" ]; then
+            QPS="30.1 30.2 30.3 30.4 30.5 30.6 30.7 30.8 30.9"
+          elif [ "$scheduler" = "round_robin" ]; then
+            QPS="22.1 22.2 22.3 22.4 22.5 22.6 22.7 22.8 22.9"
+          elif [ "$scheduler" = "min_infass_load" ]; then
+            QPS="28.1 28.2 28.3 28.4 28.5 28.6 28.7 28.8 28.9"
+          elif [ "$scheduler" = "request_per_seconds" ]; then
+            QPS="21.1 21.2 21.3 21.4 21.5 21.6 21.7 21.8 21.9"
+          elif [ "$scheduler" = "random" ]; then
+            QPS="20.1 20.2 20.3 20.4 20.5 20.6 20.7 20.8 20.9"
+          fi
           for batch_size_cut in $BATCH_SIZE_THRESHOLD_FOR_TIME_ESTIMATION; do
             for n_selected in $N_SELECTED; do
               for qps in $QPS; do

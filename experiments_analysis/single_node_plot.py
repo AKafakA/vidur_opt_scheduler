@@ -223,7 +223,7 @@ def plot_per_qps(experiments_set, output_dir, min_qps=1, max_qps=36):
     #                              title_fontsize=10)
     plot_linear_for_multiple_qps(axs_for_prediction_errors_rate, prediction_errors,
                                  "Error Rate", sigma=1,
-                                 enable_legend_at_middle=True, legend_anchor=(1.0, 1.5),
+                                 enable_legend_at_middle=True, legend_anchor=(1.0, 1.25),
                                  title_fontsize=10,
                                  enable_title_labels=True,
                                  enable_x_label_at_left_corner=True,
@@ -235,7 +235,7 @@ def plot_per_qps(experiments_set, output_dir, min_qps=1, max_qps=36):
                                         sampled_predict_latency,
                                         sampled_serving_latencies,
                                         enable_x_label_at_left_corner=True,
-                                        legend_anchor=(1.8, 1.3),
+                                        legend_anchor=(1.8, 1.25),
                                         x_label="Sample ID: ",
                                         x_label_coords=(-0.15, -0.105))
 
@@ -243,14 +243,14 @@ def plot_per_qps(experiments_set, output_dir, min_qps=1, max_qps=36):
                                                    sampled_rank_bucket,
                                                    "The Selected Instance's Real Latency Position",
                                                    "Percentage",
-                                                   "Selected Instance Latency Position Distribution",
+                                                   "Distribution",
                                                    enable_middle_x_label=True,
                                                    enable_middle_title=True,
-                                                   title_fontsize=10)
+                                                   title_fontsize=11)
 
     fig.tight_layout()
-    fig.set_size_inches(18, 6)
-    fig.subplots_adjust(hspace=0.5, wspace=0.28)
+    fig.set_size_inches(18, 10)
+    fig.subplots_adjust(hspace=0.25, wspace=0.28)
     plt.savefig(qps_output_dir + "/profiling.png", bbox_inches='tight')
 
 
