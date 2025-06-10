@@ -71,10 +71,11 @@ class Instance:
                 serving_time = time.time() - start
                 response_dict['serving_time'] = serving_time
                 response_dict['instance_id'] = self._instance_id
-                if self._predicted_latency.get(request_id) > 0:
+                if self._predicted_latency.get(request_id):
                     self.serving_time.append((serving_time, self._predicted_latency[request_id]))
                     self.predicted_error.append(serving_time - self._predicted_latency[request_id])
-                    self.predicted_error_ratio.append(abs(serving_time - self._predicted_latency[request_id]) / serving_time)
+                    self.predicted_error_ratio.append(abs(serving_time - self._predicted_latency[request_id])
+                                                      / serving_time)
                 return response_dict
 
     def get_current_qpm(self):
