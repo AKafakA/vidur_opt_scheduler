@@ -120,7 +120,7 @@ async def generate_benchmark(request: Request) -> Response:
         return JSONResponse(response)
 
     target_metrics = [x['target_metric'][0] for x in predict_results]
-    if enable_auto_scaling and predict_results and use_preemptive_provisioning:
+    if enable_auto_scaling and use_preemptive_provisioning:
         # if the target metric is a tuple, we only take the first element for scheduling
         # and the second element should always be the waiting time used for auto-scaling
         predicted_ttft = [x['target_metric'][1] for x in predict_results]
@@ -141,6 +141,7 @@ async def generate_benchmark(request: Request) -> Response:
                     return JSONResponse(response)
                 except Exception as e:
                     print(f"Error during auto provisions: {e}")
+                    traceback.print_exc()
                     return JSONResponse({"error": "Prediction failed"}, status_code=500)
 
     assert len(target_metrics) == len(predict_results)
@@ -249,6 +250,7 @@ async def init_app(
     config_path = args.config_path
     max_ttft_in_seconds = args.max_ttft_in_seconds
     use_preemptive_provisioning = args.use_preemptive_provisioning
+    print(f"Using preemptive provisioning: {use_preemptive_provisioning}")
     enable_auto_scaling = max_ttft_in_seconds > 0
 
     instance_dict = json.load(open(config_path))
@@ -261,7 +263,6 @@ async def init_app(
             if args.num_predictor_ports > 0:
                 for i in range(min(args.num_predictor_ports, len(value["predictor_ports"]))):
                     ports.append(value["predictor_ports"][i])
-            print(f"instance {key} with ip {value['ip_address']} and predictor port {ports}")
             instance = Instance(key, value["ip_address"], ports, value["backend_port"],
                                 query_predictor_timeout=args.predictor_timeout,
                                 query_backend_timeout=args.backend_timeout)
@@ -331,9 +332,9 @@ if __name__ == "__main__":
     parser.add_argument("--num_predictor_ports", type=int, default=-1)
     parser.add_argument("--predictor_timeout", type=int, default=60)
     parser.add_argument("--backend_timeout", type=int, default=1800)
-    parser.add_argument("--max_ttft_in_seconds", type=int, default=10)
+    parser.add_argument("--max_ttft_in_seconds", type=int, default=12)
     parser.add_argument("--initial_available_instance", type=int, default=6)
-    parser.add_argument("--use_preemptive_provisioning", type=bool, default=True)
+    parser.add_argument("--use_preemptive_provisioning", type=bool, default=False)
     args = parser.parse_args()
     logger.info("Starting server with args: %s", str(args))
     # in case the limited by the number of files
