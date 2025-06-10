@@ -35,7 +35,7 @@ random_assigned = []
 
 sampled_mean_error_ratios = []
 sampled_predict_accuracies = []
-max_ttft_in_seconds = 10
+max_metrics_in_seconds = 10
 back_instances = []
 use_preemptive_provisioning = True
 enable_auto_scaling = True
@@ -119,15 +119,14 @@ async def generate_benchmark(request: Request) -> Response:
               f"current number of randomly assigned requests: {len(random_assigned)} at time {time.time() - start_time}")
         return JSONResponse(response)
 
-    target_metrics = [x['target_metric'][0] for x in predict_results]
+    target_metrics = [x['target_metric'] for x in predict_results]
     if enable_auto_scaling and use_preemptive_provisioning:
         # if the target metric is a tuple, we only take the first element for scheduling
         # and the second element should always be the waiting time used for auto-scaling
-        predicted_ttft = [x['target_metric'][1] for x in predict_results]
-        max_ttft = max(predicted_ttft)
-        print(f"Predicted TTFT for across request {request_id} is {max_ttft} seconds.")
-        if max_ttft >= max_ttft_in_seconds:
-            print(f"Max waiting time {max_ttft} exceeds the limit of {max_ttft_in_seconds} seconds. ")
+        max_target_metric = max(target_metrics, key=lambda x: x[0])
+        if max_target_metric >= max_metrics_in_seconds:
+            print(f"Predicted metrics {max_target_metric} exceeds the limit of "
+                  f"{max_metrics_in_seconds} seconds. ")
             if len(back_instances) > 0:
                 selected_backfill_instance = back_instances.pop(0)
                 print(f"Assigning request {request_id} to backfill instance and put it into the pool: "
@@ -218,12 +217,15 @@ async def generate_benchmark(request: Request) -> Response:
             return JSONResponse({"error": "Prediction failed"}, status_code=500)
     for key, value in single_metric.items():
         response[key] = value
-    if enable_auto_scaling and 'per_token_latency' in response and not use_preemptive_provisioning:
-        # if not using preemptive provisioning, use normal monitoring waiting latency instead
-        measured_ttft = (response['per_token_latency'][0][1] / 1000.0)  # convert to seconds
-        print(f"Measured TTFT for request {request_id} is {measured_ttft} seconds.")
-        if measured_ttft > max_ttft_in_seconds:
-            print(f"Measured TTFT {measured_ttft} exceeds the limit of {max_ttft_in_seconds} seconds. ")
+    if enable_auto_scaling and not use_preemptive_provisioning:
+        if metrics_type == "min_latency" or metrics_type == "min_new_request_latency":
+            measured_metric = response["serving_time"]
+            metrics_name = "serving_time"
+        else:
+            measured_metric = (response['per_token_latency'][0][1] / 1000.0)
+            metrics_name = "ttft"
+        if measured_metric > max_metrics_in_seconds:
+            print(f"Measured {metrics_name} {measured_metric} exceeds the limit of {max_metrics_in_seconds} seconds. ")
             if len(back_instances) > 0:
                 back_instance = back_instances.pop()
                 print(f"Assigning request {request_id} to backfill instance and put it into the pool: "
@@ -249,13 +251,12 @@ async def init_app(
         instances_list: Optional[List[Instance]] = None,
 ) -> FastAPI:
     app = build_app(args)
-    global instances, start_time, metrics_type, max_ttft_in_seconds, back_instances, \
+    global instances, start_time, metrics_type, max_metrics_in_seconds, back_instances, \
         use_preemptive_provisioning, enable_auto_scaling
     config_path = args.config_path
-    max_ttft_in_seconds = args.max_ttft_in_seconds
+    max_metrics_in_seconds = args.max_slo_in_seconds
     use_preemptive_provisioning = args.use_preemptive_provisioning
-    print(f"Using preemptive provisioning: {use_preemptive_provisioning}")
-    enable_auto_scaling = max_ttft_in_seconds > 0
+    enable_auto_scaling = max_metrics_in_seconds > 0
 
     instance_dict = json.load(open(config_path))
     if instances_list is not None:
@@ -336,7 +337,7 @@ if __name__ == "__main__":
     parser.add_argument("--num_predictor_ports", type=int, default=-1)
     parser.add_argument("--predictor_timeout", type=int, default=60)
     parser.add_argument("--backend_timeout", type=int, default=1800)
-    parser.add_argument("--max_ttft_in_seconds", type=int, default=12)
+    parser.add_argument("--max_slo_in_seconds", type=int, default=12)
     parser.add_argument("--initial_available_instance", type=int, default=6)
     parser.add_argument("--use_preemptive_provisioning", action='store_true')
     args = parser.parse_args()

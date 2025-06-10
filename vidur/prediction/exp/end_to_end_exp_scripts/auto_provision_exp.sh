@@ -24,13 +24,13 @@ SCHEDULER_NAME="min_new_request_latency"
 QPS="24"
 PROFILING_SAMPLE_RATE=0.000
 USE_FOR_PROFILING_ONLY=false
-NUM_REQUEST=1000
+NUM_REQUEST=10000
 KEEP_ALL_METRICS=false
 N_SELECTED="12"
 OUTPUT_DIR_PREFIX="auto_provision"
 
 # Config for auto provisioning
-TTFT_SLO="24"
+MAX_SLO="24"
 
 
 for model in $MODEL; do
@@ -42,7 +42,7 @@ for model in $MODEL; do
   for dataset_name in $DATASET_NAMES; do
     for scheduler in $SCHEDULER_NAME; do
       if [ "$scheduler" = "min_new_request_latency" ]; then
-        USE_LENGTH_ESTIMATION="true"
+        USE_LENGTH_ESTIMATION="false"
       else
         USE_LENGTH_ESTIMATION="false"
       fi
@@ -51,18 +51,18 @@ for model in $MODEL; do
           for batch_size_cut in $BATCH_SIZE_THRESHOLD_FOR_TIME_ESTIMATION; do
             for n_selected in $N_SELECTED; do
               for qps in $QPS; do
-                for ttft_slo in $TTFT_SLO; do
-                  if [ "$ttft_slo" = "0" ]; then
+                for max_slo in $MAX_SLO; do
+                  if [ "$max_slo" = "0" ]; then
                     AVAILABLE_INSTANCE="12"
                     ENABLE_PREEMPTIVE_AUTO_PROVISIONING="false"
                   else
                     AVAILABLE_INSTANCE="6"
-                    ENABLE_PREEMPTIVE_AUTO_PROVISIONING="false"
+                    ENABLE_PREEMPTIVE_AUTO_PROVISIONING="false true"
                   fi
                   dataset_path="~/vidur_opt_scheduler/data/trace_data/$dataset_name/generate/$MODEL_TYPE"
                   for enable_preemptive_auto_provisioning in $ENABLE_PREEMPTIVE_AUTO_PROVISIONING; do
                     echo "Running experiment with scheduler: $scheduler, model: $model, dataset: $dataset_name, qps: $qps, batch_size_cut: $batch_size_cut enable_chunked_prefill: $enable_chunked_prefill use_for_profiling_only: $USE_FOR_PROFILING_ONLY predictor timeout: $PREDICTOR_TIMEOUT_IN_SECONDS enable preemptive auto provisioning: $enable_preemptive_auto_provisioning"
-                    sh vidur/prediction/exp/experiment.sh $scheduler $NUM_REQUEST $RESTART_VLLM  $BATCH_CAP $dataset_name $dataset_path $dataset_name true $KEEP_ALL_METRICS $START_INDEX $model $MODEL_TYPE $MAX_MODEL_LENGTH $TARGET_HOST $enable_chunked_prefill $PREDICTOR_WORKERS $GLOBAL_SCHEDULER_WORKERS $BACKEND_WORKERS $CHUNK_SIZE $qps $BRANCH_NAME $batch_size_cut $n_selected $PROFILING_SAMPLE_RATE $TIMEOUT_IN_SECONDS $USE_FOR_PROFILING_ONLY $PREDICTOR_TIMEOUT_IN_SECONDS $USE_PROCESS_FOR_FRONTEND $UPDATE_VIDUR_CODE $UPDATE_VLLM_CODE $RUN_EXP $use_estimation_len $OUTPUT_DIR_PREFIX $AVAILABLE_INSTANCE $ttft_slo $enable_preemptive_auto_provisioning
+                    sh vidur/prediction/exp/experiment.sh $scheduler $NUM_REQUEST $RESTART_VLLM  $BATCH_CAP $dataset_name $dataset_path $dataset_name true $KEEP_ALL_METRICS $START_INDEX $model $MODEL_TYPE $MAX_MODEL_LENGTH $TARGET_HOST $enable_chunked_prefill $PREDICTOR_WORKERS $GLOBAL_SCHEDULER_WORKERS $BACKEND_WORKERS $CHUNK_SIZE $qps $BRANCH_NAME $batch_size_cut $n_selected $PROFILING_SAMPLE_RATE $TIMEOUT_IN_SECONDS $USE_FOR_PROFILING_ONLY $PREDICTOR_TIMEOUT_IN_SECONDS $USE_PROCESS_FOR_FRONTEND $UPDATE_VIDUR_CODE $UPDATE_VLLM_CODE $RUN_EXP $use_estimation_len $OUTPUT_DIR_PREFIX $AVAILABLE_INSTANCE $max_slo $enable_preemptive_auto_provisioning
                   done
                 done
               done

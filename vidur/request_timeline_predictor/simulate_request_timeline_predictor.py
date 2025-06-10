@@ -24,7 +24,7 @@ class SimulateRequestTimelinePredictor(BaseRequestTimelinePredictor):
             batch_execution_time_caching_map=self._batch_execution_time_caching_maps,
         )
         simulate_predict_replica_scheduler.simulate()
-        return [simulate_predict_replica_scheduler.avg_block_size]
+        return simulate_predict_replica_scheduler.avg_block_size
 
     def predict_request_scheduling_delay(self, replica_scheduler, request):
         simulate_predict_replica_scheduler = SimulatePredictReplicaScheduler(
@@ -37,7 +37,7 @@ class SimulateRequestTimelinePredictor(BaseRequestTimelinePredictor):
             batch_execution_time_caching_map=self._batch_execution_time_caching_maps,
         )
         simulate_predict_replica_scheduler.simulate()
-        return [simulate_predict_replica_scheduler.target_request_scheduled_at]
+        return simulate_predict_replica_scheduler.target_request_scheduled_at
 
     def predict_request_makespan(self, replica_scheduler, request):
         simulate_predict_replica_scheduler = SimulatePredictReplicaScheduler(
@@ -50,7 +50,7 @@ class SimulateRequestTimelinePredictor(BaseRequestTimelinePredictor):
             batch_execution_time_caching_map=self._batch_execution_time_caching_maps,
         )
         simulate_predict_replica_scheduler.simulate()
-        return [simulate_predict_replica_scheduler.target_request_end_to_end]
+        return simulate_predict_replica_scheduler.target_request_end_to_end
 
     def predict_average_latency(self, replica_scheduler, request):
         simulate_predict_replica_scheduler = SimulatePredictReplicaScheduler(
@@ -63,7 +63,7 @@ class SimulateRequestTimelinePredictor(BaseRequestTimelinePredictor):
             batch_execution_time_caching_map=self._batch_execution_time_caching_maps,
         )
         simulate_predict_replica_scheduler.simulate()
-        return [simulate_predict_replica_scheduler.average_latency]
+        return simulate_predict_replica_scheduler.average_latency
 
     def predict_average_batch_size(self, replica_scheduler, request):
         simulate_predict_replica_scheduler = SimulatePredictReplicaScheduler(
@@ -76,7 +76,7 @@ class SimulateRequestTimelinePredictor(BaseRequestTimelinePredictor):
             batch_execution_time_caching_map=self._batch_execution_time_caching_maps,
         )
         simulate_predict_replica_scheduler.simulate()
-        return [simulate_predict_replica_scheduler.average_batch_size]
+        return simulate_predict_replica_scheduler.average_batch_size
 
     def predict_average_execution_latency(self, replica_scheduler, request):
         simulate_predict_replica_scheduler = SimulatePredictReplicaScheduler(
@@ -89,7 +89,7 @@ class SimulateRequestTimelinePredictor(BaseRequestTimelinePredictor):
             batch_execution_time_caching_map=self._batch_execution_time_caching_maps,
         )
         simulate_predict_replica_scheduler.simulate()
-        return [simulate_predict_replica_scheduler.average_execution_time]
+        return simulate_predict_replica_scheduler.average_execution_time
 
     def predict_waiting_and_ending_time(self, replica_scheduler, request):
         """
@@ -106,5 +106,4 @@ class SimulateRequestTimelinePredictor(BaseRequestTimelinePredictor):
             batch_execution_time_caching_map=self._batch_execution_time_caching_maps,
         )
         simulate_predict_replica_scheduler.simulate()
-        return [simulate_predict_replica_scheduler.target_request_end_to_end,
-                simulate_predict_replica_scheduler.target_request_prefilled_at]
+        return simulate_predict_replica_scheduler.target_request_end_to_end
