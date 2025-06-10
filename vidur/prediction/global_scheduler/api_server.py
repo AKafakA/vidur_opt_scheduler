@@ -124,12 +124,12 @@ async def generate_benchmark(request: Request) -> Response:
         # if the target metric is a tuple, we only take the first element for scheduling
         # and the second element should always be the waiting time used for auto-scaling
         predicted_ttft = [x['target_metric'][1] for x in predict_results]
-        min_ttft = min(predicted_ttft)
-        if min_ttft >= max_ttft_in_seconds:
-            print(f"Max waiting time {min_ttft } exceeds the limit of {max_ttft_in_seconds} seconds. ")
+        max_ttft = max(predicted_ttft)
+        if max_ttft >= max_ttft_in_seconds:
+            print(f"Max waiting time {max_ttft} exceeds the limit of {max_ttft_in_seconds} seconds. ")
             if len(back_instances) > 0:
                 selected_backfill_instance = back_instances.pop(0)
-                print(f"Assigning request {request_id} to backfill instance and put it into the pool"
+                print(f"Assigning request {request_id} to backfill instance and put it into the pool: "
                       f"{selected_backfill_instance._instance_id}")
                 instances.append(selected_backfill_instance)
                 try:
@@ -334,7 +334,7 @@ if __name__ == "__main__":
     parser.add_argument("--backend_timeout", type=int, default=1800)
     parser.add_argument("--max_ttft_in_seconds", type=int, default=12)
     parser.add_argument("--initial_available_instance", type=int, default=6)
-    parser.add_argument("--use_preemptive_provisioning", type=bool, default=False)
+    parser.add_argument("--use_preemptive_provisioning", action='store_true')
     args = parser.parse_args()
     logger.info("Starting server with args: %s", str(args))
     # in case the limited by the number of files
