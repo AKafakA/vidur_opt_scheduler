@@ -57,7 +57,7 @@ for model in $MODEL; do
                     ENABLE_PREEMPTIVE_AUTO_PROVISIONING="false"
                   else
                     AVAILABLE_INSTANCE="6"
-                    ENABLE_PREEMPTIVE_AUTO_PROVISIONING="true"
+                    ENABLE_PREEMPTIVE_AUTO_PROVISIONING="false"
                   fi
                   dataset_path="~/vidur_opt_scheduler/data/trace_data/$dataset_name/generate/$MODEL_TYPE"
                   for enable_preemptive_auto_provisioning in $ENABLE_PREEMPTIVE_AUTO_PROVISIONING; do

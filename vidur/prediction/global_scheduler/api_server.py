@@ -124,7 +124,7 @@ async def generate_benchmark(request: Request) -> Response:
         # if the target metric is a tuple, we only take the first element for scheduling
         # and the second element should always be the waiting time used for auto-scaling
         predicted_ttft = [x['target_metric'][1] for x in predict_results]
-        max_ttft = min(predicted_ttft)
+        max_ttft = max(predicted_ttft)
         print(f"Predicted TTFT for across request {request_id} is {max_ttft} seconds.")
         if max_ttft >= max_ttft_in_seconds:
             print(f"Max waiting time {max_ttft} exceeds the limit of {max_ttft_in_seconds} seconds. ")
