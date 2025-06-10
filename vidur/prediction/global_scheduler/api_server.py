@@ -269,6 +269,7 @@ async def init_app(
                 instances.append(instance)
             else:
                 back_instances.append(instance)
+            k += 1
     start_time = time.time()
     metrics_type = args.metrics_type
     return app

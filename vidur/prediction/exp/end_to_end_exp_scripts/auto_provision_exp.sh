@@ -30,7 +30,7 @@ N_SELECTED="12"
 OUTPUT_DIR_PREFIX="auto_provision"
 
 # Config for auto provisioning
-TTFT_SLO="0 10"
+TTFT_SLO="12 0"
 
 
 for model in $MODEL; do
