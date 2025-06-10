@@ -123,10 +123,10 @@ async def generate_benchmark(request: Request) -> Response:
     if enable_auto_scaling and use_preemptive_provisioning:
         # if the target metric is a tuple, we only take the first element for scheduling
         # and the second element should always be the waiting time used for auto-scaling
-        max_target_metric = max(target_metrics, key=lambda x: x[0])
-        if max_target_metric >= max_metrics_in_seconds:
-            print(f"Predicted metrics {max_target_metric} exceeds the limit of "
-                  f"{max_metrics_in_seconds} seconds. ")
+        min_target_metric = min(target_metrics)
+        if min_target_metric >= max_metrics_in_seconds:
+            print(f"Predicted min metrics {min_target_metric} exceeds the limit of "
+                  f"{max_metrics_in_seconds} seconds. So, no instance within SLO, tried to provision more instances.")
             if len(back_instances) > 0:
                 selected_backfill_instance = back_instances.pop(0)
                 print(f"Assigning request {request_id} to backfill instance and put it into the pool: "
