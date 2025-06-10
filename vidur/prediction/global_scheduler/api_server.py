@@ -118,6 +118,7 @@ async def generate_benchmark(request: Request) -> Response:
               f"current number of randomly assigned requests: {len(random_assigned)} at time {time.time() - start_time}")
         return JSONResponse(response)
 
+    print(f"Received {len(predict_results)} prediction results for request {request_id} at time {time.time() - start_time}")
     target_metrics = [x['target_metric'][0] for x in predict_results]
     if (enable_auto_scaling and predict_results and len(predict_results[0]['target_metric']) > 1
             and use_preemptive_provisioning):
@@ -140,7 +141,7 @@ async def generate_benchmark(request: Request) -> Response:
                     response['num_available_instances'] = response['num_available_instances'] + 1
                     return JSONResponse(response)
                 except Exception as e:
-                    print(f"Error during prediction: {e}")
+                    print(f"Error during auto provisions: {e}")
                     return JSONResponse({"error": "Prediction failed"}, status_code=500)
 
     assert len(target_metrics) == len(predict_results)
@@ -211,7 +212,7 @@ async def generate_benchmark(request: Request) -> Response:
             response = await selected_instance.query_backend(prompt, max_response_len, request_id,
                                                              predicted_num_decode_tokens)
         except Exception as e:
-            print(f"Error during prediction: {e}")
+            print(f"Error during querying backend: {e}")
             return JSONResponse({"error": "Prediction failed"}, status_code=500)
     for key, value in single_metric.items():
         response[key] = value
