@@ -26,11 +26,11 @@ PROFILING_SAMPLE_RATE=0.000
 USE_FOR_PROFILING_ONLY=false
 NUM_REQUEST=10000
 KEEP_ALL_METRICS=false
-N_SELECTED="12"
+N_SELECTED="11"
 OUTPUT_DIR_PREFIX="auto_provision"
 
 # Config for auto provisioning
-MAX_SLO="70 80"
+MAX_SLO="0"
 
 
 for model in $MODEL; do
@@ -53,7 +53,7 @@ for model in $MODEL; do
               for qps in $QPS; do
                 for max_slo in $MAX_SLO; do
                   if [ "$max_slo" = "0" ]; then
-                    AVAILABLE_INSTANCE="12"
+                    AVAILABLE_INSTANCE="10"
                     ENABLE_PREEMPTIVE_AUTO_PROVISIONING="false"
                   else
                     AVAILABLE_INSTANCE="6"

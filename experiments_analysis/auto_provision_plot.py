@@ -67,7 +67,7 @@ def plot_dual_timeline_data(experiments_set, latency_ax, gpu_free_ax, gpu_varian
             label1 = "Relief Provision"
             color1 = "orange"
         else:
-            label1 = "Full Provisioned"
+            label1 = "Static Provisioned"
             color1 = "green"
         latencies = exp['request_latencies']
         num_request_with_latencies_more_than_threshold = np.sum(latencies >= provisioning_threshold)
@@ -109,7 +109,7 @@ def plot_dual_timeline_data(experiments_set, latency_ax, gpu_free_ax, gpu_varian
 
         text_info[label1] = (num_request_with_latencies_more_than_threshold, p99_latency, color1)
 
-    text_sort = ["Full Provisioned", "Preemptive Provision", "Relief Provision"]
+    text_sort = ["Static Provisioned", "Preemptive Provision", "Relief Provision"]
     text_sort.reverse()
     for label in text_sort:
         num_request_with_latencies_more_than_threshold, p99_latency, color = text_info[label]
@@ -140,7 +140,7 @@ def plot_per_qps(experiments_set, output_dir, selected_qps, provisioning_thresho
 def main():
     parser = argparse.ArgumentParser(description='Plot the results of the experiments')
     parser.add_argument("--experiments-dir", type=str,
-                        default="experiments_analysis/auto_provision_experiment_output/auto_provision/sharegpt")
+                        default="experiments_analysis/auto_provision_experiment_output/sharegpt")
     parser.add_argument("--output-dir", type=str, default="./experiments_analysis/auto_provision_plots")
     parser.add_argument("--plot-per-qps", type=bool, default=True)
     parser.add_argument("--max-instances", type=int, default=12)
@@ -170,10 +170,8 @@ def main():
                 if experiments_trace.endswith("npz"):
                     b = np.load(scheduler_dir + "/" + directory + "/" + experiments_trace)
                     record['request_latencies'] = b['request_latencies'] / 1000.0  # Convert to seconds
-                    if enable_auto_scaling:
-                        record['available_instances'] = b["num_available_instances"]
-                    else:
-                        record['available_instances'] = args.max_instances * np.ones_like(record['request_latencies'])
+
+                    record['available_instances'] = b["num_available_instances"]
                     record['avg_gpu_blocks'] = b['avg_gpu_blocks']
                     record['var_gpu_blocks'] = b['var_gpu_blocks']
 
