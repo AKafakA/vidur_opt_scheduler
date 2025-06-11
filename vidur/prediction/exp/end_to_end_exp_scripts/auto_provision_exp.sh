@@ -30,7 +30,7 @@ N_SELECTED="12"
 OUTPUT_DIR_PREFIX="auto_provision"
 
 # Config for auto provisioning
-MAX_SLO="60 0"
+MAX_SLO="70 80"
 
 
 for model in $MODEL; do
