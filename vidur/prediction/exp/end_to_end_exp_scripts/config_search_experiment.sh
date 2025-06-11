@@ -25,10 +25,7 @@ NUM_REQUEST=10000
 KEEP_ALL_METRICS=false
 N_SELECTED="12"
 OUTPUT_DIR_PREFIX="config_search"
-
-CHUNK_SIZE="512"
-BATCH_CAP="24"
-
+BATCH_CAP="24 48"
 
 for model in $MODEL; do
   if [ "$model" = "meta-llama/Llama-2-7b-hf" ]; then
@@ -47,17 +44,23 @@ for model in $MODEL; do
         for use_estimation_len in $USE_LENGTH_ESTIMATION; do
           for batch_size_cut in $BATCH_SIZE_THRESHOLD_FOR_TIME_ESTIMATION; do
             for n_selected in $N_SELECTED; do
-              for chunk in $CHUNK_SIZE; do
-                for batch_cap in $BATCH_CAP; do
-                  if [ "$batch_cap" = "24" ]; then
-                    QPS="12 18 24"
-                  elif [ "$scheduler" = "min_new_request_latency" ]; then
-                      QPS="30.5 31 31.1 31.5"
-                  elif [ "$scheduler" = "min_lunmnix_load" ]; then
-                      QPS="29.5 30.1 29.7"
+              for batch_cap in $BATCH_CAP; do
+                if [ "$batch_cap" = "24" ]; then
+                  CHUNK_SIZE="512"
+                  if [ "$scheduler" = "min_new_request_latency" ]; then
+                    QPS="27 25.5 28.5"
                   else
-                      QPS="21.1 21.2 21.3 21.4 21.5 21.6 21.7 21.8 21.9"
+                    QPS="27 25.5 28.5"
                   fi
+                else
+                  CHUNK_SIZE="2048"
+                  if [ "$scheduler" = "min_new_request_latency" ]; then
+                    QPS="30.5 30.3 30.1 29.9 29.7"
+                  else
+                    QPS="30.5 30.3 30.1 29.9 29.7"
+                  fi
+                fi
+                for chunk in $CHUNK_SIZE; do
                   for qps in $QPS; do
                     dataset_path="~/vidur_opt_scheduler/data/trace_data/$dataset_name/generate/$MODEL_TYPE"
                     echo "Running experiment with scheduler: $scheduler, model: $model, dataset: $dataset_name, qps: $qps, enable_chunked_prefill: $enable_chunked_prefill batch_size: $batch_cap, chunk_size $chunk"
