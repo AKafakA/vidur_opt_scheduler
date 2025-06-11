@@ -22,7 +22,7 @@ def directory_name_parser_for_auto_provision(directory_name):
     directory_name = directory_name.split("_")
     qps = directory_name[1]
     n = directory_name[6]
-    enable_preemptive_provision = directory_name[-1] == "true"
+    enable_preemptive_provision = directory_name[23] == "true"
     waiting_time_slo = int(directory_name[18])
     enable_auto_scaling = waiting_time_slo > 0
     return qps, n, enable_preemptive_provision, enable_auto_scaling, waiting_time_slo
