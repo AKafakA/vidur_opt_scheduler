@@ -27,7 +27,7 @@ N_SELECTED="12"
 OUTPUT_DIR_PREFIX="config_search"
 
 CHUNK_SIZE="512"
-BATCH_CAP="24 48"
+BATCH_CAP="24"
 
 
 for model in $MODEL; do
