@@ -15,7 +15,7 @@ RUN_EXP=true
 RESTART_VLLM=true
 
 # Config for end to end experiment
-ENABLE_CHUNKED_PREFILL="true false"
+ENABLE_CHUNKED_PREFILL="true"
 MODEL="meta-llama/Llama-2-7b-hf"
 DATASET_NAMES="sharegpt"
 SCHEDULER_NAME="min_new_request_latency min_lunmnix_load"
