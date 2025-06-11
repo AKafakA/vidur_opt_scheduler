@@ -115,7 +115,7 @@ if [ "$RUN_EXP" = "true" ]; then
                   if [ "$OUTPUT_DIR_PREFIX" = "main" ]; then
                     OUTPUT_DIR="${DATASET_TYPE}/${metric_type}/qps_${qps}_num_queries_${num_queries}_n_${n}_chunked_${ENABLE_CHUNKED_PREFILL}_predictor_${PREDICTOR_WORKERS}_global_${GLOBAL_SCHEDULER_WORKERS}_len_estimated_${use_estimation_len}_batch_${BATCH_CAP}_chunk_${CHUNK_SIZE}"
                   else
-                    OUTPUT_DIR="${OUTPUT_DIR_PREFIX}/${DATASET_TYPE}/${metric_type}/qps_${qps}_num_queries_${num_queries}_n_${n}_chunked_${ENABLE_CHUNKED_PREFILL}_predictor_${PREDICTOR_WORKERS}_global_${GLOBAL_SCHEDULER_WORKERS}_len_estimated_${use_estimation_len}"
+                    OUTPUT_DIR="${OUTPUT_DIR_PREFIX}/${DATASET_TYPE}/${metric_type}/qps_${qps}_num_queries_${num_queries}_n_${n}_chunked_${ENABLE_CHUNKED_PREFILL}_predictor_${PREDICTOR_WORKERS}_global_${GLOBAL_SCHEDULER_WORKERS}_len_estimated_${use_estimation_len}_batch_${BATCH_CAP}_chunk_${CHUNK_SIZE}"
                   fi
                   sleep 10
                   if [ "$use_estimation_len" = "true" ]; then
