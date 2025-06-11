@@ -15,7 +15,7 @@ RUN_EXP=true
 RESTART_VLLM=true
 
 # Config for end to end experiment
-ENABLE_CHUNKED_PREFILL="true false"
+ENABLE_CHUNKED_PREFILL="true"
 MODEL="meta-llama/Llama-2-7b-hf"
 DATASET_NAMES="sharegpt"
 SCHEDULER_NAME="min_new_request_latency min_lunmnix_load"
@@ -48,16 +48,16 @@ for model in $MODEL; do
                 if [ "$batch_cap" = "24" ]; then
                   CHUNK_SIZE="512"
                   if [ "$scheduler" = "min_new_request_latency" ]; then
-                    QPS="27 25.5 28.5"
+                    QPS="27.7"
                   else
-                    QPS="27 25.5 28.5"
+                    QPS="24.7"
                   fi
                 else
                   CHUNK_SIZE="2048"
                   if [ "$scheduler" = "min_new_request_latency" ]; then
-                    QPS="30.5 30.3 30.1 29.9 29.7"
+                    QPS="31.0"
                   else
-                    QPS="30.5 30.3 30.1 29.9 29.7"
+                    QPS="29.8"
                   fi
                 fi
                 for chunk in $CHUNK_SIZE; do
