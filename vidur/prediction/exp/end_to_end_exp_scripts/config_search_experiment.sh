@@ -19,7 +19,6 @@ ENABLE_CHUNKED_PREFILL="true false"
 MODEL="meta-llama/Llama-2-7b-hf"
 DATASET_NAMES="sharegpt"
 SCHEDULER_NAME="min_new_request_latency min_lunmnix_load"
-QPS="30"
 PROFILING_SAMPLE_RATE=0.000
 USE_FOR_PROFILING_ONLY=false
 NUM_REQUEST=10000
@@ -27,9 +26,8 @@ KEEP_ALL_METRICS=false
 N_SELECTED="12"
 OUTPUT_DIR_PREFIX="config_search"
 
-
-CHUNK_SIZE="1024 256 2048 512"
-BATCH_CAP="24 12 48"
+CHUNK_SIZE="512"
+BATCH_CAP="24 48"
 
 
 for model in $MODEL; do
@@ -49,9 +47,18 @@ for model in $MODEL; do
         for use_estimation_len in $USE_LENGTH_ESTIMATION; do
           for batch_size_cut in $BATCH_SIZE_THRESHOLD_FOR_TIME_ESTIMATION; do
             for n_selected in $N_SELECTED; do
-              for qps in $QPS; do
-                for chunk in $CHUNK_SIZE; do
-                  for batch_cap in $BATCH_CAP; do
+              for chunk in $CHUNK_SIZE; do
+                for batch_cap in $BATCH_CAP; do
+                  if [ "$batch_cap" = "24" ]; then
+                    QPS="12 18 24"
+                  elif [ "$scheduler" = "min_new_request_latency" ]; then
+                      QPS="30.5 31 31.1 31.5"
+                  elif [ "$scheduler" = "min_lunmnix_load" ]; then
+                      QPS="29.5 30.1 29.7"
+                  else
+                      QPS="21.1 21.2 21.3 21.4 21.5 21.6 21.7 21.8 21.9"
+                  fi
+                  for qps in $QPS; do
                     dataset_path="~/vidur_opt_scheduler/data/trace_data/$dataset_name/generate/$MODEL_TYPE"
                     echo "Running experiment with scheduler: $scheduler, model: $model, dataset: $dataset_name, qps: $qps, enable_chunked_prefill: $enable_chunked_prefill batch_size: $batch_cap, chunk_size $chunk"
                     sh vidur/prediction/exp/experiment.sh $scheduler $NUM_REQUEST $RESTART_VLLM  $batch_cap $dataset_name $dataset_path $dataset_name true $KEEP_ALL_METRICS $START_INDEX $model $MODEL_TYPE $MAX_MODEL_LENGTH $TARGET_HOST $enable_chunked_prefill $PREDICTOR_WORKERS $GLOBAL_SCHEDULER_WORKERS $BACKEND_WORKERS $chunk $qps $BRANCH_NAME $batch_size_cut $n_selected $PROFILING_SAMPLE_RATE $TIMEOUT_IN_SECONDS $USE_FOR_PROFILING_ONLY $PREDICTOR_TIMEOUT_IN_SECONDS $USE_PROCESS_FOR_FRONTEND $UPDATE_VIDUR_CODE $UPDATE_VLLM_CODE $RUN_EXP $use_estimation_len $OUTPUT_DIR_PREFIX
