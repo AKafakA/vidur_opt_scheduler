@@ -834,6 +834,9 @@ def main():
 
     with open(args.output_dir + '/' + os.path.splitext(args.log_filename)[0] + "_logs.txt", 'w') as f:
         f.write(messages)
+        ttft = np.array(prefill_token_latencies)
+        p99_ttft = np.percentile(ttft, 99)
+        f.write(f"\n p99 prefill token latency: {p99_ttft:.4f} ms\n")
 
     data = {
         "Throughput": np.float32(throughput),
