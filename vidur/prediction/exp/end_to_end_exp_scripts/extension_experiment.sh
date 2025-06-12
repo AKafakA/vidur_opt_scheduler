@@ -5,8 +5,12 @@ TARGET_HOST='asdwb@d7525-10s10329.wisc.cloudlab.us'
 PREDICTOR_WORKERS=1
 =======
 TARGET_HOST='asdwb@d7525-10s10309.wisc.cloudlab.us'
+<<<<<<< HEAD
 PREDICTOR_WORKERS=16
 >>>>>>> 253e8ef (update the extension scripts for burstgpt/block)
+=======
+PREDICTOR_WORKERS=1
+>>>>>>> a865e30 (fix the name of qwen to qwen2)
 GLOBAL_SCHEDULER_WORKERS=1
 BACKEND_WORKERS=1
 MAX_MODEL_LENGTH=4096
@@ -28,7 +32,7 @@ SCHEDULER_NAME="min_new_request_latency min_lunmnix_load"
 QPS="20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36"
 PROFILING_SAMPLE_RATE=0.0
 USE_FOR_PROFILING_ONLY=false
-NUM_REQUEST=10000
+NUM_REQUEST=100
 KEEP_ALL_METRICS=false
 N_SELECTED="12"
 OUTPUT_DIR_PREFIX="extension"
