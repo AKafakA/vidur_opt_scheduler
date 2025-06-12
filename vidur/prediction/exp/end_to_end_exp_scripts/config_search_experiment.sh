@@ -33,7 +33,7 @@ BATCH_CAP="24 48"
 for model in $MODEL; do
   if [ "$model" = "meta-llama/Llama-2-7b-hf" ]; then
     MODEL_TYPE="llama"
-  elif [ "$model" = "Qwen/Qwen-7B" ]; then
+  elif [ "$model" = "Qwen/Qwen2-7B" ]; then
     MODEL_TYPE="qwen"
   fi
   for dataset_name in $DATASET_NAMES; do

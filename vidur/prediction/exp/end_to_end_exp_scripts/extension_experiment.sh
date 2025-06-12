@@ -2,8 +2,8 @@ START_INDEX=0
 BATCH_CAP=48
 TARGET_HOST='asdwb@d7525-10s10329.wisc.cloudlab.us'
 PREDICTOR_WORKERS=1
-GLOBAL_SCHEDULER_WORKERS=2
-BACKEND_WORKERS=4
+GLOBAL_SCHEDULER_WORKERS=1
+BACKEND_WORKERS=1
 MAX_MODEL_LENGTH=4096
 CHUNK_SIZE=512
 TIMEOUT_IN_SECONDS=1800
@@ -18,10 +18,10 @@ RESTART_VLLM=true
 
 ENABLE_CHUNKED_PREFILL="true"
 
-MODEL="meta-llama/Llama-2-7b-hf Qwen/Qwen2-7B"
-SCHEDULER_NAME="min_new_request_latency round_robin"
+MODEL="Qwen/Qwen2-7B"
+SCHEDULER_NAME="min_new_request_latency"
 #QPS="30 24 18"
-QPS="2"
+QPS="10"
 PROFILING_SAMPLE_RATE=0.0
 USE_FOR_PROFILING_ONLY=false
 NUM_REQUEST=100
@@ -33,15 +33,15 @@ OUTPUT_DIR_PREFIX="extension"
 for model in $MODEL; do
   if [ "$model" = "meta-llama/Llama-2-7b-hf" ]; then
     MODEL_TYPE="llama"
-    DATASET_NAMES="lmsys"
+    DATASET_NAMES="burstgpt"
   elif [ "$model" = "Qwen/Qwen2-7B" ]; then
     MODEL_TYPE="qwen"
-    DATASET_NAMES="burstgpt"
+    DATASET_NAMES="sharegpt"
   fi
   for dataset_name in $DATASET_NAMES; do
     for scheduler in $SCHEDULER_NAME; do
       if [ "$scheduler" = "min_new_request_latency" ]; then
-        USE_LENGTH_ESTIMATION="false"
+        USE_LENGTH_ESTIMATION="true"
       else
         USE_LENGTH_ESTIMATION="false"
       fi

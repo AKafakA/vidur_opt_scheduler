@@ -81,17 +81,17 @@ def plot_dual_timeline_data(experiments_set, latency_ax, gpu_free_ax, gpu_varian
         x = np.arange(len(latencies))
         # ttft = gaussian_filter1d(ttft, sigma=5)
         # ax1.plot(x, ttft, label=label1, color=color1, linewidth=2)
-        latency_ax.scatter(x, latencies, label=label1, color=color1, s=2)
+        latency_ax.scatter(x, latencies, label=label1, color=color1, s=0.1)
         p99_latency = np.percentile(latencies, 99)
-        latency_ax.fill_between(x, latencies, color=color1, alpha=0.001)
+        latency_ax.fill_between(x, latencies, color=color1, alpha=0.1)
 
         latency_ax.set_ylabel("Latency (s)", fontsize=font_size)
-        instance_ax.scatter(x, available_instances, label=label1, color=color1, s=2)
+        instance_ax.scatter(x, available_instances, label=label1, color=color1, s=0.01)
         instance_ax.set_ylabel("Available Instances", fontsize=font_size)
         instance_ax.set_xlabel("Request Index", fontsize=font_size)
 
         num_instance_curve = extract_num_available_instances_plot(available_instances, min_instances=6)
-        instance_ax.plot(x, num_instance_curve, label=label1, color=color1, linewidth=0.8)
+        instance_ax.plot(x, num_instance_curve, label=label1, color=color1, linewidth=0.8, linestyle='--')
 
         gpu_free_ax.plot(x, smoothed_avg_gpu_blocks, label=label1, color=color1, linewidth=2)
         gpu_free_ax.set_ylabel("Avg GPU Blocks", fontsize=font_size)
