@@ -48,14 +48,14 @@ for model in $MODEL; do
                 if [ "$batch_cap" = "24" ]; then
                   CHUNK_SIZE="512"
                   if [ "$scheduler" = "min_new_request_latency" ]; then
-                    QPS="27.7"
+                    QPS="27.2"
                   else
-                    QPS="24.7"
+                    QPS="23.9"
                   fi
                 else
                   CHUNK_SIZE="2048"
                   if [ "$scheduler" = "min_new_request_latency" ]; then
-                    QPS="31.0"
+                    QPS="30.8"
                   else
                     QPS="29.8"
                   fi
