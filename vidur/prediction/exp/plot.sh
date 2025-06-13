@@ -3,7 +3,7 @@ TTFT_SLO=3
 #!/bin/bash
 export PYTHONPATH=.
 python3 experiments_analysis/experiment_plot.py \
-    --experiments-dir experiment_output/data/sharegpt \
+    --experiments-dir experiment_output/data/main/sharegpt \
     --output-dir experiment_output/results/main \
     --ttft-p99-slo $TTFT_SLO \
     --max-qps 36 \
