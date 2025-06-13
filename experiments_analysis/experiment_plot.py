@@ -20,7 +20,7 @@ from scipy.ndimage import gaussian_filter1d
 experiment_name_replacement = {"min new request latency": "Block", "min infass load": "INFaaS++",
                                "request per seconds": "Min QPM",
                                "min lunmnix load": "Lumnix-"}
-scheduler_name_ordered = ['random', 'Round Robin', 'INFaaS++', 'Min QPM', 'Block*', 'Block', "Lumnix-"]
+scheduler_name_ordered = ['Block*', "Lumnix-"]
 scheduler_to_color = {
     'random': 'olive',
     'round robin': 'green',
@@ -349,7 +349,7 @@ def plot_per_qps(experiments_set, output_dir, min_qps=20, max_qps=36, num_of_cdf
                 if key in sorted_keys:
                     sorted_keys.remove(key)
                     ordered_key.append(key)
-            sorted_keys = sorted_keys + ordered_key
+            sorted_keys = scheduler_name_ordered
         for index_name in sorted_keys:
             if index_name not in map_from_name_exp:
                 continue
@@ -493,12 +493,12 @@ def main():
     parser = argparse.ArgumentParser(description='Plot the results of the experiments')
     parser.add_argument("--experiments-dir", type=str, default=""
                                                                "experiment_output"
-                                                               "/sharegpt_qwen/sharegpt")
+                                                               "/data/main/sharegpt")
     parser.add_argument("--output-dir", type=str, default="./experiments_analysis/exp_plots")
     parser.add_argument("--plot-per-qps", type=bool, default=True)
     parser.add_argument("--ttft-p99-slo", type=float, default=3)
-    parser.add_argument("--max-qps", type=int, default=70)
-    parser.add_argument("--min-qps", type=int, default=55)
+    parser.add_argument("--max-qps", type=int, default=36)
+    parser.add_argument("--min-qps", type=int, default=20)
     parser.add_argument("--num-of-cdf-figures", type=int, default=5)
     parser.add_argument("--zoomed", action='store_true',
                         help="If true, the cdf plots will be zoomed out to show slo")
