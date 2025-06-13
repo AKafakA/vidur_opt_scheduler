@@ -129,7 +129,7 @@ def plot_linea_scatter_for_multiple_qps(axes, linear_data, scatter_data, x_label
 
 
 def plot_per_qps(experiments_set, output_dir, min_qps=1, max_qps=36):
-    qps_output_dir = output_dir + "/qps"
+    qps_output_dir = output_dir
     if os.path.exists(qps_output_dir):
         shutil.rmtree(qps_output_dir)
     os.makedirs(qps_output_dir)
