@@ -500,7 +500,7 @@ def main():
     parser.add_argument("--max-qps", type=int, default=70)
     parser.add_argument("--min-qps", type=int, default=55)
     parser.add_argument("--num-of-cdf-figures", type=int, default=5)
-    parser.add_argument("--zoomed", type=bool, default=False,
+    parser.add_argument("--zoomed", action='store_true',
                         help="If true, the cdf plots will be zoomed out to show slo")
     args = parser.parse_args()
     data_dir = os.getcwd() + "/" + args.experiments_dir
