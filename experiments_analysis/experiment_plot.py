@@ -104,7 +104,6 @@ def plot_linear_for_multiple_qps(axes, data, metric_name, sigma=-1,
 
 
 def plot_bar_chart(ax, dataframe, metric_name, column_name, show_value_on_top=True):
-    print(dataframe)
     dataframe = dataframe.sort_values(by=column_name)
     for scheduler, row in dataframe.iterrows():
         capacity = row['capacity']
@@ -136,7 +135,8 @@ def plot_linear_with_different_qps(ax,
                                    x_dim="QPS",
                                    anchor=(2.0, 1.215),
                                    slo=-1,
-                                   legend_fontsize=12):
+                                   legend_fontsize=12,
+                                   zoom_out=False):
     scheduler_list = data_map.keys()
     xdim_per_scheduler = [data_map[scheduler].keys() for scheduler in scheduler_list]
     flattened_x_dims = [float(item) for sublist in xdim_per_scheduler for item in sublist]
@@ -156,38 +156,43 @@ def plot_linear_with_different_qps(ax,
             if intersection.geom_type == 'Point':
                 capacity_indexes.append((scheduler, intersection.x))
             elif intersection.geom_type == 'MultiPoint':
-                # print(intersection.geoms[-1].x)
                 capacity_indexes.append((scheduler, intersection.geoms[-1].x))
 
     if slo > 0 and len(capacity_indexes) > 0:
-        axins = inset_axes(ax, width="60%", height="30%", loc='upper left')
+        if zoom_out:
+            axins = inset_axes(ax, width="60%", height="30%", loc='upper left')
         selected_schedulers = ["Lumnix-", "Block", "Block*"]
         max_intersection = max([capacity_x for scheduler, capacity_x in capacity_indexes
                                 if scheduler in selected_schedulers], default=0)
         min_intersection = min([capacity_x for scheduler, capacity_x in capacity_indexes
                                 if scheduler in selected_schedulers], default=0)
         for i, scheduler in enumerate(selected_schedulers):
+            if scheduler not in data_map:
+                continue
             y_values = list(data_map[scheduler].values())
             x_values = [float(qps) for qps in data_map[scheduler].keys()]
-            axins.plot(x_values, y_values, label=scheduler, color=scheduler_to_color[scheduler])
+            if zoom_out:
+                axins.plot(x_values, y_values, label=scheduler, color=scheduler_to_color[scheduler])
 
-        axins.set_xlim(math.floor(min_intersection) - 0.1,
-                       math.ceil(max_intersection) + 0.1)  # Adjust limits as needed
-        axins.set_ylim(ttft_slo - 2, ttft_slo + 2)  # Adjust limits as needed
-        axins.plot([math.floor(min_intersection) - 0.2, math.ceil(max_intersection) + 0.5], [slo, slo], linewidth=1.1,
-                   ls='--', color='blue')
-        # adjusted_capacity_indexes = [capacity_x[1] for capacity_x in capacity_indexes]
-        # axins.scatter(adjusted_capacity_indexes, [slo] * len(capacity_indexes), marker='8', linewidths=2)
-        axins.scatter([capacity_x[1] for capacity_x in capacity_indexes], [slo] * len(capacity_indexes), marker='x',
-                      linewidths=1.1)
+        if zoom_out:
+            axins.set_xlim(math.floor(min_intersection) - 0.1,
+                           math.ceil(max_intersection) + 0.1)  # Adjust limits as needed
+            axins.set_ylim(ttft_slo - 2, ttft_slo + 2)  # Adjust limits as needed
+            axins.plot([math.floor(min_intersection) - 0.2, math.ceil(max_intersection) + 0.5], [slo, slo], linewidth=1.1,
+                       ls='--', color='blue')
+            # adjusted_capacity_indexes = [capacity_x[1] for capacity_x in capacity_indexes]
+            # axins.scatter(adjusted_capacity_indexes, [slo] * len(capacity_indexes), marker='8', linewidths=2)
+            axins.scatter([capacity_x[1] for capacity_x in capacity_indexes], [slo] * len(capacity_indexes), marker='x',
+                          linewidths=1.1)
 
-        mark_inset(ax, axins, loc1=1, loc2=3, fc="none", ec="none", ls='--', linewidth=0.1)
-        axins.get_xaxis().set_visible(False)
-        axins.set_xticks([])
-        axins.set_yticks([])
+            # mark_inset(ax, axins, loc1=1, loc2=3, fc="none", ec="none", ls='--', linewidth=0.1)
+            mark_inset(ax, axins, loc1=1, loc2=3, fc="none", ec="0.5", ls='--', linewidth=0.5)
+            axins.get_xaxis().set_visible(False)
+            axins.set_xticks([])
+            axins.set_yticks([])
 
         ax.plot([min_qps, max_qps], [ttft_slo, ttft_slo], linewidth=1.5, ls='--', color='blue')
-        ax.text(max_qps - 2, ttft_slo + 2.8, f"SLO", fontsize=12)
+        ax.text(max_qps - 2, ttft_slo * 1.1, f"SLO", fontsize=12)
 
     ax.set_ylabel(metric_name)
     if keep_x_ticks_labels:
@@ -256,17 +261,10 @@ def plot_latency_cdf_per_qps(axes, data, output_dir, metric_name, x_dim_appendix
                              max_x_range_for_zoom=50000, enable_legend_at_middle=False,
                              enable_x_at_middle=False, enable_y_label=True, enable_title_label=False,
                              bbox_to_anchor=(3.0, 1.315)):
-    output_dir = output_dir + "/cdf_plots"
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-
     enable_label = True
     mid_point = len(axes) // 2
     i = 0
     for qps in data.keys():
-        output_dir_per_qps = output_dir + f"/{qps}"
-        if not os.path.exists(output_dir_per_qps):
-            os.makedirs(output_dir_per_qps)
         if qps not in axes.keys():
             continue
         ax = axes.get(qps)
@@ -282,8 +280,9 @@ def plot_latency_cdf_per_qps(axes, data, output_dir, metric_name, x_dim_appendix
             enable_label = False
 
 
-def plot_per_qps(experiments_set, output_dir, min_qps=20, max_qps=36, num_selected_qps_per_figures=4):
-    qps_output_dir = output_dir + "/qps"
+def plot_per_qps(experiments_set, output_dir, min_qps=20, max_qps=36, num_of_cdf_figures=4,
+                 zoom_out=False):
+    qps_output_dir = output_dir
     if os.path.exists(qps_output_dir):
         shutil.rmtree(qps_output_dir)
     os.makedirs(qps_output_dir)
@@ -400,11 +399,12 @@ def plot_per_qps(experiments_set, output_dir, min_qps=20, max_qps=36, num_select
     plot_linear_with_different_qps(axs[0, 0], average_e2e, "Average Request Latency (s)")
     plot_linear_with_different_qps(axs[1, 0], p99_e2e, "Request Latency P99 (s)")
 
-    plot_linear_with_different_qps(axs[0, 1], average_ttft, "Average TTFT (s)", keep_legend=True,
-                                   keep_x_ticks_labels=True, x_dim="QPS", anchor=(2.0, 1.28))
+    plot_linear_with_different_qps(axs[0, 1], average_ttft, "Average TTFT (s)",
+                                   keep_legend=True, anchor=(2.0, 1.28))
 
     capacity_df = plot_linear_with_different_qps(axs[1, 1], p99_ttft, "TTFT P99 (s)",
-                                                 x_dim="QPS", slo=ttft_slo)
+                                                 x_dim="QPS", slo=ttft_slo, keep_x_ticks_labels=True,
+                                                 zoom_out=zoom_out)
 
     plot_linear_with_different_qps(axs[0, 2], requests_throughput, "Request Throughput (r/s)")
 
@@ -415,7 +415,9 @@ def plot_per_qps(experiments_set, output_dir, min_qps=20, max_qps=36, num_select
     fig.set_size_inches(14, 6)
     fig.savefig(f"{qps_output_dir}/qps.png", bbox_inches='tight')
 
-    selected_qps_per_figures = [qps for qps in qps_set if qps % num_selected_qps_per_figures == 0]
+    # selected_qps_per_figures = [qps for qps in qps_set if qps % num_selected_qps_per_figures == 0]
+    steps = (max_qps - min_qps) // (num_of_cdf_figures - 1)
+    selected_qps_per_figures = [qps for qps in range(min_qps, max_qps + 1, steps)]
 
     fig, axs = plt.subplots(2, len(selected_qps_per_figures))
     axes_dict_for_ttft = {}
@@ -489,12 +491,17 @@ def plot_per_qps(experiments_set, output_dir, min_qps=20, max_qps=36, num_select
 
 def main():
     parser = argparse.ArgumentParser(description='Plot the results of the experiments')
-    parser.add_argument("--experiments-dir", type=str, default="experiments_analysis/experiment_output/sharegpt")
+    parser.add_argument("--experiments-dir", type=str, default=""
+                                                               "experiment_output"
+                                                               "/sharegpt_qwen/sharegpt")
     parser.add_argument("--output-dir", type=str, default="./experiments_analysis/exp_plots")
     parser.add_argument("--plot-per-qps", type=bool, default=True)
-    parser.add_argument("--plot-per-scheduler", type=bool, default=True)
     parser.add_argument("--ttft-p99-slo", type=float, default=3)
-    # parser.add_argument("--output-dir", type=str, required=True)
+    parser.add_argument("--max-qps", type=int, default=70)
+    parser.add_argument("--min-qps", type=int, default=55)
+    parser.add_argument("--num-of-cdf-figures", type=int, default=5)
+    parser.add_argument("--zoomed", type=bool, default=False,
+                        help="If true, the cdf plots will be zoomed out to show slo")
     args = parser.parse_args()
     data_dir = os.getcwd() + "/" + args.experiments_dir
 
@@ -531,7 +538,8 @@ def main():
                         record['num_preempted'] = b['num_preempted']
                         record['scheduling_overhead'] = b['scheduling_overhead']
     if args.plot_per_qps:
-        plot_per_qps(experiments_set, args.output_dir)
+        plot_per_qps(experiments_set, args.output_dir, min_qps=args.min_qps, max_qps=args.max_qps,
+                     num_of_cdf_figures=args.num_of_cdf_figures, zoom_out=args.zoomed)
 
     # if args.plot_per_scheduler:
     #     plot_per_scheduler(experiments_set, args.output_dir)
