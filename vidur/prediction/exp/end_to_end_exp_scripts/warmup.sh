@@ -19,6 +19,8 @@ RESTART_VLLM=true
 ENABLE_CHUNKED_PREFILL="true"
 
 MODEL="Qwen/Qwen2-7B"
+
+# All this parameter is useless
 SCHEDULER_NAME="min_new_request_latency"
 #QPS="20 24 28 32 36"
 QPS="20"
@@ -27,10 +29,10 @@ USE_FOR_PROFILING_ONLY=False
 NUM_REQUEST=10000
 KEEP_ALL_METRICS=false
 N_SELECTED="12"
-OUTPUT_DIR_PREFIX="simple"
+OUTPUT_DIR_PREFIX="warmup"
 DATASET_NAMES="sharegpt"
 
-
+parallel-ssh -t 0 -h vidur/prediction/config/hosts "rm -rf .cache/huggingface/hub/models*"
 for model in $MODEL; do
   if [ "$model" = "meta-llama/Llama-2-7b-hf" ]; then
     MODEL_TYPE="llama"
