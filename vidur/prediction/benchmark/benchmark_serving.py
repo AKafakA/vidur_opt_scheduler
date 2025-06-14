@@ -527,6 +527,12 @@ async def benchmark(
     sampled_responses = []
     sampled_responses_length = []
 
+    for prompt, output in queries:
+        if 'generated_text' in output:
+            sampled_prompts.append(prompt)
+            sampled_responses.append(output['generated_text'])
+            sampled_responses_length = get_tok_id_lens(tokenizer, sampled_responses)
+
     m.fill_missing_metrics()
 
     throughput, actual_qps, msg = calculate_throughput(queries,
