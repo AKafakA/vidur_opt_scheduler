@@ -100,24 +100,6 @@ class GenerationBackend(str, Enum):
     llumnix = "llumnix"
 
 
-def write_single_res(
-        request_id: int,
-        output_file: str,
-        prompt: str,
-        response: str):
-    data = {
-        'id': request_id,
-        'conversations': [{'from': 'human', 'value': prompt}, {'from': 'model', 'value': response}]
-    }
-    if output_file.endswith('.jsonl'):
-        with jsonlines.open(output_file, 'a+') as writer:
-            writer.write(data)
-    elif output_file.endswith('.json'):
-        with open(output_file, 'a+') as writer:
-            json.dump(data, writer)
-            writer.write('\n')
-
-
 async def query_model_block(prompt, verbose, ip_ports, timeout_in_seconds):
     prompt, prompt_len, max_response_len, estimated_response_len, request_id = prompt
     global server_num_requests
@@ -482,6 +464,7 @@ async def benchmark(
         burstiness: float,
         fail_on_response_failure: bool,
         timeout_in_seconds,
+        generate_new_dataset: bool = False,
 ):
     if backend == GenerationBackend.vLLM:
         query_model = query_model_vllm
@@ -528,11 +511,12 @@ async def benchmark(
     sampled_responses = []
     sampled_responses_length = []
 
-    for prompt, output in queries:
-        if 'generated_text' in output:
-            sampled_prompts.append(prompt)
-            sampled_responses.append(output['generated_text'])
-            sampled_responses_length = get_tok_id_lens(tokenizer, sampled_responses)
+    if generate_new_dataset:
+        for prompt, output in queries:
+            if 'generated_text' in output:
+                sampled_prompts.append(prompt)
+                sampled_responses.append(output['generated_text'])
+                sampled_responses_length = get_tok_id_lens(tokenizer, sampled_responses)
 
     m.fill_missing_metrics()
 
@@ -835,7 +819,8 @@ def main():
         args.qps,
         args.burstiness,
         args.fail_on_response_failure,
-        args.timeout_in_seconds
+        args.timeout_in_seconds,
+        generate_new_dataset=args.generate_dataset_with_real_response or args.generate_csv_files
     )
     )
     print(f'Experiment finished with throughput={throughput:.2f} tokens/s, at time={time.time() - exp_start_time:.2f} s'
