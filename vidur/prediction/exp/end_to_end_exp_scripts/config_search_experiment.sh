@@ -18,14 +18,15 @@ RESTART_VLLM=true
 ENABLE_CHUNKED_PREFILL="true"
 MODEL="meta-llama/Llama-2-7b-hf"
 DATASET_NAMES="sharegpt"
-SCHEDULER_NAME="min_new_request_latency min_lunmnix_load"
+SCHEDULER_NAME="min_new_request_latency"
 PROFILING_SAMPLE_RATE=0.000
 USE_FOR_PROFILING_ONLY=false
 NUM_REQUEST=10000
 KEEP_ALL_METRICS=false
 N_SELECTED="12"
 OUTPUT_DIR_PREFIX="config_search"
-BATCH_CAP="24 48"
+BATCH_CAP="48 24"
+QPS="20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36"
 
 for model in $MODEL; do
   if [ "$model" = "meta-llama/Llama-2-7b-hf" ]; then
@@ -36,7 +37,7 @@ for model in $MODEL; do
   for dataset_name in $DATASET_NAMES; do
     for scheduler in $SCHEDULER_NAME; do
       if [ "$scheduler" = "min_new_request_latency" ]; then
-        USE_LENGTH_ESTIMATION="true"
+        USE_LENGTH_ESTIMATION="true false"
       else
         USE_LENGTH_ESTIMATION="false"
       fi
@@ -48,19 +49,9 @@ for model in $MODEL; do
                 if [ "$batch_cap" = "24" ]; then
                   OUTPUT_DIR_PREFIX="config_search/batch"
                   CHUNK_SIZE="512"
-                  if [ "$scheduler" = "min_new_request_latency" ]; then
-                    QPS="20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 26.7 26.8 26.9 27.1 27.2 27.3 27.4 27.5 27.6 27.7"
-                  else
-                    QPS="20 21 22 23 23.4 23.5 23.6 23.7 23.8 23.9 24 24.1 24.2 24.3 24.4 25 26 27 28 29 30 31 32 33 34 35 36"
-                  fi
                 else
                   CHUNK_SIZE="2048"
                   OUTPUT_DIR_PREFIX="config_search/chunkSize"
-                  if [ "$scheduler" = "min_new_request_latency" ]; then
-                    QPS="20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 30.3 30.4 30.5 30.6 30.7 30.8 30.9 31.1 31.2 31.3"
-                  else
-                    QPS="20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 29.3 29.4 29.5 29.6 29.7 29.8 29.9 30.1 30.2 30.3"
-                  fi
                 fi
                 for chunk in $CHUNK_SIZE; do
                   for qps in $QPS; do

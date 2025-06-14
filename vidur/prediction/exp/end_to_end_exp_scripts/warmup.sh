@@ -18,7 +18,9 @@ RESTART_VLLM=true
 
 ENABLE_CHUNKED_PREFILL="true"
 
-MODEL="Qwen/Qwen2-7B"
+# Change the model you want to run the experiment on later
+#MODEL="meta-llama/Llama-2-7b-hf"
+MODEL=$1
 
 # All this parameter is useless
 SCHEDULER_NAME="min_new_request_latency"
@@ -69,6 +71,4 @@ for model in $MODEL; do
     done
   done
 done
-
-#mkdir -p ~/vidur_opt_scheduler/single_node_experiment_output/
-#scp -r $TARGET_HOST:~/vidur_opt_scheduler/experiment_output/* ~/vidur_opt_scheduler/single_node_experiment_output/.
+sleep 1200
