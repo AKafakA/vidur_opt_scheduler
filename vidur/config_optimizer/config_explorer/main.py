@@ -32,8 +32,8 @@ def get_args():
     parser.add_argument("--output-dir", type=str, required=True)
     parser.add_argument("--cache-dir", type=str, default="./cache_tmpfs")
     parser.add_argument("--config-path", type=str, required=True)
-    parser.add_argument("--scheduling-delay-slo-value", type=float, default=5.0)
-    parser.add_argument("--scheduling-delay-slo-quantile", type=float, default=0.99)
+    parser.add_argument("--ttft-slo-value", type=float, default=3.0)
+    parser.add_argument("--ttft-slo-quantile", type=float, default=0.99)
     parser.add_argument("--max-iterations", type=int, default=20)
     parser.add_argument(
         "--time-limit", type=int, default=30, help="Time limit in minutes"
@@ -57,8 +57,8 @@ if __name__ == "__main__":
     config = yaml.safe_load(open(os.getcwd() + "/" + args.config_path))
 
     assert (
-        args.scheduling_delay_slo_quantile >= 0
-        and args.scheduling_delay_slo_quantile <= 1
+        args.ttft_slo_quantile >= 0
+        and args.ttft_slo_quantile <= 1
     )
 
     os.makedirs(os.getcwd() + "/" + args.output_dir, exist_ok=True)

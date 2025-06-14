@@ -34,7 +34,8 @@ load_balancers:
     target_metric: "min_new_request_latency"
 
 schedulers:
-  - scheduler: vllm
+  - scheduler: sarathi
+    chunk_size: 512
 
 traces:
   - name: sharegpt

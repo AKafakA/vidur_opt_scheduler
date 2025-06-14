@@ -39,7 +39,8 @@ load_balancers:
     type: lodt
 
 schedulers:
-  - scheduler: vllm
+  - scheduler: sarathi
+    chunk_size: 512
 
 traces:
   - name: sharegpt

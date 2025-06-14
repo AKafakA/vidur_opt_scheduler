@@ -58,31 +58,31 @@ class CapacitySearch:
         return command
 
     def _get_result_file(self, run_dir: str) -> str:
-        scheduling_delay_file = glob.glob(
-            f"{run_dir}/*/plots/request_scheduling_delay.csv"
+        ttft_file = glob.glob(
+            f"{run_dir}/*/plots/prefill_e2e_time.csv"
         )
-        if len(scheduling_delay_file) == 0:
+        if len(ttft_file) == 0:
             return
 
-        return scheduling_delay_file[0]
+        return ttft_file[0]
 
     def _is_under_sla(
         self,
         result_file: str,
         simulator_config: SimulationConfig,
     ) -> tuple[bool, float]:
-        scheduling_delay_df = pd.read_csv(result_file)
-        scheduling_delay = scheduling_delay_df["request_scheduling_delay"].quantile(
-            self.args.scheduling_delay_slo_quantile
+        ttft_df = pd.read_csv(result_file)
+        scheduling_delay = ttft_df["prefill_e2e_time"].quantile(
+            self.args.ttft_slo_quantile
         )
-        is_under_scheduling_delay_sla = (
-                scheduling_delay <= self.args.scheduling_delay_slo_value
+        is_under_ttft_delay_sla = (
+                scheduling_delay <= self.args.ttft_slo_value
         )
 
         logger.info(
-            f"{simulator_config.to_human_readable_name()} - Scheduling delay (P{self.args.scheduling_delay_slo_quantile}): {scheduling_delay}",
+            f"{simulator_config.to_human_readable_name()} - TTFT delay (P{self.args.scheduling_delay_slo_quantile}): {scheduling_delay}",
         )
-        return is_under_scheduling_delay_sla, scheduling_delay
+        return is_under_ttft_delay_sla, scheduling_delay
 
     def is_under_sla(self, qps: float) -> tuple[bool, float]:
         simulator_config = SimulationConfig(
@@ -143,27 +143,27 @@ class CapacitySearch:
 
             qps = (left + right) / 2
 
-            is_under_sla, scheduling_delay = self.is_under_sla(qps)
+            is_under_sla, ttft = self.is_under_sla(qps)
 
-            if scheduling_delay is None:
+            if ttft is None:
                 break
 
             if is_under_sla:
                 max_qps_under_sla = qps
 
-                if scheduling_delay < self.args.scheduling_delay_slo_value / 8:
+                if ttft < self.args.scheduling_delay_slo_value / 8:
                     # if the scheduling delay is very low, we can increase the QPS more aggressively
                     right = min(right * 4, min_qps_over_sla)
-                elif scheduling_delay < self.args.scheduling_delay_slo_value / 4:
+                elif ttft < self.args.scheduling_delay_slo_value / 4:
                     right = min(right * 2, min_qps_over_sla)
                 elif qps > 0.8 * right:
                     right = min(right * 2, min_qps_over_sla)
 
                 left = qps
             else:
-                if scheduling_delay > 500:
+                if ttft > 500:
                     right = qps / 2
-                elif scheduling_delay > 1000:
+                elif ttft > 1000:
                     right = qps / 4
                 else:
                     right = qps
