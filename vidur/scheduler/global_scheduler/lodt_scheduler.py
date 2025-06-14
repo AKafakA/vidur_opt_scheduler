@@ -4,8 +4,8 @@ from vidur.entities import Request
 from vidur.scheduler.global_scheduler.base_global_scheduler import BaseGlobalScheduler
 
 
-def caculate_load_scores(num_requests, num_free_blocks):
-    return (num_requests / num_free_blocks) * (-1)
+def caculate_load_scores(num_requests, num_free_blocks, num_prompted_tokens=0):
+    return ((num_free_blocks - num_prompted_tokens) / num_requests) * (-1)
 
 
 class LODTScheduler(BaseGlobalScheduler):
@@ -24,7 +24,8 @@ class LODTScheduler(BaseGlobalScheduler):
         # this is used to find the replica with the least outstanding requests
         pending_requests_map = {
             replica_scheduler.replica_id: caculate_load_scores(replica_scheduler.num_pending_requests,
-                                                               replica_scheduler.num_free_blocks)
+                                                               replica_scheduler.num_free_blocks,
+                                                               replica_scheduler.num_prompted_tokens)
             for replica_scheduler in self._replica_schedulers.values()
         }
 

@@ -1,4 +1,7 @@
+import random
 from typing import List, Tuple
+
+import numpy as np
 
 from vidur.config import LengthAwareOptimalSchedulerConfig
 from vidur.entities import Request
@@ -22,6 +25,8 @@ class LengthAwareOptimalScheduler(BaseGlobalScheduler):
             self._config.cluster_config.global_scheduler_config.request_timeline_predictor_config.get_type()
         )
         self._request_timeline_predictor.attach_execution_time_predictor(self._execution_time_predictor)
+        self._length_prediction_error = self._config.cluster_config.global_scheduler_config.length_prediction_error
+        self._metric_prediction_error = self._config.cluster_config.global_scheduler_config.metrics_prediction_error
 
     def schedule(self) -> List[Tuple[int, Request]]:
         self.sort_requests()
@@ -31,12 +36,27 @@ class LengthAwareOptimalScheduler(BaseGlobalScheduler):
         # this is used to find the replica with the least outstanding requests
         while self._request_queue:
             request = self._request_queue.pop(0)
+
+            if self._length_prediction_error > 0:
+                noise = ((random.uniform(1 - self._length_prediction_error, 1 + self._length_prediction_error))
+                         * request.num_decode_tokens)
+                length_noise = request.num_decode_tokens + noise
+                request = Request(
+                    request.arrived_at,
+                    request.num_prefill_tokens,
+                    request.num_decode_tokens + int(length_noise),
+                )
             latency_map = {
                 replica_scheduler.replica_id: get_target_metric_value(self._target_metric,
-                                                                      replica_scheduler, request,
+                                                                      replica_scheduler,
+                                                                      request,
                                                                       self._request_timeline_predictor)
                 for replica_scheduler in self._replica_schedulers.values()
             }
+            if self._metric_prediction_error > 0:
+                for replica_id, latency in latency_map.items():
+                    noise = random.uniform(1 - self._metric_prediction_error, 1 + self._metric_prediction_error)
+                    latency_map[replica_id] = latency * noise
             if self._target_metric.name.startswith("MAX"):
                 replica_id = max(latency_map.items(), key=lambda x: x[1])[0]
             else:

@@ -1,0 +1,58 @@
+clusters:
+  - device: a30
+    num_gpus: 12
+    gpus_per_node: 1
+
+load_balancers:
+  - name: optimal
+    type: opt
+    target_metric: "min_new_request_latency"
+  - name: optimal
+    type: opt
+    target_metric: "min_new_request_latency"
+    length_prediction_error: 0.1
+    metrics_prediction_error: 0.0
+  - name: optimal
+    type: opt
+    target_metric: "min_new_request_latency"
+    length_prediction_error: 0.2
+    metrics_prediction_error: 0.0
+  - name: optimal
+    type: opt
+    target_metric: "min_new_request_latency"
+    length_prediction_error: 0.3
+    metrics_prediction_error: 0.0
+  - name: optimal
+    type: opt
+    target_metric: "min_new_request_latency"
+    length_prediction_error: 0.4
+    metrics_prediction_error: 0.0
+  - name: optimal
+    type: opt
+    target_metric: "min_new_request_latency"
+    length_prediction_error: 0.5
+    metrics_prediction_error: 0.0
+  - name: optimal
+    type: opt
+    target_metric: "min_new_request_latency"
+  - name: lumnix
+    type: lodt
+
+schedulers:
+  - scheduler: vllm
+
+traces:
+  - name: sharegpt
+    trace_file: "./data/processed_traces/sharegpt-val-10k-predicted-len.csv"
+    max_seq_len: 4096
+    num_requests: 10000
+    start_qps: 10.00
+    generate_type: "synthetic"
+
+batch_sizes: [48]
+tp_dimensions: [1]
+pp_dimensions: [1]
+
+models:
+  - name: llama-2-7b-hf
+    identifier: meta-llama/Llama-2-7b-hf

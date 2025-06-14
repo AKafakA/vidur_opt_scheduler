@@ -9,11 +9,13 @@ from typing import List, Optional
 class LoadBalancerConfig:
     name: str
     type: str
-    target_metric: str = None
+    target_metric: str = None,
+    length_prediction_error: float = 0.0,
+    metrics_prediction_error: float = 0.0,
 
     def get_key(self):
         if self.type == 'opt':
-            return f"{self.name}_{self.target_metric}"
+            return f"{self.name}_{self.target_metric}_{self.length_prediction_error}_{self.metrics_prediction_error}"
         return self.name
 
     def to_config_dict(self):
@@ -22,6 +24,8 @@ class LoadBalancerConfig:
         }
         if self.type == 'opt':
             config_dict["length_aware_optimal_scheduler_config_target_metric"] = self.target_metric
+            config_dict["length_aware_optimal_scheduler_config_length_prediction_error"] = self.length_prediction_error
+            config_dict["length_aware_optimal_scheduler_config_metrics_prediction_error"] = self.metrics_prediction_error
         return config_dict
 
 

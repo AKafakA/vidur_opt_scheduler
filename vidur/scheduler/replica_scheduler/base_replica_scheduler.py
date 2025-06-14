@@ -71,7 +71,6 @@ class BaseReplicaScheduler(ABC):
             for stage_id in range(num_stages)
         }
 
-
     @property
     def num_pending_requests(self) -> int:
         return len(self._request_queue)
@@ -104,6 +103,11 @@ class BaseReplicaScheduler(ABC):
     @property
     def memory_usage_percent(self) -> float:
         return (self._num_allocated_blocks * 100) / self._num_blocks
+
+    @property
+    def num_blocks_to_prompt(self) -> int:
+        return (sum(request.num_prefill_tokens for request in self._request_queue if request.scheduled_at == 0) //
+                self._config.block_size)
 
     def is_empty(self) -> bool:
         return (

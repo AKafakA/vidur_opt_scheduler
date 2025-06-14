@@ -544,6 +544,20 @@ class LengthAwareOptimalSchedulerConfig(BaseGlobalSchedulerConfig):
         metadata={"help": "Request timeline predictor config."},
     )
 
+    length_prediction_error: float = field(
+        default=0.0,
+        metadata={
+            "help": "Mocked length prediction error for Length Aware Optimal Scheduler."
+        },
+    )
+
+    metrics_prediction_error: float = field(
+        default=0.0,
+        metadata={
+            "help": "Mocked metrics prediction error for Length Aware Optimal Scheduler."
+        },
+    )
+
     @staticmethod
     def get_type():
         return GlobalSchedulerType.OPT

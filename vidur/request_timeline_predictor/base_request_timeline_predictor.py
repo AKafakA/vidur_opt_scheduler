@@ -40,7 +40,7 @@ def get_target_metric_value(target_metric: TargetMetric,
                             replica_scheduler: BaseReplicaScheduler,
                             request: Request,
                             request_timeline_predictor: BaseRequestTimelinePredictor):
-    if target_metric == TargetMetric.MIN_LATENCY:
+    if target_metric == TargetMetric.MIN_AVG_LATENCY:
         return request_timeline_predictor.predict_average_latency(replica_scheduler, request)
     elif target_metric == TargetMetric.MIN_NEW_REQUEST_LATENCY:
         return request_timeline_predictor.predict_request_makespan(replica_scheduler, request)
