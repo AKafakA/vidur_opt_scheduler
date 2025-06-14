@@ -20,18 +20,15 @@ from scipy.ndimage import gaussian_filter1d
 experiment_name_replacement = {"min new request latency": "Block", "min infass load": "INFaaS++",
                                "request per seconds": "Min QPM",
                                "min lunmnix load": "Lumnix-"}
-scheduler_name_ordered = ['Block*', "Lumnix-"]
 scheduler_to_color = {
     'random': 'olive',
     'round robin': 'green',
-    'INFaaS++': 'orange',
     'Min QPM': 'purple',
+    'INFaaS++': 'orange',
+    'Lumnix-': 'skyblue',
     'Block*': 'black',
     'Block': 'red',
-    'Lumnix-': 'skyblue',
 }
-
-ttft_slo = 10  # default value for ttft p99 slo
 
 
 def directory_name_parser(directory_name):
@@ -160,7 +157,7 @@ def plot_linear_with_different_qps(ax,
 
     if slo > 0 and len(capacity_indexes) > 0:
         if zoom_out:
-            axins = inset_axes(ax, width="60%", height="30%", loc='upper left')
+            axins = inset_axes(ax, width="60%", height="40%", loc='upper left')
         selected_schedulers = ["Lumnix-", "Block", "Block*"]
         max_intersection = max([capacity_x for scheduler, capacity_x in capacity_indexes
                                 if scheduler in selected_schedulers], default=0)
@@ -280,8 +277,8 @@ def plot_latency_cdf_per_qps(axes, data, output_dir, metric_name, x_dim_appendix
             enable_label = False
 
 
-def plot_per_qps(experiments_set, output_dir, min_qps=20, max_qps=36, num_of_cdf_figures=4,
-                 zoom_out=False):
+def plot_per_qps(experiments_set, output_dir, min_qps=20, max_qps=36, num_of_cdf_figures=4, zoom_out=False,
+                 scheduler_name_ordered=None):
     qps_output_dir = output_dir
     if os.path.exists(qps_output_dir):
         shutil.rmtree(qps_output_dir)
@@ -502,6 +499,8 @@ def main():
     parser.add_argument("--num-of-cdf-figures", type=int, default=5)
     parser.add_argument("--zoomed", action='store_true',
                         help="If true, the cdf plots will be zoomed out to show slo")
+    parser.add_argument("--plot-selected-scheduler-only", action='store_true')
+    parser.add_argument("--selected-schedulers", type=str, default="Block, Lumnix-, Block*")
     args = parser.parse_args()
     data_dir = os.getcwd() + "/" + args.experiments_dir
 
@@ -537,9 +536,15 @@ def main():
                         record['var_gpu_blocks'] = b['var_gpu_blocks']
                         record['num_preempted'] = b['num_preempted']
                         record['scheduling_overhead'] = b['scheduling_overhead']
+    if args.plot_selected_scheduler_only:
+        selected_schedulers = args.selected_schedulers.split(",")
+        selected_schedulers = [scheduler.strip() for scheduler in selected_schedulers]
+    else:
+        selected_schedulers = list(scheduler_to_color.keys())
     if args.plot_per_qps:
         plot_per_qps(experiments_set, args.output_dir, min_qps=args.min_qps, max_qps=args.max_qps,
-                     num_of_cdf_figures=args.num_of_cdf_figures, zoom_out=args.zoomed)
+                     num_of_cdf_figures=args.num_of_cdf_figures, zoom_out=args.zoomed,
+                     scheduler_name_ordered=selected_schedulers)
 
     # if args.plot_per_scheduler:
     #     plot_per_scheduler(experiments_set, args.output_dir)
