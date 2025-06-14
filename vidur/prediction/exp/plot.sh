@@ -9,7 +9,8 @@ python3 experiments_analysis/experiment_plot.py \
     --max-qps 36 \
     --min-qps 20 \
     --num-of-cdf-figures 5 \
-    --zoomed
+    --zoom-for-slo \
+
 
 python3 experiments_analysis/prediction_plot.py \
     --experiments-dir experiment_output/data/prediction/sharegpt \
@@ -29,6 +30,22 @@ python3 experiments_analysis/experiment_plot.py \
     --ttft-p99-slo $TTFT_SLO \
     --max-qps 70 \
     --min-qps 55 \
+    --num-of-cdf-figures 5 \
+
+python3 experiments_analysis/experiment_plot.py \
+    --experiments-dir experiment_output/data/config_search/batch/sharegpt \
+    --output-dir experiment_output/results/batch_24 \
+    --ttft-p99-slo $TTFT_SLO \
+    --max-qps 36 \
+    --min-qps 20 \
+    --num-of-cdf-figures 5 \
+
+python3 experiments_analysis/experiment_plot.py \
+    --experiments-dir experiment_output/data/config_search/chunkSize/sharegpt \
+    --output-dir experiment_output/results/chunkSize \
+    --ttft-p99-slo $TTFT_SLO \
+    --max-qps 36 \
+    --min-qps 20 \
     --num-of-cdf-figures 5 \
 
 python3 experiments_analysis/auto_provision_plot.py \
