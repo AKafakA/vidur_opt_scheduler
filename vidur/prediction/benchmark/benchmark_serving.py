@@ -515,7 +515,7 @@ async def benchmark(
             if 'generated_text' in output:
                 sampled_prompts.append(prompt)
                 sampled_responses.append(output['generated_text'])
-                sampled_responses_length = get_tok_id_lens(tokenizer, sampled_responses)
+        sampled_responses_length = get_tok_id_lens(tokenizer, sampled_responses)
 
     m.fill_missing_metrics()
 
