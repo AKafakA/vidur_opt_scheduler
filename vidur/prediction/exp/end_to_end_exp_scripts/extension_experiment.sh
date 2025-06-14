@@ -42,6 +42,15 @@ for model in $MODEL; do
   fi
   for dataset_name in $DATASET_NAMES; do
     for scheduler in $SCHEDULER_NAME; do
+      if [ "$scheduler" = "min_new_request_latency" ]; then
+        # use for qwen-2-7b and sharegpt
+        #  test block* from 20 to 36 and block*/lunmnix_load from 20 to 36
+        USE_LENGTH_ESTIMATION="true false"
+      else
+        # use for llama-2-7b and burstgpt
+        #  test lumnix_load from 20 to 36 excluding tested qps as block is unavailable without training data
+        USE_LENGTH_ESTIMATION="false"
+      fi
       #  use for qwen-2-7b and sharegpt
       #  test block from 55 to 80 and block*/lunmnix_load from 71 to 80
       for enable_chunked_prefill in $ENABLE_CHUNKED_PREFILL; do
