@@ -16,6 +16,8 @@ import numpy as np
 import shutil
 import pandas as pd
 from scipy.ndimage import gaussian_filter1d
+import warnings
+warnings.simplefilter("ignore", category=Warning)
 
 experiment_name_replacement = {"min new request latency": "Block", "min infass load": "INFaaS++",
                                "request per seconds": "Min QPM",
@@ -67,6 +69,7 @@ def plot_linear_for_multiple_qps(axes, data, metric_name, sigma=-1,
             continue
         ax = axes.get(qps)
         qps_data = data[qps]
+        print(f"Plotting linear figures for {metric_name} at QPS {qps}")
         for key, value in qps_data.items():
             # smooth by guassian 1d
             if 0 < max_num_samples < len(value):
@@ -134,6 +137,7 @@ def plot_linear_with_different_qps(ax,
                                    slo=-1,
                                    legend_fontsize=12,
                                    zoom_out=False):
+    print(f"Plotting QPS figures {metric_name} with slo={slo} and zoom_out={zoom_out}")
     scheduler_list = data_map.keys()
     xdim_per_scheduler = [data_map[scheduler].keys() for scheduler in scheduler_list]
     flattened_x_dims = [float(item) for sublist in xdim_per_scheduler for item in sublist]
@@ -175,7 +179,8 @@ def plot_linear_with_different_qps(ax,
             axins.set_xlim(math.floor(min_intersection) - 0.1,
                            math.ceil(max_intersection) + 0.1)  # Adjust limits as needed
             axins.set_ylim(ttft_slo - 2, ttft_slo + 2)  # Adjust limits as needed
-            axins.plot([math.floor(min_intersection) - 0.2, math.ceil(max_intersection) + 0.5], [slo, slo], linewidth=1.1,
+            axins.plot([math.floor(min_intersection) - 0.2, math.ceil(max_intersection) + 0.5], [slo, slo],
+                       linewidth=1.1,
                        ls='--', color='blue')
             # adjusted_capacity_indexes = [capacity_x[1] for capacity_x in capacity_indexes]
             # axins.scatter(adjusted_capacity_indexes, [slo] * len(capacity_indexes), marker='8', linewidths=2)
@@ -206,58 +211,48 @@ def plot_linear_with_different_qps(ax,
     return None
 
 
-def plot_single_cdf(ax, data, qps, metric_name, x_dim_appendix="", y_dim_appendix="", zoom_out=False,
-                    max_x_range_for_zoom=50000, enable_legend=False, enable_title_label=False,
+def plot_single_cdf(ax, data, qps, metric_name, x_dim_appendix="", y_dim_appendix="",
+                    zoom_out_for_single_cdf=False,
+                    enable_legend=False, enable_title_label=False,
                     enable_x_label=False, enable_y_label=False,
                     bbox_to_anchor=(3.0, 1.315),
                     title_fontsize=14):
-    if zoom_out:
-        fig, ax = plt.subplots(1, 1)
-        axins = inset_axes(plt.gca(), width="60%", height="60%", loc='lower right')
+    print(f"Plotting CDF for QPS {qps} with metrics={metric_name} and zoom_out={zoom_out_for_single_cdf}")
+    for key, value in data.items():
+        ax.ecdf(value, label=key, color=scheduler_to_color[key])
+    if enable_x_label:
+        ax.set_xlabel(x_dim_appendix, fontsize=title_fontsize, loc='center')
+    if enable_y_label:
+        ax.set_ylabel(metric_name, fontsize=title_fontsize)
+    if enable_title_label:
+        ax.set_title("QPS " + str(qps), fontsize=11)
+    if enable_legend:
+        ax.legend(fancybox=False, shadow=False, ncol=len(data.keys()), fontsize=title_fontsize,
+                  loc='upper right', bbox_to_anchor=bbox_to_anchor)
+    if zoom_out_for_single_cdf:
+        axins = inset_axes(ax, width="30%", height="30%", loc='lower right')
         for key, value in data.items():
-            ax.ecdf(value, label=key)
-            axins.ecdf(value, label=key)
-        axins.set_xlim(0, max_x_range_for_zoom)  # Adjust limits as needed
-        axins.set_ylim(0.6, 1)  # Adjust limits as needed
-        mark_inset(ax, axins, loc1=1, loc2=3, fc="none", ec="0.5", ls='--')
-        ax.legend(fancybox=True, shadow=True, ncol=1, fontsize=8,
-                  loc='upper right', bbox_to_anchor=(1.1, 1.015))
-        ax.set_xlabel(metric_name.lower() + x_dim_appendix)
-        ax.set_ylabel("CDF")
-        ax.set_title(metric_name + " CDF" + y_dim_appendix)
+            axins.ecdf(value, label=key, color=scheduler_to_color[key])
+        if qps == 32:
+            axins.set_xlim(40, 80)  # Adjust limits as needed
+        elif qps == 36:
+            axins.set_xlim(60, 90)
+        axins.set_ylim(0.90, 1.0)  # Adjust limits as needed
+        mark_inset(ax, axins, loc1=1, loc2=3, fc="none", ec="0.1", ls='--')
         axins.set_xticks([])
         axins.set_yticks([])
-        ax.ticklabel_format(axis='x', style='sci', scilimits=(0, 0))
-    else:
-        for key, value in data.items():
-            ax.ecdf(value, label=key, color=scheduler_to_color[key])
-        # plt.xlabel(metric_name.lower() + x_dim_appendix)
-        # plt.ylabel("CDF")
-        # plt.legend(fancybox=True, shadow=True, loc='best')
-        # plt.ticklabel_format(axis='x', style='sci', scilimits=(0, 0))
-        # if enable_label:
-        #     ax.set_xlabel(x_dim_appendix, fontsize=12)
-        #     ax.xaxis.set_label_coords(-0.125, -0.025)
-        #     ax.set_ylabel(f"{metric_name} \n QPS={qps}", fontsize=12)
-        # else:
-        #     ax.set_ylabel("QPS " + str(qps), fontsize=12)
-        if enable_x_label:
-            ax.set_xlabel(x_dim_appendix, fontsize=title_fontsize, loc='center')
-        if enable_y_label:
-            ax.set_ylabel(metric_name, fontsize=title_fontsize)
-        if enable_title_label:
-            ax.set_title("QPS " + str(qps), fontsize=11)
-        if enable_legend:
-            ax.legend(fancybox=False, shadow=False, ncol=len(data.keys()), fontsize=title_fontsize,
-                      loc='upper right', bbox_to_anchor=bbox_to_anchor)
+        axins.get_xaxis().set_visible(False)
+        axins.get_yaxis().set_visible(False)
 
     # plt.savefig(f"{output_dir_per_qps}/{metric_name}_cdf.png")
 
 
-def plot_latency_cdf_per_qps(axes, data, output_dir, metric_name, x_dim_appendix="", zoom_out=False,
-                             max_x_range_for_zoom=50000, enable_legend_at_middle=False,
+def plot_latency_cdf_per_qps(axes, data,
+                             metric_name, x_dim_appendix="", zoom_out_cdf=False,
+                             enable_legend_at_middle=False,
                              enable_x_at_middle=False, enable_y_label=True, enable_title_label=False,
-                             bbox_to_anchor=(3.0, 1.315)):
+                             bbox_to_anchor=(3.0, 1.315),
+                             min_zoom_qps=32):
     enable_label = True
     mid_point = len(axes) // 2
     i = 0
@@ -269,7 +264,7 @@ def plot_latency_cdf_per_qps(axes, data, output_dir, metric_name, x_dim_appendix
         enable_x_label = enable_x_at_middle and i == mid_point
         enable_y_label = i == 0 and enable_y_label
         plot_single_cdf(ax, data[qps], qps, metric_name, x_dim_appendix,
-                        f" under QPS {qps}", zoom_out=zoom_out, max_x_range_for_zoom=max_x_range_for_zoom,
+                        f" under QPS {qps}", zoom_out_for_single_cdf=zoom_out_cdf and (qps >= min_zoom_qps),
                         enable_legend=enable_legend, enable_y_label=enable_y_label, enable_x_label=enable_x_label,
                         enable_title_label=enable_title_label, bbox_to_anchor=bbox_to_anchor)
         i += 1
@@ -277,7 +272,11 @@ def plot_latency_cdf_per_qps(axes, data, output_dir, metric_name, x_dim_appendix
             enable_label = False
 
 
-def plot_per_qps(experiments_set, output_dir, min_qps=20, max_qps=36, num_of_cdf_figures=4, zoom_out=False,
+def plot_per_qps(experiments_set, output_dir,
+                 min_qps=20, max_qps=36, num_of_cdf_figures=4,
+                 zoom_out_for_slo=False,
+                 zoom_out_cdf=False,
+                 zoom_out_min_qps=32,
                  scheduler_name_ordered=None):
     qps_output_dir = output_dir
     if os.path.exists(qps_output_dir):
@@ -401,7 +400,7 @@ def plot_per_qps(experiments_set, output_dir, min_qps=20, max_qps=36, num_of_cdf
 
     capacity_df = plot_linear_with_different_qps(axs[1, 1], p99_ttft, "TTFT P99 (s)",
                                                  x_dim="QPS", slo=ttft_slo, keep_x_ticks_labels=True,
-                                                 zoom_out=zoom_out)
+                                                 zoom_out=zoom_out_for_slo)
 
     plot_linear_with_different_qps(axs[0, 2], requests_throughput, "Request Throughput (r/s)")
 
@@ -424,14 +423,18 @@ def plot_per_qps(experiments_set, output_dir, min_qps=20, max_qps=36, num_of_cdf
         axes_dict_for_ttft[qps] = axs[0, i]
         axes_dict_for_e2e[qps] = axs[1, i]
         i += 1
-    plot_latency_cdf_per_qps(axes_dict_for_ttft, ttft_cdfs, qps_output_dir, "TTFT", "Time(s)",
+    plot_latency_cdf_per_qps(axes_dict_for_ttft, ttft_cdfs, "TTFT", "Time(s)",
                              enable_legend_at_middle=True, enable_title_label=True,
-                             bbox_to_anchor=(3.0, 1.355))
-    # plot_latency_cdf_per_qps(tbt_cdfs, qps_output_dir, "TBT", " (ms)", max_x_range_for_zoom=100000)
+                             bbox_to_anchor=(3.0, 1.355),
+                             zoom_out_cdf=False,
+                             min_zoom_qps=zoom_out_min_qps)
     plot_latency_cdf_per_qps(axes_dict_for_e2e,
-                             e2e_cdfs, qps_output_dir, "Request Latency", "Time(s)",
-                             max_x_range_for_zoom=100000, enable_x_at_middle=True,
-                             bbox_to_anchor=(2.0, 1.255))
+                             e2e_cdfs,
+                             "Request Latency", "Time(s)",
+                             enable_x_at_middle=True,
+                             bbox_to_anchor=(2.0, 1.255),
+                             zoom_out_cdf=zoom_out_cdf,
+                             min_zoom_qps=zoom_out_min_qps)
     fig.tight_layout()
     fig.subplots_adjust(hspace=0.1, wspace=0.2)
     fig.set_size_inches(18, 6)
@@ -497,10 +500,11 @@ def main():
     parser.add_argument("--max-qps", type=int, default=36)
     parser.add_argument("--min-qps", type=int, default=20)
     parser.add_argument("--num-of-cdf-figures", type=int, default=5)
-    parser.add_argument("--zoomed", action='store_true',
-                        help="If true, the cdf plots will be zoomed out to show slo")
+    parser.add_argument("--zoom-for-slo", action='store_true')
     parser.add_argument("--plot-selected-scheduler-only", action='store_true')
     parser.add_argument("--selected-schedulers", type=str, default="Block, Lumnix-, Block*")
+    parser.add_argument("--zoom-for-cdf", action='store_true')
+    parser.add_argument("--cdf-zoomed-min-qps", type=int, default=36)
     args = parser.parse_args()
     data_dir = os.getcwd() + "/" + args.experiments_dir
 
@@ -541,10 +545,13 @@ def main():
         selected_schedulers = [scheduler.strip() for scheduler in selected_schedulers]
     else:
         selected_schedulers = list(scheduler_to_color.keys())
-    if args.plot_per_qps:
-        plot_per_qps(experiments_set, args.output_dir, min_qps=args.min_qps, max_qps=args.max_qps,
-                     num_of_cdf_figures=args.num_of_cdf_figures, zoom_out=args.zoomed,
-                     scheduler_name_ordered=selected_schedulers)
+    plot_per_qps(experiments_set, args.output_dir,
+                 min_qps=args.min_qps, max_qps=args.max_qps,
+                 num_of_cdf_figures=args.num_of_cdf_figures,
+                 zoom_out_for_slo=args.zoom_for_slo,
+                 zoom_out_cdf=args.zoom_for_cdf,
+                 zoom_out_min_qps=args.cdf_zoomed_min_qps,
+                 scheduler_name_ordered=selected_schedulers)
 
     # if args.plot_per_scheduler:
     #     plot_per_scheduler(experiments_set, args.output_dir)
