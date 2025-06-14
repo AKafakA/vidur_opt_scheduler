@@ -18,10 +18,9 @@ RESTART_VLLM=true
 
 ENABLE_CHUNKED_PREFILL="true"
 
-MODEL="meta-llama/Llama-2-7b-hf"
+MODEL="meta-llama/Llama-2-7b-hf Qwen/Qwen2-7B"
 SCHEDULER_NAME="min_new_request_latency min_lunmnix_load"
 #QPS="30 24 18"
-QPS="48 49 50 51 52 53 54 61 62 63 64"
 PROFILING_SAMPLE_RATE=0.0
 USE_FOR_PROFILING_ONLY=false
 NUM_REQUEST=10000
@@ -37,16 +36,45 @@ for model in $MODEL; do
   elif [ "$model" = "Qwen/Qwen2-7B" ]; then
     MODEL_TYPE="qwen"
     DATASET_NAMES="sharegpt"
+    echo "Running warmup script for ${model} model to download the model weights and cache them"
+    sh vidur/prediction/exp/end_to_end_exp_scripts/warmup.sh ${model} > /dev/null 2>&1
+    echo "Warmup for ${model} model completed"
   fi
   for dataset_name in $DATASET_NAMES; do
     for scheduler in $SCHEDULER_NAME; do
-      if [ "$scheduler" = "min_new_request_latency" ]; then
-        USE_LENGTH_ESTIMATION="true"
-      else
-        USE_LENGTH_ESTIMATION="false"
-      fi
+      #  use for qwen-2-7b and sharegpt
+      #  test block from 55 to 80 and block*/lunmnix_load from 71 to 80
       for enable_chunked_prefill in $ENABLE_CHUNKED_PREFILL; do
         for use_estimation_len in $USE_LENGTH_ESTIMATION; do
+          if [ "$model" = "Qwen/Qwen2-7B" ]; then
+            if [ "$scheduler" = "min_new_request_latency" ]; then
+              if [ "$use_estimation_len" = "true" ]; then
+                # test block* from 55 to 80
+                QPS="71 72 73 74 75 76 77 78 79 80"
+              else
+                # test block from 55 to 80
+                QPS="55 56 57 58 59 60 61 62 63 64 65 66 67 68 69 70 71 72 73 74 75 76 77 78 79 80"
+              fi
+            else
+              # test lumnix_load from 71 to 80
+              QPS="71 72 73 74 75 76 77 78 79 80"
+            fi
+          else
+            # use for llama-2-7b and burstgpt
+            # test block*/lunmnix_load from 48 to 64 excluding tested qps as block is unavailable without training data
+            if [ "$scheduler" = "min_new_request_latency" ]; then
+              if [ "$use_estimation_len" = "true" ]; then
+                # block* is unavailable without training data
+                QPS=""
+              else
+                # test block from 48 to 64
+                QPS="48 49 50 51 52 53 54 55 61 62 63 64"
+              fi
+            else
+              # test lumnix_load from 48 to 64
+              QPS="48 49 50 51 52 53 54 55 61 62 63 64"
+            fi
+          fi
           for batch_size_cut in $BATCH_SIZE_THRESHOLD_FOR_TIME_ESTIMATION; do
             for n_selected in $N_SELECTED; do
               for qps in $QPS; do
