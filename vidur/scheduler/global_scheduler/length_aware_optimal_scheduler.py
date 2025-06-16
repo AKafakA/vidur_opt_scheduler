@@ -1,3 +1,4 @@
+import copy
 import random
 from typing import List, Tuple
 
@@ -35,21 +36,22 @@ class LengthAwareOptimalScheduler(BaseGlobalScheduler):
         # keep a map of replica_id -> replica_scheduler
         # this is used to find the replica with the least outstanding requests
         while self._request_queue:
-            request = self._request_queue.pop(0)
-
+            original_request = self._request_queue.pop(0)
             if self._length_prediction_error > 0:
                 noise = ((random.uniform(1 - self._length_prediction_error, 1 + self._length_prediction_error))
-                         * request.num_decode_tokens)
-                length_noise = request.num_decode_tokens + noise
-                request = Request(
-                    request.arrived_at,
-                    request.num_prefill_tokens,
-                    request.num_decode_tokens + int(length_noise),
+                         * original_request.num_decode_tokens)
+                length_noise = original_request.num_decode_tokens + noise
+                predicted_request = Request(
+                    original_request.arrived_at,
+                    original_request.num_prefill_tokens,
+                    original_request.num_decode_tokens + int(length_noise),
                 )
+            else:
+                predicted_request = copy.deepcopy(original_request)
             latency_map = {
                 replica_scheduler.replica_id: get_target_metric_value(self._target_metric,
                                                                       replica_scheduler,
-                                                                      request,
+                                                                      predicted_request,
                                                                       self._request_timeline_predictor)
                 for replica_scheduler in self._replica_schedulers.values()
             }
@@ -61,5 +63,5 @@ class LengthAwareOptimalScheduler(BaseGlobalScheduler):
                 replica_id = max(latency_map.items(), key=lambda x: x[1])[0]
             else:
                 replica_id = min(latency_map.items(), key=lambda x: x[1])[0]
-            request_mapping.append((replica_id, request))
+            request_mapping.append((replica_id, original_request))
         return request_mapping

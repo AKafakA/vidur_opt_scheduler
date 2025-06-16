@@ -72,17 +72,17 @@ class CapacitySearch:
         simulator_config: SimulationConfig,
     ) -> tuple[bool, float]:
         ttft_df = pd.read_csv(result_file)
-        scheduling_delay = ttft_df["prefill_e2e_time"].quantile(
+        ttft_delay = ttft_df["prefill_e2e_time"].quantile(
             self.args.ttft_slo_quantile
         )
         is_under_ttft_delay_sla = (
-                scheduling_delay <= self.args.ttft_slo_value
+                ttft_delay <= self.args.ttft_slo_value
         )
 
         logger.info(
-            f"{simulator_config.to_human_readable_name()} - TTFT delay (P{self.args.scheduling_delay_slo_quantile}): {scheduling_delay}",
+            f"{simulator_config.to_human_readable_name()} - TTFT delay (P{self.args.ttft_slo_quantile}): {ttft_delay}",
         )
-        return is_under_ttft_delay_sla, scheduling_delay
+        return is_under_ttft_delay_sla, ttft_delay
 
     def is_under_sla(self, qps: float) -> tuple[bool, float]:
         simulator_config = SimulationConfig(
@@ -151,10 +151,10 @@ class CapacitySearch:
             if is_under_sla:
                 max_qps_under_sla = qps
 
-                if ttft < self.args.scheduling_delay_slo_value / 8:
+                if ttft < self.args.ttft_slo_value / 8:
                     # if the scheduling delay is very low, we can increase the QPS more aggressively
                     right = min(right * 4, min_qps_over_sla)
-                elif ttft < self.args.scheduling_delay_slo_value / 4:
+                elif ttft < self.args.ttft_slo_value / 4:
                     right = min(right * 2, min_qps_over_sla)
                 elif qps > 0.8 * right:
                     right = min(right * 2, min_qps_over_sla)

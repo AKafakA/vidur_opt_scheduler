@@ -75,8 +75,7 @@ class Simulator:
             new_events = event.handle_event(self._scheduler, self._metric_store)
             for event in new_events:
                 if isinstance(event, GlobalScheduleEvent):
-                    if self._scheduler.num_scheduled_requests % 1000 == 0:
-                        logger.info(f"Processed {self._scheduler.num_scheduled_requests} requests")
+                    logger.info(f"Processed {self._scheduler.num_scheduled_requests} requests")
             self._add_events(new_events)
 
             if self._config.metrics_config.write_json_trace:

@@ -526,10 +526,10 @@ class LORGlobalSchedulerConfig(BaseGlobalSchedulerConfig):
 
 
 @dataclass
-class MinMemoryGlobalSchedulerConfig(BaseGlobalSchedulerConfig):
+class LODTGlobalSchedulerConfig(BaseGlobalSchedulerConfig):
     @staticmethod
     def get_type():
-        return GlobalSchedulerType.MIN_MEMORY
+        return GlobalSchedulerType.LODT
 
 
 @dataclass

@@ -39,7 +39,7 @@ schedulers:
 
 traces:
   - name: sharegpt
-    trace_file: "./data/processed_traces/trace_data/sharegpt/sharegpt_val_10k_llama2.csv"
+    trace_file: "./data/trace_data/sharegpt/sharegpt_val_10k_llama2.csv"
     max_seq_len: 4096
     num_requests: 10000
     start_qps: 10.00

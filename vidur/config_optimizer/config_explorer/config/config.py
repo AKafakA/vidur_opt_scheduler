@@ -100,6 +100,7 @@ class ClusterConfig:
 class SchedulerConfig:
     scheduler: str
     chunk_size: Optional[int] = None
+    num_blocks: Optional[int] = None
 
     def get_key(self):
         scheduler = self.scheduler
@@ -117,10 +118,14 @@ class SchedulerConfig:
 
         assert self.scheduler == "sarathi"
         assert self.chunk_size is not None
-        return {
+        config_dict = {
             "replica_scheduler_config_type": "sarathi",
             "sarathi_scheduler_config_chunk_size": self.chunk_size,
         }
+        if self.num_blocks is not None:
+            scheduler_key = self.scheduler + "_scheduler_config"
+            config_dict[scheduler_key + "_num_blocks"] = self.num_blocks
+        return config_dict
 
 
 class JobConfig:

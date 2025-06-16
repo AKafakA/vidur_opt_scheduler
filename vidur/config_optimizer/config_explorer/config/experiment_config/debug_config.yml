@@ -1,5 +1,5 @@
 clusters:
-  - device: a100
+  - device: a30
     num_gpus: 16
     gpus_per_node: 4
 
@@ -8,56 +8,30 @@ load_balancers:
 #  - name: round_robin
 #    identifier: round_robin
   - name: optimal
-    identifier: opt
-    target_metric: "min_latency"
-  - name: optimal
-    identifier: opt
-    target_metric: "max_avg_batch_size"
-#  - name: least_of_requests
-#    identifier: lor
-#  - name: random
-#    identifier: random
+    type: opt
+    target_metric: "min_new_request_latency"
+    length_prediction_error: 0.0
+    metrics_prediction_error: 0.0
+#  - name: lumnix
+#    type: lodt
 
 schedulers:
-  - scheduler: vllm
+  - scheduler: sarathi
+    chunk_size: 512
+    num_blocks: 1052
 
 traces:
-  - name: arxiv
-    trace_file: "./data/processed_traces/arxiv_summarization_stats_llama2_tokenizer_filtered_v2.csv"
+  - name: sharegpt
+    trace_file: "./data/trace_data/sharegpt/sharegpt_val_10k_llama2.csv"
     max_seq_len: 4096
-    num_requests: 160
-    start_qps: 16
+    num_requests: 10000
+    start_qps: 10.00
     generate_type: "synthetic"
-#  - name: chat
-#    trace_file: "./data/processed_traces/splitwise_code.csv"
-#    max_seq_len: 4096
-#    num_requests: 16000
-#    start_qps: 32
-#    type: "trace_replay"
-#  - name: code
-#    trace_file: "./data/processed_traces/splitwise_conv.csv"
-#    max_seq_len: 4096
-#    num_requests: 16000
-#    start_qps: 8
-#    type: "trace_replay"
 
-#batch_sizes: [32, 64, 128]
-batch_sizes: [16]
+batch_sizes: [48]
 tp_dimensions: [1]
 pp_dimensions: [1]
 
 models:
-  # - name: phi-2
-  #   identifier: microsoft/phi-2
-  #   exclude_tp_dims: [2, 4, 8]
   - name: llama-2-7b-hf
     identifier: meta-llama/Llama-2-7b-hf
-  # - name: internlm-20b
-  #   identifier: internlm/internlm-20b
-  #   exclude_tp_dims: [1]
-  # - name: llama-2-70b-hf
-  #   identifier: meta-llama/Llama-2-70b-hf
-  #   exclude_tp_dims: [1]
-  # - name: qwen-72b
-  #   identifier: Qwen/Qwen-72B
-  #   exclude_tp_dims: [1]

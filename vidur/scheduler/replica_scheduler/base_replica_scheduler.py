@@ -1,3 +1,4 @@
+import copy
 from abc import ABC, abstractmethod
 from collections import deque
 from typing import List
@@ -106,7 +107,7 @@ class BaseReplicaScheduler(ABC):
 
     @property
     def num_blocks_to_prompt(self) -> int:
-        return (sum(request.num_prefill_tokens for request in self._request_queue if request.scheduled_at == 0) //
+        return (sum(request.num_prefill_tokens for request in self._request_queue if not request.scheduled) //
                 self._config.block_size)
 
     def is_empty(self) -> bool:
