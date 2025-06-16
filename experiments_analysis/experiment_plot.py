@@ -61,13 +61,16 @@ def plot_linear_for_multiple_qps(axes, data, metric_name, sigma=-1,
                                  enable_x_label_at_left_corner=False,
                                  x_label_coords=(-0.285, -0.105),
                                  enable_title_labels=False,
-                                 max_num_samples=-1):
+                                 max_num_samples=-1,
+                                 use_scientific_notation=False):
     i = 0
     enable_label = True
     for qps in data.keys():
         if qps not in axes.keys():
             continue
         ax = axes.get(qps)
+        if use_scientific_notation:
+            ax.ticklabel_format(style='sci', axis='y', scilimits=(0, 0))
         qps_data = data[qps]
         print(f"Plotting linear figures for {metric_name} at QPS {qps}")
         for key, value in qps_data.items():
@@ -136,7 +139,8 @@ def plot_linear_with_different_qps(ax,
                                    anchor=(2.0, 1.215),
                                    slo=-1,
                                    legend_fontsize=12,
-                                   zoom_out=False):
+                                   zoom_out=False,
+                                   show_slo_text=False):
     print(f"Plotting QPS figures {metric_name} with slo={slo} and zoom_out={zoom_out}")
     scheduler_list = data_map.keys()
     xdim_per_scheduler = [data_map[scheduler].keys() for scheduler in scheduler_list]
@@ -194,7 +198,8 @@ def plot_linear_with_different_qps(ax,
             axins.set_yticks([])
 
         ax.plot([min_qps, max_qps], [ttft_slo, ttft_slo], linewidth=1.5, ls='--', color='blue')
-        ax.text(max_qps - 2, ttft_slo * 1.1, f"SLO", fontsize=12)
+        if show_slo_text:
+            ax.text(max_qps - 2, ttft_slo * 1.1, f"SLO", fontsize=12)
 
     ax.set_ylabel(metric_name)
     if keep_x_ticks_labels:
@@ -277,7 +282,8 @@ def plot_per_qps(experiments_set, output_dir,
                  zoom_out_for_slo=False,
                  zoom_out_cdf=False,
                  zoom_out_min_qps=32,
-                 scheduler_name_ordered=None):
+                 scheduler_name_ordered=None,
+                 show_slo_text=False):
     qps_output_dir = output_dir
     if os.path.exists(qps_output_dir):
         shutil.rmtree(qps_output_dir)
@@ -400,7 +406,8 @@ def plot_per_qps(experiments_set, output_dir,
 
     capacity_df = plot_linear_with_different_qps(axs[1, 1], p99_ttft, "TTFT P99 (s)",
                                                  x_dim="QPS", slo=ttft_slo, keep_x_ticks_labels=True,
-                                                 zoom_out=zoom_out_for_slo)
+                                                 zoom_out=zoom_out_for_slo,
+                                                 show_slo_text=show_slo_text)
 
     plot_linear_with_different_qps(axs[0, 2], requests_throughput, "Request Throughput (r/s)")
 
@@ -459,11 +466,11 @@ def plot_per_qps(experiments_set, output_dir,
                                  enable_legend_at_middle=True, enable_title_labels=True,
                                  legend_anchor=(3.0, 1.455))
     plot_linear_for_multiple_qps(axs_for_var_free_gpu, var_free_gpu_per_node, "Free GPU Blocks Var",
-                                 sigma=20)
+                                 sigma=20, use_scientific_notation=True)
     plot_linear_for_multiple_qps(axs_for_num_preemption, num_total_preemption, "Total Preemption Count",
                                  sigma=20, enable_x_label_at_middle=True)
     fig.tight_layout()
-    fig.subplots_adjust(hspace=0.2, wspace=0.3)
+    fig.subplots_adjust(hspace=0.25, wspace=0.3)
     fig.set_size_inches(16, 8)
     fig.savefig(f"{qps_output_dir}/linear.png", bbox_inches='tight')
 
@@ -505,6 +512,7 @@ def main():
     parser.add_argument("--selected-schedulers", type=str, default="Block, Lumnix-, Block*")
     parser.add_argument("--zoom-for-cdf", action='store_true')
     parser.add_argument("--cdf-zoomed-min-qps", type=int, default=36)
+    parser.add_argument("--show-slo-text", action='store_true')
     args = parser.parse_args()
     data_dir = os.getcwd() + "/" + args.experiments_dir
 
@@ -512,6 +520,7 @@ def main():
     ttft_slo = args.ttft_p99_slo
 
     experiments_set = []
+    collect_all_experiments = True
     for scheduler_name in os.listdir(data_dir):
         scheduler_dir = data_dir + "/" + scheduler_name
         if scheduler_name == 'logs':
@@ -540,18 +549,26 @@ def main():
                         record['var_gpu_blocks'] = b['var_gpu_blocks']
                         record['num_preempted'] = b['num_preempted']
                         record['scheduling_overhead'] = b['scheduling_overhead']
+                if len(record.keys()) < 13:
+                    print(f"{args.experiments_dir}{scheduler_name}/{directory} missing data!")
+                    collect_all_experiments = False
+                    break
     if args.plot_selected_scheduler_only:
         selected_schedulers = args.selected_schedulers.split(",")
         selected_schedulers = [scheduler.strip() for scheduler in selected_schedulers]
     else:
         selected_schedulers = list(scheduler_to_color.keys())
-    plot_per_qps(experiments_set, args.output_dir,
-                 min_qps=args.min_qps, max_qps=args.max_qps,
-                 num_of_cdf_figures=args.num_of_cdf_figures,
-                 zoom_out_for_slo=args.zoom_for_slo,
-                 zoom_out_cdf=args.zoom_for_cdf,
-                 zoom_out_min_qps=args.cdf_zoomed_min_qps,
-                 scheduler_name_ordered=selected_schedulers)
+    if collect_all_experiments:
+        plot_per_qps(experiments_set, args.output_dir,
+                     min_qps=args.min_qps, max_qps=args.max_qps,
+                     num_of_cdf_figures=args.num_of_cdf_figures,
+                     zoom_out_for_slo=args.zoom_for_slo,
+                     zoom_out_cdf=args.zoom_for_cdf,
+                     zoom_out_min_qps=args.cdf_zoomed_min_qps,
+                     scheduler_name_ordered=selected_schedulers,
+                     show_slo_text=args.show_slo_text)
+    else:
+        print("Not all experiments are collected, skipping plotting.")
 
     # if args.plot_per_scheduler:
     #     plot_per_scheduler(experiments_set, args.output_dir)

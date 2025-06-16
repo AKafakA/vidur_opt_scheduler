@@ -56,6 +56,7 @@ def plot_prediction_hit_histogram_for_multiple_qps(axes, rank_data, x_label, y_l
         ax = axes.get(qps)
         selected_ranks = rank_data[qps]
         ax.yaxis.set_major_formatter(PercentFormatter(1))
+        ax.set_ylim(0, 1)
         for feature in selected_ranks.keys():
             selected_rank = selected_ranks[feature]
             enable_title = enable_middle_title and (qps == list(rank_data.keys())[len(rank_data) // 2])
@@ -235,7 +236,7 @@ def plot_per_qps(experiments_set, output_dir, min_qps=1, max_qps=36):
                                         sampled_predict_latency,
                                         sampled_serving_latencies,
                                         enable_x_label_at_left_corner=True,
-                                        legend_anchor=(1.8, 1.25),
+                                        legend_anchor=(1.8, 1.15),
                                         x_label="Sample ID: ",
                                         x_label_coords=(-0.15, -0.105))
 
