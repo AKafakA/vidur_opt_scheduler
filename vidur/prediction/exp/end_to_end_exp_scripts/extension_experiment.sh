@@ -18,9 +18,12 @@ RESTART_VLLM=true
 
 ENABLE_CHUNKED_PREFILL="true"
 
-MODEL="meta-llama/Llama-2-7b-hf Qwen/Qwen2-7B"
+#MODEL="meta-llama/Llama-2-7b-hf Qwen/Qwen2-7B"
+#SCHEDULER_NAME="min_new_request_latency min_lunmnix_load"
+
+MODEL="Qwen/Qwen2-7B"
 SCHEDULER_NAME="min_new_request_latency min_lunmnix_load"
-#QPS="30 24 18"
+
 PROFILING_SAMPLE_RATE=0.0
 USE_FOR_PROFILING_ONLY=false
 NUM_REQUEST=10000
@@ -36,15 +39,15 @@ for model in $MODEL; do
   elif [ "$model" = "Qwen/Qwen2-7B" ]; then
     MODEL_TYPE="qwen"
     DATASET_NAMES="sharegpt"
-    echo "Running warmup script for ${model} model to download the model weights and cache them"
-    sh vidur/prediction/exp/end_to_end_exp_scripts/warmup.sh ${model} > /dev/null 2>&1
-    echo "Warmup for ${model} model completed"
+#    echo "Running warmup script for ${model} model to download the model weights and cache them"
+#    sh vidur/prediction/exp/end_to_end_exp_scripts/warmup.sh ${model} > /dev/null 2>&1
+#    echo "Warmup for ${model} model completed"
   fi
   for dataset_name in $DATASET_NAMES; do
     for scheduler in $SCHEDULER_NAME; do
       if [ "$scheduler" = "min_new_request_latency" ]; then
         # use for qwen-2-7b and sharegpt
-        #  test block* from 20 to 36 and block*/lunmnix_load from 20 to 36
+        # test block* from 20 to 36 and block*/lunmnix_load from 20 to 36
         USE_LENGTH_ESTIMATION="true false"
       else
         # use for llama-2-7b and burstgpt
@@ -59,10 +62,10 @@ for model in $MODEL; do
             if [ "$scheduler" = "min_new_request_latency" ]; then
               if [ "$use_estimation_len" = "true" ]; then
                 # test block* from 55 to 80
-                QPS="71 72 73 74 75 76 77 78 79 80"
+                QPS="55 56 57 58 59 60 61 62 63 64 65 66 67 68 69 70"
               else
                 # test block from 55 to 80
-                QPS="55 56 57 58 59 60 61 62 63 64 65 66 67 68 69 70 71 72 73 74 75 76 77 78 79 80"
+                QPS="55 56 57 58 59 60 61 62 63 64 65 66 67 68 69 70"
               fi
             else
               # test lumnix_load from 71 to 80
