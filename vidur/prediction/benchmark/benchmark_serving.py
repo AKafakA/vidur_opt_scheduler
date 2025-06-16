@@ -827,7 +827,10 @@ def main():
         f.write(messages)
         ttft = np.array(prefill_token_latencies)
         p99_ttft = np.percentile(ttft, 99)
+        request_latencies_arr = np.array(request_latencies)
+        p99_request_latency = np.percentile(request_latencies_arr, 99)
         f.write(f"\n p99 prefill token latency: {p99_ttft:.4f} ms\n")
+        f.write(f"\n p99 request latency: {p99_request_latency:.4f} ms\n")
 
     data = {
         "Throughput": np.float32(throughput),

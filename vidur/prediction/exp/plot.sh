@@ -10,6 +10,7 @@ python3 experiments_analysis/experiment_plot.py \
     --min-qps 20 \
     --num-of-cdf-figures 5 \
     --zoom-for-slo \
+    --show-slo-text \
 
 
 python3 experiments_analysis/prediction_plot.py \
