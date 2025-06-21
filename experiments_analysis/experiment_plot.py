@@ -17,17 +17,18 @@ import shutil
 import pandas as pd
 from scipy.ndimage import gaussian_filter1d
 import warnings
+
 warnings.simplefilter("ignore", category=Warning)
 
 experiment_name_replacement = {"min new request latency": "Block", "min infass load": "INFaaS++",
                                "request per seconds": "Min QPM",
-                               "min lunmnix load": "Lumnix-"}
+                               "min lunmnix load": "Llumnix-"}
 scheduler_to_color = {
     'random': 'olive',
     'round robin': 'green',
     'Min QPM': 'purple',
     'INFaaS++': 'orange',
-    'Lumnix-': 'skyblue',
+    'Llumnix-': 'skyblue',
     'Block*': 'black',
     'Block': 'red',
 }
@@ -106,7 +107,8 @@ def plot_linear_for_multiple_qps(axes, data, metric_name, sigma=-1,
         i += 1
 
 
-def plot_bar_chart(ax, dataframe, metric_name, column_name, show_value_on_top=True):
+def plot_bar_chart(ax, dataframe, metric_name, column_name, show_value_on_top=True,
+                   text_fontsize=8):
     dataframe = dataframe.sort_values(by=column_name)
     for scheduler, row in dataframe.iterrows():
         capacity = row['capacity']
@@ -126,7 +128,7 @@ def plot_bar_chart(ax, dataframe, metric_name, column_name, show_value_on_top=Tr
         for rect in rects:
             height = rect.get_height()
             ax.text(
-                (rect.get_x() + rect.get_width() / 2) - 0.4, height + 0.2, height
+                (rect.get_x() + rect.get_width() / 2) - 0.4, height + 0.2, height, fontsize=text_fontsize
             )
 
 
@@ -308,6 +310,9 @@ def plot_per_qps(experiments_set, output_dir,
     scheduling_overhead_ratio = {}
     scheduling_overhead = {}
 
+    avg_scheduling_overhead = {}
+    avg_scheduling_overhead_ratio = {}
+
     qps_set = sorted(set([record["qps"] for record in experiments_set]))
     if min_qps > 0:
         qps_set = [qps for qps in qps_set if min_qps <= qps <= max_qps]
@@ -366,6 +371,8 @@ def plot_per_qps(experiments_set, output_dir,
                 p99_tbt[index_name] = {}
                 average_e2e[index_name] = {}
                 p99_e2e[index_name] = {}
+                avg_scheduling_overhead[index_name] = {}
+                avg_scheduling_overhead_ratio[index_name] = {}
 
             token_throughput[index_name][qps] = float(experiments['token_throughput'])
             requests_throughput[index_name][qps] = float(experiments['request_throughput'])
@@ -394,27 +401,39 @@ def plot_per_qps(experiments_set, output_dir,
                                                              if latency > 0]
             scheduling_overhead_per_qps[index_name] = current_prediction_overhead
 
+            avg_scheduling_overhead[index_name][qps] = np.mean(current_prediction_overhead)
+            avg_scheduling_overhead_ratio[index_name][qps] = np.mean(scheduling_overhead_ratio_per_qps[index_name])
+
     index_names = sorted_keys
 
-    fig, axs = plt.subplots(2, 3)
+    fig, axs = plt.subplots(2, 4)
 
-    plot_linear_with_different_qps(axs[0, 0], average_e2e, "Average Request Latency (s)")
-    plot_linear_with_different_qps(axs[1, 0], p99_e2e, "Request Latency P99 (s)")
+    plot_linear_with_different_qps(axs[0, 0], average_e2e, "Average Request Latency (s)",
+                                   x_dim="QPS", keep_x_ticks_labels=True)
+    plot_linear_with_different_qps(axs[1, 0], p99_e2e, "Request Latency P99 (s)",
+                                   x_dim="QPS", keep_x_ticks_labels=True)
 
     plot_linear_with_different_qps(axs[0, 1], average_ttft, "Average TTFT (s)",
-                                   keep_legend=True, anchor=(2.0, 1.28))
+                                   keep_legend=True, anchor=(3.5, 1.28),
+                                   x_dim="QPS", keep_x_ticks_labels=True)
 
     capacity_df = plot_linear_with_different_qps(axs[1, 1], p99_ttft, "TTFT P99 (s)",
                                                  x_dim="QPS", slo=ttft_slo, keep_x_ticks_labels=True,
                                                  zoom_out=zoom_out_for_slo,
                                                  show_slo_text=show_slo_text)
 
-    plot_linear_with_different_qps(axs[0, 2], requests_throughput, "Request Throughput (r/s)")
+    plot_linear_with_different_qps(axs[0, 2], avg_scheduling_overhead, "Average Overhead (ms)",
+                                   x_dim="QPS", keep_x_ticks_labels=True)
+    plot_linear_with_different_qps(axs[1, 2], avg_scheduling_overhead_ratio, "Average Overhead Ratio (%)",
+                                   x_dim="QPS", keep_x_ticks_labels=True)
 
-    plot_bar_chart(axs[1, 2], capacity_df, "Max QPS before Hitting SLO", column_name='capacity')
+    plot_linear_with_different_qps(axs[0, 3], requests_throughput, "Request Throughput (r/s)",
+                                   x_dim="QPS", keep_x_ticks_labels=True)
+
+    plot_bar_chart(axs[1, 3], capacity_df, "Capacity", column_name='capacity')
 
     fig.tight_layout()
-    fig.subplots_adjust(hspace=0.2, wspace=0.25)
+    fig.subplots_adjust(hspace=0.3, wspace=0.29)
     fig.set_size_inches(14, 6)
     fig.savefig(f"{qps_output_dir}/qps.png", bbox_inches='tight')
 
@@ -470,7 +489,7 @@ def plot_per_qps(experiments_set, output_dir,
     plot_linear_for_multiple_qps(axs_for_num_preemption, num_total_preemption, "Total Preemption Count",
                                  sigma=20, enable_x_label_at_middle=True)
     fig.tight_layout()
-    fig.subplots_adjust(hspace=0.25, wspace=0.3)
+    fig.subplots_adjust(hspace=0.2, wspace=0.3)
     fig.set_size_inches(16, 8)
     fig.savefig(f"{qps_output_dir}/linear.png", bbox_inches='tight')
 
@@ -487,7 +506,7 @@ def plot_per_qps(experiments_set, output_dir,
                                  enable_legend_at_middle=True, x_label="Query ID",
                                  legend_anchor=(2.5, 1.40), title_fontsize=12, enable_title_labels=True)
     plot_linear_for_multiple_qps(axs_for_scheduling_overhead, scheduling_overhead,
-                                 "Overhead Latency (ms)", sigma=80,
+                                 "Overhead Latency  (ms)", sigma=80,
                                  enable_legend_at_middle=False, x_label="Query ID",
                                  legend_anchor=(1.1, 1.35), title_fontsize=12, enable_x_label_at_middle=True)
     fig.tight_layout()

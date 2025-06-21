@@ -21,8 +21,8 @@ python3 experiments_analysis/experiment_plot.py \
     --experiments-dir experiment_output/data/extension/burstgpt \
     --output-dir experiment_output/results/burstgpt \
     --ttft-p99-slo $TTFT_SLO \
-    --max-qps 60 \
-    --min-qps 55 \
+    --max-qps 64 \
+    --min-qps 48 \
     --num-of-cdf-figures 5 \
 
 python3 experiments_analysis/experiment_plot.py \
