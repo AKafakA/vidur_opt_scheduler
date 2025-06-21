@@ -9,7 +9,7 @@ CHUNK_SIZE=512
 TIMEOUT_IN_SECONDS=1800
 PREDICTOR_TIMEOUT_IN_SECONDS=1000
 BATCH_SIZE_THRESHOLD_FOR_TIME_ESTIMATION="0"
-BRANCH_NAME="single_predictor_evaluation"
+BRANCH_NAME="merge"
 USE_PROCESS_FOR_FRONTEND=true
 UPDATE_VIDUR_CODE=false
 UPDATE_VLLM_CODE=false
@@ -22,6 +22,7 @@ MODEL="meta-llama/Llama-2-7b-hf"
 DATASET_NAMES="sharegpt"
 SCHEDULER_NAME="min_new_request_latency min_lunmnix_load min_infass_load round_robin request_per_seconds random"
 PROFILING_SAMPLE_RATE=0.000
+QPS="20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36"
 USE_FOR_PROFILING_ONLY=false
 NUM_REQUEST=10000
 KEEP_ALL_METRICS=false
@@ -35,6 +36,9 @@ MAX_SLO="0"
 
 
 for model in $MODEL; do
+  echo "Running warmup script for ${model} model to download the model weights and cache them"
+  sh vidur/prediction/exp/end_to_end_exp_scripts/warmup.sh ${model} > /dev/null 2>&1
+  echo "Warmup for ${model} model completed"
   if [ "$model" = "meta-llama/Llama-2-7b-hf" ]; then
     MODEL_TYPE="llama"
   elif [ "$model" = "Qwen/Qwen2-7B" ]; then
