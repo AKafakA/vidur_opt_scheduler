@@ -40,7 +40,7 @@ ENABLE_PREEMPTIVE_AUTO_PROVISIONING="false"
 MAX_SLO="0"
 USE_LENGTH_ESTIMATION="false"
 
-HF_TOKEN=""
+HF_TOKEN=$2
 
 parallel-ssh -t 0 -h vidur/prediction/config/hosts "rm -rf .cache/huggingface/hub/models*"
 for model in $MODEL; do

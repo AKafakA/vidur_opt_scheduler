@@ -38,7 +38,7 @@ HF_TOKEN=""
 
 for model in $MODEL; do
   echo "Running warmup script for ${model} model to download the model weights and cache them"
-  sh vidur/prediction/exp/end_to_end_exp_scripts/warmup.sh ${model} > /dev/null 2>&1
+  sh vidur/prediction/exp/end_to_end_exp_scripts/warmup.sh ${model} ${HF_TOKEN} > /dev/null 2>&1
   echo "Warmup for ${model} model completed"
   if [ "$model" = "meta-llama/Llama-2-7b-hf" ]; then
     MODEL_TYPE="llama"
