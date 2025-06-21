@@ -44,7 +44,6 @@ OUTPUT_DIR_PREFIX=${33}
 AVAILABLE_INSTANCE=${34}
 MAX_SLO=${35}
 ENABLE_PREEMPTIVE_AUTO_PROVISIONING=${36}
-HF_TOKEN=${37}
 
 if [ "$ENABLE_CHUNKED_PREFILL" = "true" ]; then
   MAX_NUM_BATCHED_TOKEN=$CHUNK_SIZE
@@ -75,7 +74,7 @@ if [ "$RESTART_VLLM" = "true" ]; then
     parallel-ssh -t 0 -h vidur/prediction/config/hosts "cd vidur_opt_scheduler && git add -u . && git stash && git reset --hard HEAD~20 && git pull"
   fi
   sleep 60
-  nohup sh vidur/prediction/exp/run_exp_vllm.sh $BATCH_CAP $MODEL $UPDATE_VLLM_CODE $VLLM_VERSION $MAX_MODEL_LENGTH $ENABLE_CHUNKED_PREFILL $BACKEND_WORKERS $MAX_NUM_BATCHED_TOKEN $HF_TOKEN> /dev/null 2>&1 &
+  nohup sh vidur/prediction/exp/run_exp_vllm.sh $BATCH_CAP $MODEL $UPDATE_VLLM_CODE $VLLM_VERSION $MAX_MODEL_LENGTH $ENABLE_CHUNKED_PREFILL $BACKEND_WORKERS $MAX_NUM_BATCHED_TOKEN > /dev/null 2>&1 &
   sleep 60
   script_base="vidur/prediction/exp/run_exp_predictor"
   if [ "$PREDICTOR_WORKERS" -eq 1 ]; then
