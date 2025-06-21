@@ -7,8 +7,9 @@ from vidur.request_generator.base_request_length_generator import (
 
 class FixedRequestLengthGenerator(BaseRequestLengthGenerator):
 
-    def get_next_num_tokens(self) -> Tuple[float, float]:
+    def get_next_num_tokens(self) -> Tuple[float, float, float]:
         return (
             self.config.prefill_tokens,
             self.config.decode_tokens,
+            -1.0,
         )

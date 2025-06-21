@@ -2,6 +2,9 @@
 __pycache__/
 *.py[cod]
 *$py.class
+.idea/
+
+tmp/experiment_output_plot/
 
 # C extensions
 *.so
@@ -177,3 +180,8 @@ config_optimizer_output_tmpfs
 profiler_traces*
 experiments/profiling/get_profiled_data_from_trace.ipynb
 env_3
+
+*search_output/
+experiment_output/
+experiments_analysis/stats/
+experiments_analysis/tombstone/

@@ -53,7 +53,7 @@ def parse_args():
         "--num_tensor_parallel_workers",
         type=int,
         nargs="+",
-        default=[1, 2, 4, 8],
+        default=[1],
         help="Number of tensor parallel workers to profile",
     )
     parser.add_argument(

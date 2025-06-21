@@ -193,7 +193,7 @@ class Phi2ModelConfig(Llama2ModelConfig):
 class QwenModelConfig(Llama2ModelConfig):
     use_qkv_bias: bool = True
     max_position_embeddings: int = 32768
-    vocab_size: int = 152064
+    vocab_size: int = 151936
 
     @staticmethod
     def get_name():
@@ -212,3 +212,16 @@ class Qwen72BModelConfig(QwenModelConfig):
     @staticmethod
     def get_name():
         return "Qwen/Qwen-72B"
+
+@dataclass
+class Qwen2_7BModelConfig(QwenModelConfig):
+    num_layers: int = 28
+    num_q_heads: int = 28
+    num_kv_heads: int = 4
+    embedding_dim: int = 3584
+    mlp_hidden_dim: int = 18944
+    rope_theta: Optional[float] = 1000000
+
+    @staticmethod
+    def get_name():
+        return "Qwen/Qwen-2-7B"

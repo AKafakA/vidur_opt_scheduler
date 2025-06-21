@@ -1,7 +1,28 @@
 import hashlib
+import os
 from dataclasses import dataclass
 from itertools import product
 from typing import List, Optional
+
+
+@dataclass
+class LoadBalancerConfig:
+    name: str
+    type: str
+    target_metric: str = None
+
+    def get_key(self):
+        if self.type == 'opt':
+            return f"{self.name}_{self.target_metric}"
+        return self.name
+
+    def to_config_dict(self):
+        config_dict = {
+            "global_scheduler_config_type": self.type,
+        }
+        if self.type == 'opt':
+            config_dict["length_aware_optimal_scheduler_config_target_metric"] = self.target_metric
+        return config_dict
 
 
 @dataclass
@@ -25,20 +46,24 @@ class ModelConfig:
 @dataclass
 class TraceConfig:
     name: str
+    generate_type: str
     trace_file: str
     max_seq_len: int
     num_requests: int
     start_qps: float
 
     def get_key(self):
-        return f"{self.name}_tk{self.max_seq_len}_rq{self.num_requests}"
+        return f"{self.name}_tk{self.max_seq_len}_rq{self.num_requests}_t{self.generate_type}"
 
     def to_config_dict(self):
+        if self.generate_type == "synthetic":
+            generate_config_type = "poisson"
+        else:
+            generate_config_type = "trace"
         return {
-            "request_generator_config_type": "synthetic",
+            "request_generator_config_type": self.generate_type,
             "length_generator_config_type": "trace",
-            "interval_generator_config_type": "poisson",
-            "synthetic_request_generator_config_max_tokens": self.max_seq_len,
+            "interval_generator_config_type": generate_config_type,
             "trace_request_length_generator_config_max_tokens": self.max_seq_len,
             "zipf_request_length_generator_config_max_tokens": self.max_seq_len,
             "uniform_request_length_generator_config_max_tokens": self.max_seq_len,
@@ -96,15 +121,17 @@ class SchedulerConfig:
 
 class JobConfig:
     def __init__(
-        self,
-        model_config: ModelConfig,
-        trace_config: TraceConfig,
-        cluster_config: ClusterConfig,
-        scheduler_config: SchedulerConfig,
-        num_tensor_parallel_workers: int,
-        num_pipeline_stages: int,
-        batch_size: int,
+            self,
+            load_balancer_config: LoadBalancerConfig,
+            model_config: ModelConfig,
+            trace_config: TraceConfig,
+            cluster_config: ClusterConfig,
+            scheduler_config: SchedulerConfig,
+            num_tensor_parallel_workers: int,
+            num_pipeline_stages: int,
+            batch_size: int,
     ):
+        self.load_balancer_config = load_balancer_config
         self.model_config = model_config
         self.trace_config = trace_config
         self.cluster_config = cluster_config
@@ -133,14 +160,22 @@ class JobConfig:
         )
 
     def get_human_readable_name(self):
-        return (
-            f"Model: {self.model_config.name}, Trace: {self.trace_config.name}, Cluster: {self.cluster_config.device}, "
-            f"Scheduler: {self.scheduler_config.scheduler}, TP: {self.num_tensor_parallel_workers}, "
-            f"PP: {self.num_pipeline_stages}, BSZ: {self.batch_size}, CS: {self.scheduler_config.chunk_size}, Hash: {self.get_hash()}"
-        )
+        readable_name = f"Model: {self.model_config.name}, Trace: {self.trace_config.name}, Cluster: {self.cluster_config.device}, " + \
+            f"Scheduler: {self.scheduler_config.scheduler}, TP: {self.num_tensor_parallel_workers}, " + \
+            f"PP: {self.num_pipeline_stages}, BSZ: {self.batch_size}, CS: {self.scheduler_config.chunk_size}, Hash: {self.get_hash()}, " + \
+            f"Global Scheduler: {self.load_balancer_config.name}"
+
+        if self.load_balancer_config.target_metric is not None:
+            readable_name += f", Target Metric: {self.load_balancer_config.target_metric}"
+        return readable_name
 
     def get_hash(self):
         return hashlib.sha1(self.get_key().encode("utf-8")).hexdigest()[:8]
+
+    def get_readable_exp_file_name(self):
+        return (f"{self.model_config.name}_{self.trace_config.name}_"
+                f"{self.cluster_config.device}_tp{self.num_tensor_parallel_workers}_"
+                f"pp{self.num_pipeline_stages}_bsz{self.batch_size}_{self.load_balancer_config.get_key()}")
 
     def to_config_dict(self):
         return {
@@ -148,6 +183,7 @@ class JobConfig:
             **self.trace_config.to_config_dict(),
             **self.cluster_config.to_config_dict(),
             **self.scheduler_config.to_config_dict(),
+            **self.load_balancer_config.to_config_dict(),
             "replica_config_tensor_parallel_size": self.num_tensor_parallel_workers,
             "replica_config_num_pipeline_stages": self.num_pipeline_stages,
             "vllm_scheduler_config_batch_size_cap": self.batch_size,
@@ -162,13 +198,14 @@ class JobConfig:
     def generate_job_configs(cls, config: dict):
         job_configs = []
         for (
-            model_config,
-            trace_config,
-            cluster_config,
-            scheduler_config,
-            tp_dimension,
-            pp_dimension,
-            batch_size,
+                model_config,
+                trace_config,
+                cluster_config,
+                scheduler_config,
+                tp_dimension,
+                pp_dimension,
+                batch_size,
+                load_balancer_config,
         ) in product(
             config["models"],
             config["traces"],
@@ -177,8 +214,10 @@ class JobConfig:
             config["tp_dimensions"],
             config["pp_dimensions"],
             config["batch_sizes"],
+            config["load_balancers"],
         ):
             job_config = cls(
+                LoadBalancerConfig(**load_balancer_config),
                 ModelConfig(**model_config),
                 TraceConfig(**trace_config),
                 ClusterConfig(**cluster_config),
@@ -205,13 +244,15 @@ class JobConfig:
         # set pp_dimensions to 2 because it covers all the options
         pp_dimensions = [2]
 
-        for model_config, cluster_config, tp_dimension, pp_dimension in product(
-            config["models"],
-            config["clusters"],
-            config["tp_dimensions"],
-            pp_dimensions,
+        for load_balancer_config, model_config, cluster_config, tp_dimension, pp_dimension in product(
+                config["load_balancers"],
+                config["models"],
+                config["clusters"],
+                config["tp_dimensions"],
+                pp_dimensions,
         ):
             job_config = cls(
+                LoadBalancerConfig(**load_balancer_config),
                 ModelConfig(**model_config),
                 trace_config,
                 ClusterConfig(**cluster_config),
@@ -268,4 +309,5 @@ class SimulationConfig:
         return f"{self.job_config.get_human_readable_name()}, QPS: {self.qps}"
 
     def get_run_dir(self):
-        return f"{self.output_dir}/runs/{self.job_config.get_hash()}/{self.qps}"
+        return os.getcwd() + "/" + (f"{self.output_dir}/runs/"
+                                    f"{self.job_config.get_readable_exp_file_name()}/{self.qps}")
