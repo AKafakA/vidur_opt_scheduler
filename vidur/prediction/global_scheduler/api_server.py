@@ -240,9 +240,6 @@ def build_app(args: Namespace) -> FastAPI:
     num_min_probed = args.num_required_predictor
     num_probed_instance = args.num_query_predictor
     profiling_sampling_rate = args.profiling_sampling_rate
-
-    assert profiling_sampling_rate <= 0.0 or args.metrics_type == "random", \
-        "Profiling sampling rate is only supported for min_new_request_latency metrics type"
     app.root_path = args.root_path
     return app
 
@@ -277,6 +274,9 @@ async def init_app(
             else:
                 back_instances.append(instance)
             k += 1
+    if not enable_auto_scaling and len(instances) < len(instance_dict):
+        print(f"Warning: Auto-scaling is disabled, but there are more instances available in the config file. "
+              f"Only {len(instances)} instances will be used.")
     start_time = time.time()
     metrics_type = args.metrics_type
     return app
