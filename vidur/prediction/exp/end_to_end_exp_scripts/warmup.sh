@@ -34,6 +34,12 @@ N_SELECTED="12"
 OUTPUT_DIR_PREFIX="warmup"
 DATASET_NAMES="sharegpt"
 
+AVAILABLE_INSTANCE="12"
+ENABLE_PREEMPTIVE_AUTO_PROVISIONING="false"
+# 0 means no SLO
+MAX_SLO="0"
+USE_LENGTH_ESTIMATION="false"
+
 parallel-ssh -t 0 -h vidur/prediction/config/hosts "rm -rf .cache/huggingface/hub/models*"
 for model in $MODEL; do
   if [ "$model" = "meta-llama/Llama-2-7b-hf" ]; then
@@ -49,11 +55,6 @@ for model in $MODEL; do
         USE_LENGTH_ESTIMATION="false"
       fi
       for enable_chunked_prefill in $ENABLE_CHUNKED_PREFILL; do
-        if [ "$enable_chunked_prefill" = "true" ]; then
-          USE_LENGTH_ESTIMATION="false"
-        else
-          USE_LENGTH_ESTIMATION="false"
-        fi
         for use_estimation_len in $USE_LENGTH_ESTIMATION; do
           for batch_size_cut in $BATCH_SIZE_THRESHOLD_FOR_TIME_ESTIMATION; do
             for n_selected in $N_SELECTED; do
