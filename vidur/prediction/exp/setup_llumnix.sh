@@ -1,4 +1,5 @@
-HEAD_NODE_HOST="asdwb@d7525-10s10317.wisc.cloudlab.us"
+HEAD_NODE_IP=""
+HF_TOKEN=""
 
 parallel-ssh -t 0 -h vidur/prediction/config/hosts "sudo apt update && sudo apt full-upgrade -y"
 parallel-ssh -t 0 -h vidur/prediction/config/hosts "pip install ray==2.44.1"
@@ -8,6 +9,6 @@ parallel-ssh -t 0 -h vidur/prediction/config/hosts "wget https://developer.downl
 parallel-ssh -t 0 -h vidur/prediction/config/hosts "wget https://developer.download.nvidia.com/compute/cuda/12.6.3/local_installers/cuda-repo-ubuntu2004-12-6-local_12.6.3-560.35.05-1_amd64.deb && sudo dpkg -i cuda-repo-ubuntu2004-12-6-local_12.6.3-560.35.05-1_amd64.deb"
 parallel-ssh -t 0 -h vidur/prediction/config/hosts "sudo cp /var/cuda-repo-ubuntu2004-12-6-local/cuda-*-keyring.gpg /usr/share/keyrings/ && sudo apt-get update"
 parallel-ssh -t 0 -h vidur/prediction/config/hosts "sudo dpkg --configure -a && sudo apt-get -y install cuda-toolkit-12-6 && sudo apt-get install -y nvidia-open"
-#parallel-ssh -i -t 0 -h vidur/prediction/config/hosts "export HEAD_NODE_IP=128.105.146.38 && export HF_TOKEN=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 && python -m llumnix.entrypoints.vllm.api_server --model meta-llama/Llama-2-7b-hf --port 8200 --initial-instances 1 --engine-use-ray --worker-use-ray --launch-ray-cluster "
+parallel-ssh -i -t 0 -h vidur/prediction/config/hosts "export HEAD_NODE_IP=${HEAD_NODE_IP} && export HF_TOKEN=${HF_TOKEN} && python -m llumnix.entrypoints.vllm.api_server --model meta-llama/Llama-2-7b-hf --port 8200 --initial-instances 1 --engine-use-ray --worker-use-ray --launch-ray-cluster "
 
 parallel-ssh -t 0 -h vidur/prediction/config/hosts "pkill -f llumnix && ray stop"
